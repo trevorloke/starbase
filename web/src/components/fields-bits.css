@@ -1,0 +1,21 @@
+/* Profile fields on a profile ("More details"). The controls are the survey
+   questions' (survey-questions.css: 48px tap buttons, 48px inputs); only the
+   form's own spacing and the Save row live here. Save is ink, never yellow:
+   Edit details' Save is the profile's one yellow button. */
+.fd-form { display: flex; flex-direction: column; gap: var(--s-4); padding-top: var(--s-1); }
+.fd-q__label { font-size: 15px; }
+/* Choices: two across on a phone, more on a desk. */
+.fd-form .sv-q__opts { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.fd-q input[type='date'].sv-q__input { max-width: 260px; }
+.fd-foot { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.btn.fd-save {
+  min-height: 48px;
+  padding: 0 var(--s-5);
+  background: var(--ink);
+  color: var(--paper-0);
+  border-color: var(--ink);
+}
+@media (hover: hover) { .btn.fd-save:not(:disabled):hover { background: var(--ink); opacity: 0.88; } }
+.btn.fd-save:disabled { background: var(--paper-0); color: var(--text-3); border-color: var(--rule-2); }
+.fd-said { font-family: var(--font-mono); font-size: 13px; color: var(--ok); }
+.fd-read .k { min-width: 120px; max-width: 45%; overflow-wrap: anywhere; }

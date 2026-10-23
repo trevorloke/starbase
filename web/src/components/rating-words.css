@@ -1,0 +1,38 @@
+/* The campaign's own words on the rating buttons (Rating scale): a long one
+   wraps onto a second line, never cut off with "…" — every word on a field
+   button must be readable whole. (The rest of the buttons: pages/map.css.) */
+.rb .rb-btn__sub, .rb .rb-who__name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  text-align: center;
+}
+
+/* A rating chip beside someone's name gives way to the name, never the
+   other way round: a long candidate (or "… (off the list)") ends in "…" and
+   its full words stay in the chip's title and aria-label. The name, the
+   house number and the phone come first on every row. (inline-block, not
+   the chip's inline-flex: "…" only applies to a block of text.) */
+.walk-door__head .walk-door__chips { flex: 0 1 auto; min-width: 0; max-width: 45%; }
+.walk-door__chips > .chip { flex: none; }
+/* The door's people: tabs that don't fit go onto a second line (whole
+   names, nothing hidden off to the side); inside a tab, the chip shrinks first. */
+.fk-tabs { flex-wrap: wrap; }
+.fk-tabs .fk-tab { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.fk-tab .fk-tab__name { flex: 0 1 auto; min-width: 2.5em; }
+.fk-tab:has(> .rb-chip--who) > .fk-tab__name { flex-shrink: 0; max-width: calc(100% - 48px); }
+.ops-row__end:has(> .rb-chip--who) { flex: 0 1 auto; min-width: 0; max-width: 45%; }
+.walk-door__chips > .rb-chip--who,
+.fk-tab > .rb-chip--who,
+.ops-row__end > .rb-chip--who,
+.cl-next__list .rb-chip.rb-chip--who,
+.pp-row > .rb-chip.rb-chip--who {
+  display: inline-block;
+  flex: 0 50 auto;
+  min-width: 40px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 20px;
+}
+.pp-row > .rb-chip.rb-chip--who { max-width: 50%; line-height: 24px; }

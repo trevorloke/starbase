@@ -1,0 +1,45 @@
+/* Rating scale (sc-*, pages/RatingScale.jsx): one column, rows of an
+   input and quiet 48px buttons; the preview is the real RatingButtons. */
+.sc-page { max-width: 560px; }
+.sc-page h1 { margin: 0 0 var(--s-4); }
+.sc-sec { margin: 0 0 var(--s-5); }
+.sc-h { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); font-size: 10px; }
+.sc-count { font-family: var(--font-mono); color: var(--text-3); }
+.sc-line { margin: 0 0 var(--s-2); font-size: 14px; color: var(--text-3); }
+
+.sc-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.sc-row { display: flex; align-items: center; gap: var(--s-2); min-height: 56px; padding: 4px 0; border-bottom: 1px solid var(--rule); }
+.sc-row .btn.pp-btn { flex: none; padding: 0 12px; }
+.input.sc-input { flex: 1 1 auto; min-width: 0; min-height: 48px; font-size: 16px; }
+.sc-num.rb-chip { flex: none; min-width: 36px; height: 30px; font-size: 14px; }
+.btn.pp-btn.sc-move { min-width: 44px; padding: 0; font-size: 18px; letter-spacing: 0; }
+/* Take off / Remove: one width, so the names line up. */
+.sc-cand > .btn.pp-btn:last-child { min-width: 92px; }
+
+.sc-fixed__name { flex: 1 1 auto; padding-left: 11px; font-size: 16px; }
+.sc-fixed__note { flex: none; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Under a row: what its new name would do, or why Save would refuse it. */
+.sc-note { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); padding: 0 0 var(--s-2); border-bottom: 1px solid var(--rule); font-size: 14px; }
+.sc-note .error { margin: 0; font-size: 13px; }
+.sc-note__said { flex: 1 1 14em; min-width: 0; color: var(--text-2); overflow-wrap: anywhere; }
+.sc-note .btn.pp-btn { flex: none; padding: 0 12px; }
+.sc-row:has(+ .sc-note) { border-bottom: 0; }
+
+.sc-add { display: flex; gap: var(--s-2); margin: var(--s-3) 0 0; }
+.sc-add .btn.pp-btn { flex: none; }
+
+.sc-gone__name { flex: 1 1 auto; min-width: 0; font-size: 16px; overflow-wrap: anywhere; }
+.sc-gone__n { flex: none; font-size: 12px; }
+
+/* "Take Locke off the list? Yes · No" — in place of the row's controls. */
+.sc-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); width: 100%; padding: var(--s-1) var(--s-2); border: 1px solid var(--danger); border-radius: var(--r-ctrl); background: var(--paper-0); }
+.sc-confirm > span { flex: 1 1 auto; font-size: 15px; }
+.btn.pp-btn.sc-danger { background: var(--danger); color: var(--paper-0); border-color: var(--danger); }
+@media (hover: hover) { .btn.pp-btn.sc-danger:hover { background: var(--danger); border-color: var(--danger); opacity: 0.9; } }
+
+.sc-preview { padding: var(--s-3); border: 1px dashed var(--rule-2); border-radius: var(--r-card); background: var(--paper-1); }
+.sc-preview .sc-h { margin-bottom: var(--s-3); }
+
+.sc-save { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); margin: 0 0 var(--s-4); }
+.sc-save .sc-line { margin: 0; }

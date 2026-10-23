@@ -1,0 +1,804 @@
+// Public pages + the website bridge. No auth. Each campaign workspace gets:
+//   GET/POST /p/:ws/:petition   petition signature page
+//   GET/POST /n/:ws             newsletter signup page
+//   GET/POST /v/:ws             volunteer signup page
+//   GET/POST /u/:subscriptionId unsubscribe (GET asks, POST does it)
+//   GET/POST /e/:ws/:event      event page + RSVP
+//   GET/POST /d/:ws             donate (BC eligibility attestations; Stripe
+//                               Checkout when configured, else a pledge)
+//   POST     /api/public/stripe/webhook   payment confirmations → gifts
+//   POST     /api/public/:ws/signup   CORS-open JSON for the campaign website's
+//                                     own forms (kind: newsletter | volunteer | petition | rsvp)
+// Server-rendered HTML keeps these dead simple to link from the website;
+// the JSON endpoint lets the website keep its own design and post here.
+//
+// Every public write goes through runAction as the system (actor null), so
+// the hash-chained event log — "Verify my books" — covers it like any desk
+// action. The person a submission creates or tags is logged under
+// 'public.signup'; the submission itself under its own action:
+//   public.subscribe  newsletter signup (/n, bridge)  subscription create/update
+//   public.unsubscribe one-click unsubscribe (/u)    subscription update
+//   public.sign       petition signature (/p, bridge) petition_signature create
+//   public.rsvp       event RSVP (/e, bridge)         rsvp create
+//   public.volunteer  roles ticked + note (/v, bridge) volunteer_role create, person update
+//   public.pledge     donate page pledge (/d)         pledge create
+//   stripe.checkout   card checkout opened for a pledge  pledge update
+//   stripe.payment    Stripe webhook                  pledge update, gift create
+import { Hono } from 'hono';
+import { getDb } from '../db/client.js';
+import { runAction, newId } from '../lib/events.js';
+import { VOLUNTEER_ROLES, VOLUNTEER_ROLE_CODES } from '@starbase/shared/canvass';
+import { capFor, donorYearTotal } from '../lib/cap.js';
+import { logGift, campaignDay } from '../lib/gifts.js';
+import { stripeConfigured, createCheckoutSession, verifyStripeSignature } from '../lib/stripe.js';
+
+const app = new Hono();
+
+// Per-IP rate limit: 30 public writes per 10 minutes.
+const hits = new Map();
+const limited = (ip) => {
+  const now = Date.now();
+  const arr = (hits.get(ip) || []).filter((t) => now - t < 600000);
+  arr.push(now);
+  hits.set(ip, arr);
+  return arr.length > 30;
+};
+const ipOf = (c) => c.req.header('x-forwarded-for')?.split(',')[0].trim() || c.req.header('x-real-ip') || 'local';
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const settingsOf = (ws) => (typeof ws.settings === 'string' ? JSON.parse(ws.settings) : (ws.settings || {}));
+
+// One plain page for every public form: the campaign name big at the top,
+// one column, thumb-sized inputs and one big button. ws may be null (a link
+// that names no campaign): the page then carries no campaign name.
+const page = (ws, title, inner) => {
+  const site = ws ? settingsOf(ws).website : null;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>
+<style>
+  :root{--paper:#f8f6ef;--card:#fffdf7;--ink:#171410;--ink2:#5d5749;--rule:#d6d0bf;--mark:#f2c40f;--bad:#a83a2c}
+  @media(prefers-color-scheme:dark){:root{--paper:#15120c;--card:#1d1a13;--ink:#ece7da;--ink2:#a59e8c;--rule:#3a362a;--mark:#d9b60e;--bad:#e08a8a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.5 Georgia,'Times New Roman',serif}
+  main{max-width:520px;margin:0 auto;padding:28px 16px 56px}
+  .camp{font-size:30px;font-weight:700;line-height:1.1;margin:0 0 24px;padding-bottom:12px;border-bottom:4px solid var(--mark);overflow-wrap:anywhere}
+  h1{font-size:26px;line-height:1.2;margin:0 0 12px}
+  p{color:var(--ink2);margin:0 0 14px}
+  .big{font-size:20px;font-weight:700;color:var(--ink)}
+  .when{font-size:19px;font-weight:700;color:var(--ink);margin:0 0 4px}
+  form{margin-top:8px}
+  label,legend{display:block;font-size:16px;font-weight:700;color:var(--ink);margin:18px 0 6px;padding:0}
+  fieldset{border:0;margin:18px 0 0;padding:0;min-width:0}
+  legend{margin:0 0 6px}
+  input,textarea,select{display:block;width:100%;min-height:52px;font:inherit;font-size:18px;padding:12px 14px;border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:4px}
+  textarea{min-height:100px}
+  input:focus,textarea:focus,select:focus{outline:3px solid var(--mark);outline-offset:1px;border-color:var(--ink)}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .amounts{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:360px){.checks{grid-template-columns:1fr}.amounts{grid-template-columns:1fr 1fr}}
+  .check{display:flex;gap:12px;align-items:center;min-height:52px;margin:8px 0;padding:10px 14px;border:1px solid var(--rule);border-radius:4px;background:var(--card);font-size:17px;font-weight:400;line-height:1.3;cursor:pointer}
+  .checks .check{margin:0}
+  .check input{width:24px;height:24px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--ink)}
+  .check:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+  .amounts .check{font-size:19px;font-weight:700}
+  .attest{align-items:flex-start}
+  .attest input{margin-top:1px}
+  .roles{display:grid;gap:8px}
+  .role .check{margin:0}
+  .gl{display:block;font-size:14px;color:var(--ink2)}
+  .rd{display:none;margin:6px 0 4px 38px}
+  .rd label{margin:0 0 4px;font-size:15px}
+  .role:has(input[name=roles]:checked) .rd{display:block}
+  @supports not selector(:has(a)){.rd{display:block}}
+  details{margin-top:8px}
+  summary{display:flex;align-items:center;min-height:52px;padding:10px 14px;border:1px dashed var(--rule);border-radius:4px;font-size:17px;font-weight:700;cursor:pointer;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'+';font:700 20px/1 ui-monospace,Menlo,monospace;margin-right:12px}
+  details[open] summary::before{content:'−'}
+  details[open] summary{margin-bottom:8px}
+  summary:focus-visible{outline:3px solid var(--mark);outline-offset:1px}
+  button{display:block;width:100%;min-height:56px;margin-top:24px;font:700 15px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;background:var(--mark);color:#171410;border:0;padding:16px 22px;border-radius:4px;cursor:pointer}
+  button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+  .done{border:1px solid var(--rule);border-left:4px solid var(--mark);background:var(--card);padding:18px;margin-top:16px}
+  .err{border-left-color:var(--bad);margin:0 0 8px}
+  .note{font-size:15px;margin:16px 0 0}
+  footer{margin-top:40px;border-top:1px solid var(--rule);padding-top:12px;font:13px/1.6 ui-monospace,Menlo,monospace;color:var(--ink2)}
+  a{color:inherit}
+</style></head><body><main>
+${ws ? `<div class="camp">${esc(ws.name)}</div>` : ''}
+${inner}
+<footer>${site ? `<a href="${esc(site)}">← ${esc(site.replace(/^https?:\/\//, ''))}</a> · ` : ''}Powered by Starbase</footer>
+</main></body></html>`;
+};
+
+const loadWs = async (db, slug) => {
+  const ws = (await db.query(
+    'select id, name, slug, jurisdiction, settings from workspaces where slug = $1', [slug],
+  )).rows[0];
+  if (ws) ws.settings = settingsOf(ws);
+  return ws;
+};
+
+// Run one public write as a system action (no actor): its table writes and
+// its events commit together, on the workspace's hash chain.
+const publicAction = async (db, ws, action, handler) =>
+  (await runAction(db, { workspaceId: ws.id, actorId: null, action }, handler)).result;
+
+// Create or reuse a person from a public submission (matched by email, else by
+// name+phone), tag them, and record the source. Runs as a system action.
+const upsertPersonFromPublic = async (db, ws, { name, email, phone, address }, tags) => {
+  const em = email ? email.toLowerCase() : null;
+  return publicAction(db, ws, 'public.signup', async (tx, emit) => {
+    let person = em
+      ? (await tx.query('select id, tags from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1', [ws.id, em])).rows[0]
+      : null;
+    if (!person && phone) {
+      person = (await tx.query('select id, tags from persons where workspace_id = $1 and phone = $2 and lower(name) = lower($3) and deleted_at is null limit 1', [ws.id, phone, name])).rows[0];
+    }
+    if (person) {
+      const existing = typeof person.tags === 'string' ? JSON.parse(person.tags) : (person.tags || []);
+      const merged = Array.from(new Set([...existing, ...tags]));
+      await tx.query('update persons set tags = $3, updated_at = now() where id = $1 and workspace_id = $2', [person.id, ws.id, JSON.stringify(merged)]);
+      emit('person', person.id, 'update', { tags: merged, source: 'public' });
+      return { id: person.id, created: false };
+    }
+    const id = newId();
+    await tx.query(
+      `insert into persons (id, workspace_id, name, email, phone, address, tags) values ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, ws.id, name, em, phone || null, address || null, JSON.stringify(tags)],
+    );
+    emit('person', id, 'create', { name, email: em, phone, address, tags, source: 'public' });
+    return { id, created: true };
+  });
+};
+
+// Put an email on the newsletter list inside the caller's action. A new
+// address is a create; a returning one is re-subscribed (and takes the newly
+// given name, if any). Signing up again with nothing new writes nothing, so
+// nothing is logged. The workspace row lock runAction holds serializes this
+// read-then-write against every other action.
+// They asked for email themselves, so a ladder email's unsubscribe
+// (do-not-email, for an address that was never on the list) is lifted.
+const liftNoEmail = async (tx, emit, ws, em) => {
+  const rows = (await tx.query(
+    `select id, tags from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null
+       and tags @> '"do-not-email"'::jsonb`,
+    [ws.id, em],
+  )).rows;
+  for (const p of rows) {
+    const tags = (typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags).filter((t) => t !== 'do-not-email');
+    await tx.query('update persons set tags = $3, updated_at = now() where id = $1 and workspace_id = $2', [p.id, ws.id, JSON.stringify(tags)]);
+    emit('person', p.id, 'update', { tags, source: 'public' });
+  }
+};
+
+const subscribeTx = async (tx, emit, ws, email, name, source) => {
+  const em = email.toLowerCase();
+  await liftNoEmail(tx, emit, ws, em);
+  const prev = (await tx.query(
+    'select id, name, status from subscriptions where workspace_id = $1 and email = $2', [ws.id, em],
+  )).rows[0];
+  if (prev) {
+    const nextName = name || prev.name || null;
+    if (prev.status === 'subscribed' && nextName === (prev.name || null)) return { id: prev.id, changed: false };
+    await tx.query(
+      `update subscriptions set status = 'subscribed', name = $3, unsubscribed_at = null where id = $1 and workspace_id = $2`,
+      [prev.id, ws.id, nextName],
+    );
+    emit('subscription', prev.id, 'update', { email: em, name: nextName, status: 'subscribed', source });
+    return { id: prev.id, changed: true };
+  }
+  const id = newId();
+  await tx.query(
+    `insert into subscriptions (id, workspace_id, email, name, status, source) values ($1, $2, $3, $4, 'subscribed', $5)`,
+    [id, ws.id, em, name || null, source],
+  );
+  emit('subscription', id, 'create', { email: em, name: name || null, status: 'subscribed', source });
+  return { id, changed: true };
+};
+
+const subscribe = (db, ws, email, name, source) =>
+  publicAction(db, ws, 'public.subscribe', (tx, emit) => subscribeTx(tx, emit, ws, email, name, source));
+
+// A petition signature (plus the newsletter opt-in, when ticked) as one action.
+const signPetition = (db, ws, pet, { name, email, phone, address, wantsNews }) =>
+  publicAction(db, ws, 'public.sign', async (tx, emit) => {
+    const id = newId();
+    await tx.query(
+      `insert into petition_signatures (id, workspace_id, petition_id, name, email, phone, address, subscribe) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, ws.id, pet.id, name, email || null, phone || null, address || null, wantsNews],
+    );
+    emit('petition_signature', id, 'create', {
+      petition_id: pet.id, petition: pet.slug, name, email: email ? email.toLowerCase() : null,
+      phone: phone || null, address: address || null, subscribe: wantsNews,
+    });
+    if (wantsNews && email) await subscribeTx(tx, emit, ws, email, name, `petition:${pet.slug}`);
+    return { id };
+  });
+
+// Petitions by slug, open or closed: a closed one answers "closed", not "not found".
+const loadPetition = async (db, ws, slug) => (await db.query(
+  'select * from petitions where workspace_id = $1 and slug = $2', [ws.id, slug],
+)).rows[0];
+const closedPage = (ws, pet) => page(ws, pet.title, `<h1>${esc(pet.title)}</h1><div class="done">This petition is closed.</div>`);
+
+const str = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const emailOk = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+// Accept either form-encoded or JSON bodies.
+const readBody = async (c) => {
+  const ct = c.req.header('content-type') || '';
+  if (ct.includes('application/json')) return c.req.json().catch(() => ({}));
+  // all: a form with several ticked roles posts roles=a&roles=b — keep them all.
+  const form = await c.req.parseBody({ all: true }).catch(() => ({}));
+  return form;
+};
+
+// ── Petition ──
+app.get('/p/:ws/:slug', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const pet = await loadPetition(db, ws, c.req.param('slug'));
+  if (!pet) return c.text('petition not found', 404);
+  if (!pet.active) return c.html(closedPage(ws, pet), 410);
+  const n = (await db.query('select count(*)::int as n from petition_signatures where petition_id = $1', [pet.id])).rows[0].n;
+  return c.html(page(ws, pet.title, `
+<h1>${esc(pet.title)}</h1>
+${pet.body ? `<p>${esc(pet.body).replace(/\n/g, '<br>')}</p>` : ''}
+<p class="big">${n} ${n === 1 ? 'signature' : 'signatures'}</p>
+<form method="post">
+  <label for="name">Your name</label><input id="name" name="name" required autocomplete="name">
+  <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email">
+  <label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel">
+  <label for="address">Address</label><input id="address" name="address" autocomplete="street-address">
+  <label class="check"><input type="checkbox" name="subscribe" value="1"> Email me updates</label>
+  <button type="submit">Sign the petition</button>
+</form>`));
+});
+
+app.post('/p/:ws/:slug', async (c) => {
+  if (limited(ipOf(c))) return c.text('too many requests', 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const pet = await loadPetition(db, ws, c.req.param('slug'));
+  if (!pet) return c.text('petition not found', 404);
+  const wantsJson = (c.req.header('accept') || '').includes('application/json');
+  if (!pet.active) return wantsJson ? c.json({ error: 'this petition is closed' }, 410) : c.html(closedPage(ws, pet), 410);
+  const b = await readBody(c);
+  const name = str(b.name); const email = str(b.email, 320); const phone = str(b.phone, 40); const address = str(b.address, 400);
+  if (!name) return c.text('name required', 400);
+  if (email && !emailOk(email)) return c.text('invalid email', 400);
+  const wantsNews = b.subscribe === '1' || b.subscribe === true || b.subscribe === 'true';
+  await signPetition(db, ws, pet, { name, email, phone, address, wantsNews });
+  await upsertPersonFromPublic(db, ws, { name, email, phone, address }, ['petition', `petition:${pet.slug}`]);
+  if (wantsJson) return c.json({ ok: true });
+  return c.html(page(ws, pet.title, `<h1>Thank you, ${esc(name.split(' ')[0])}.</h1><div class="done">Your signature on <b>${esc(pet.title)}</b> is recorded.</div>`));
+});
+
+// ── Newsletter ──
+app.get('/n/:ws', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  return c.html(page(ws, 'Stay in the loop', `
+<h1>Stay in the loop.</h1>
+<form method="post">
+  <label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email">
+  <label for="name">Your name</label><input id="name" name="name" autocomplete="name">
+  <button type="submit">Subscribe</button>
+</form>
+<p class="note">We count opens and clicks in our emails.</p>`));
+});
+
+app.post('/n/:ws', async (c) => {
+  if (limited(ipOf(c))) return c.text('too many requests', 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const b = await readBody(c);
+  const email = str(b.email, 320); const name = str(b.name);
+  if (!emailOk(email)) return c.text('valid email required', 400);
+  await subscribe(db, ws, email, name, 'signup-page');
+  if (name) await upsertPersonFromPublic(db, ws, { name, email }, ['newsletter']);
+  if ((c.req.header('accept') || '').includes('application/json')) return c.json({ ok: true });
+  // Only what happened: the address is on the list. Whether and when the
+  // campaign writes depends on email being connected, so this promises nothing.
+  return c.html(page(ws, 'Subscribed', `<h1>You're on the list.</h1><div class="done"><b>${esc(email)}</b> is on the newsletter list.</div>`));
+});
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const badUnsubscribe = (c) => c.html(page(null, 'Unsubscribe',
+  `<h1>This unsubscribe link isn't valid — reply to the email to be removed.</h1>`), 404);
+
+// The link in every newsletter. Opening it only asks (mail scanners open
+// links by themselves); the one button — or a mail app's one-click
+// unsubscribe (List-Unsubscribe-Post) — sends the POST that does it.
+const loadSub = async (db, sid) => {
+  if (!UUID.test(sid)) return null;
+  const row = (await db.query(
+    'select s.id, s.status, s.workspace_id, w.name, w.slug, w.settings from subscriptions s join workspaces w on w.id = s.workspace_id where s.id = $1',
+    [sid],
+  )).rows[0];
+  return row ? { row, ws: { id: row.workspace_id, name: row.name, slug: row.slug, settings: row.settings } } : null;
+};
+const unsubscribedPage = (c, ws) => c.html(page(ws, 'Unsubscribed', `<h1>Unsubscribed.</h1><div class="done">You won't receive further newsletters from ${esc(ws.name)}.</div>`));
+
+app.get('/u/:id', async (c) => {
+  const found = await loadSub(await getDb(), c.req.param('id'));
+  if (!found) return badUnsubscribe(c);
+  if (found.row.status === 'unsubscribed') return unsubscribedPage(c, found.ws);
+  return c.html(page(found.ws, 'Unsubscribe', `<h1>Unsubscribe from ${esc(found.ws.name)}?</h1>
+<form method="post" action="/u/${esc(found.row.id)}"><button type="submit">Unsubscribe</button></form>`));
+});
+
+app.post('/u/:id', async (c) => {
+  const db = await getDb();
+  const found = await loadSub(db, c.req.param('id'));
+  if (!found) return badUnsubscribe(c);
+  const { row, ws } = found;
+  // A second click finds them already off the list: nothing to write or log.
+  await publicAction(db, ws, 'public.unsubscribe', async (tx, emit) => {
+    const n = await tx.query(
+      `update subscriptions set status = 'unsubscribed', unsubscribed_at = now()
+       where id = $1 and workspace_id = $2 and status <> 'unsubscribed'`,
+      [row.id, ws.id],
+    );
+    if (n.affectedRows > 0) emit('subscription', row.id, 'update', { status: 'unsubscribed', source: 'unsubscribe-link' });
+  });
+  return unsubscribedPage(c, ws);
+});
+
+// ── Volunteer signup ──
+// Six plain choices up front; the rest under "More ways to help". Campaign
+// words get a short gloss. A role with a detail (building, language,
+// community) shows one line for it once it's ticked.
+const FIRST_ROLES = ['doorknocking', 'phoning', 'highrise_captain', 'zone_house_captain', 'translation', 'driver'];
+const GLOSS = {
+  driver: 'drive voters to vote',
+  scrutineer: 'watch the vote count',
+  mainstreeting: 'meet people on the street',
+  zone_house_captain: 'look after your street',
+  highrise_captain: 'look after your building',
+  burmashave: 'roadside sign waving',
+};
+const roleBox = (r) => `<div class="role"><label class="check"><input type="checkbox" name="roles" value="${r.code}"><span>${esc(r.label)}${GLOSS[r.code] ? `<span class="gl">${esc(GLOSS[r.code])}</span>` : ''}</span></label>${r.detail
+  ? `<div class="rd"><label for="detail_${r.code}">${esc(r.detail)}</label><input id="detail_${r.code}" name="detail_${r.code}" maxlength="200"></div>` : ''}</div>`;
+const roleBoxes = () => {
+  const first = FIRST_ROLES.map((c) => VOLUNTEER_ROLES.find((r) => r.code === c)).filter(Boolean);
+  const rest = VOLUNTEER_ROLES.filter((r) => !FIRST_ROLES.includes(r.code));
+  return `<div class="roles">${first.map(roleBox).join('')}</div>
+  <details><summary>More ways to help</summary><div class="roles">${rest.map(roleBox).join('')}</div></details>`;
+};
+
+app.get('/v/:ws', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  return c.html(page(ws, 'Volunteer', `
+<h1>Volunteer with us.</h1>
+<form method="post">
+  <label for="name">Your name</label><input id="name" name="name" required autocomplete="name">
+  <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email">
+  <label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel">
+  <label for="address">Address</label><input id="address" name="address" autocomplete="street-address">
+  <fieldset><legend>How can you help?</legend>${roleBoxes()}</fieldset>
+  <label for="note">Anything else?</label><textarea id="note" name="note" rows="3" placeholder="When you're free"></textarea>
+  <button type="submit">Sign me up</button>
+</form>`));
+});
+
+// The thank-you names what they ticked: "doorknocking, phoning and being a
+// hi-rise building captain".
+const HELP_WORDS = {
+  driver: 'driving voters',
+  scrutineer: 'scrutineering',
+  event_hosting: 'hosting an event',
+  zone_house_captain: 'being a zone house captain',
+  highrise_captain: 'being a hi-rise building captain',
+  food: 'helping with food',
+  translation: 'translating',
+  community_committee: 'the community committee',
+  burmashave: 'sign waving',
+};
+const helpWords = (roles) => {
+  const words = roles.map((code) => HELP_WORDS[code]
+    || (VOLUNTEER_ROLES.find((r) => r.code === code)?.label || code).toLowerCase());
+  if (words.length === 0) return 'volunteering';
+  if (words.length === 1) return words[0];
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+};
+
+const asList = (v) => Array.from(new Set((Array.isArray(v) ? v : v ? [v] : []).map(String).filter((r) => VOLUNTEER_ROLE_CODES.includes(r))));
+const ROLE_HAS_DETAIL = new Set(VOLUNTEER_ROLES.filter((r) => r.detail).map((r) => r.code));
+
+// Each ticked role keeps its own detail (detail_<code>: building, language,
+// community); the free "Anything else?" note is kept once, on the person.
+// One action for the lot; a signup that ticked nothing and wrote no note has
+// nothing to save beyond the person (logged by 'public.signup').
+const saveVolunteer = async (db, ws, personId, b) => {
+  const roles = asList(b.roles);
+  const note = str(b.note, 2000);
+  if (!roles.length && !note) return roles;
+  await publicAction(db, ws, 'public.volunteer', async (tx, emit) => {
+    for (const role of roles) {
+      const id = newId();
+      const detail = (ROLE_HAS_DETAIL.has(role) ? str(b[`detail_${role}`], 200) : '') || null;
+      await tx.query(
+        'insert into volunteer_roles (id, workspace_id, person_id, role, detail) values ($1, $2, $3, $4, $5)',
+        [id, ws.id, personId, role, detail],
+      );
+      emit('volunteer_role', id, 'create', { id, person_id: personId, role, detail, source: 'public' });
+    }
+    if (note) {
+      const row = (await tx.query(
+        `update persons set attrs = jsonb_set(coalesce(attrs, '{}'::jsonb), '{note}',
+           to_jsonb(case when coalesce(attrs->>'note', '') = '' then $3::text else (attrs->>'note') || chr(10) || $3::text end)),
+           updated_at = now()
+         where id = $1 and workspace_id = $2
+         returning attrs->>'note' as note`,
+        [personId, ws.id, note],
+      )).rows[0];
+      if (row) emit('person', personId, 'update', { note: row.note, added_note: note, source: 'public' });
+    }
+  });
+  return roles;
+};
+
+app.post('/v/:ws', async (c) => {
+  if (limited(ipOf(c))) return c.text('too many requests', 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const b = await readBody(c);
+  const name = str(b.name); const email = str(b.email, 320); const phone = str(b.phone, 40); const address = str(b.address, 400);
+  if (!name) return c.text('name required', 400);
+  if (email && !emailOk(email)) return c.text('invalid email', 400);
+  const { id } = await upsertPersonFromPublic(db, ws, { name, email, phone, address }, ['volunteer-prospect']);
+  const roles = await saveVolunteer(db, ws, id, b);
+  if ((c.req.header('accept') || '').includes('application/json')) return c.json({ ok: true });
+  return c.html(page(ws, 'Thank you', `<h1>Thank you, ${esc(name.split(' ')[0])}.</h1><div class="done">We'll be in touch about ${esc(helpWords(roles))}.</div>`));
+});
+
+// ── Events + RSVP ──
+const fmtWhen = (d, tz = 'America/Vancouver') => new Date(d).toLocaleString('en-CA', {
+  weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: tz,
+});
+const loadEvent = async (db, ws, slug) => (await db.query(
+  `select e.*, coalesce((select sum(1 + r.guests) from event_rsvps r where r.event_id = e.id and r.status <> 'cancelled'), 0)::int as going
+   from campaign_events e where e.workspace_id = $1 and e.slug = $2 and e.deleted_at is null and e.public`,
+  [ws.id, slug],
+)).rows[0];
+
+const rsvp = async (db, ws, ev, { name, email, phone, guests }) => {
+  const g = Math.min(Math.max(Number(guests) || 0, 0), 10);
+  if (ev.capacity && ev.going + 1 + g > ev.capacity) return { full: true };
+  const { id: personId } = await upsertPersonFromPublic(db, ws, { name, email, phone }, ['event', `event:${ev.slug}`]);
+  return publicAction(db, ws, 'public.rsvp', async (tx, emit) => {
+    // Count again under the workspace lock: two RSVPs for the last seats
+    // can't both land.
+    if (ev.capacity) {
+      const going = (await tx.query(
+        `select coalesce(sum(1 + guests), 0)::int as n from event_rsvps where event_id = $1 and status <> 'cancelled'`, [ev.id],
+      )).rows[0].n;
+      if (going + 1 + g > ev.capacity) return { full: true };
+    }
+    const id = newId();
+    await tx.query(
+      `insert into event_rsvps (id, workspace_id, event_id, person_id, name, email, phone, guests) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, ws.id, ev.id, personId, name, email || null, phone || null, g],
+    );
+    emit('rsvp', id, 'create', {
+      event_id: ev.id, event: ev.slug, person_id: personId, name, email: email || null, phone: phone || null, guests: g, status: 'going',
+    });
+    return { ok: true, id };
+  });
+};
+
+app.get('/e/:ws/:slug', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const ev = await loadEvent(db, ws, c.req.param('slug'));
+  if (!ev) return c.text('event not found', 404);
+  const tz = ws.settings.tz || 'America/Vancouver';
+  const full = ev.capacity && ev.going >= ev.capacity;
+  const past = new Date(ev.starts_at) < new Date();
+  return c.html(page(ws, ev.title, `
+<h1>${esc(ev.title)}</h1>
+<p class="when">${esc(fmtWhen(ev.starts_at, tz))}</p>
+${ev.location ? `<p>${esc(ev.location)}</p>` : ''}
+${ev.description ? `<p>${esc(ev.description).replace(/\n/g, '<br>')}</p>` : ''}
+${past ? '<div class="done">This event has already happened.</div>'
+  : full ? '<div class="done">This event is full.</div>'
+  : `<form method="post">
+  <label for="name">Your name</label><input id="name" name="name" required autocomplete="name">
+  <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email">
+  <label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel">
+  <label for="guests">Bringing guests?</label>
+  <select id="guests" name="guests">${[0, 1, 2, 3, 4, 5].map((n) => `<option value="${n}">${n === 0 ? 'Just me' : `+${n}`}</option>`).join('')}</select>
+  <button type="submit">RSVP</button>
+</form>`}`));
+});
+
+app.post('/e/:ws/:slug', async (c) => {
+  if (limited(ipOf(c))) return c.text('too many requests', 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const ev = await loadEvent(db, ws, c.req.param('slug'));
+  if (!ev || new Date(ev.starts_at) < new Date()) return c.text('event not found', 404);
+  const b = await readBody(c);
+  const name = str(b.name); const email = str(b.email, 320); const phone = str(b.phone, 40);
+  if (!name) return c.text('name required', 400);
+  if (email && !emailOk(email)) return c.text('invalid email', 400);
+  const r = await rsvp(db, ws, ev, { name, email, phone, guests: b.guests });
+  const json = (c.req.header('accept') || '').includes('application/json');
+  if (r.full) return json ? c.json({ error: 'this event is full' }, 409) : c.html(page(ws, ev.title, '<h1>Sorry — this event is full.</h1>'), 409);
+  if (json) return c.json({ ok: true });
+  return c.html(page(ws, ev.title, `<h1>You're in, ${esc(name.split(' ')[0])}.</h1><div class="done"><b>${esc(ev.title)}</b><br>${esc(fmtWhen(ev.starts_at, ws.settings.tz))}${ev.location ? `<br>${esc(ev.location)}` : ''}</div>`));
+});
+
+// ── Donations ──
+// BC rules (verify with Elections BC for the current cycle): contributions only
+// from eligible individuals — BC residents who are Canadian citizens or
+// permanent residents — from their own funds; name and address recorded.
+const ATTESTATIONS = [
+  ['individual', 'I am an individual (not a business, union, or organization).'],
+  ['resident', 'I live in British Columbia and am a Canadian citizen or permanent resident.'],
+  ['own_funds', 'This contribution is from my own funds and I will not be reimbursed.'],
+];
+const PRESETS = [2500, 5000, 10000, 25000, 50000, 100000];
+const dollars = (c2) => `$${(c2 / 100).toLocaleString('en-CA', { minimumFractionDigits: c2 % 100 ? 2 : 0 })}`;
+const publicBase = (c) => (process.env.STARBASE_PUBLIC_URL || new URL(c.req.url).origin).replace(/\/$/, '');
+
+const donateForm = (ws, cap, err = '', v = {}) => {
+  const card = stripeConfigured();
+  return `
+<h1>Donate</h1>
+<p>${card ? 'Secure card payment by Stripe.' : esc(ws.settings.donateInstructions || 'Pledge now and the campaign will contact you to complete your contribution by e-transfer or cheque.')}</p>
+${err ? `<div class="done err" role="alert">${esc(err)}</div>` : ''}
+<form method="post">
+  <fieldset><legend>Amount</legend>
+  <div class="checks amounts">${PRESETS.map((a) => `<label class="check"><input type="radio" name="amount" value="${a / 100}" ${String(v.amount) === String(a / 100) ? 'checked' : ''}> ${dollars(a)}</label>`).join('')}</div>
+  </fieldset>
+  <label for="other">Other amount ($)</label><input id="other" name="other" inputmode="decimal" value="${esc(v.other || '')}">
+  <label class="check"><input type="checkbox" name="monthly" value="1" ${v.monthly ? 'checked' : ''}> Make it monthly</label>
+  <label for="name">Full name</label><input id="name" name="name" required autocomplete="name" value="${esc(v.name || '')}">
+  <label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email" value="${esc(v.email || '')}">
+  <label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" value="${esc(v.phone || '')}">
+  <label for="address">Home address</label><input id="address" name="address" required autocomplete="street-address" value="${esc(v.address || '')}">
+  <fieldset><legend>Eligibility</legend>
+  ${ATTESTATIONS.map(([k, t]) => `<label class="check attest"><input type="checkbox" name="attest_${k}" value="1" required> ${esc(t)}</label>`).join('')}
+  </fieldset>
+  ${cap ? `<p class="note">The annual limit is ${dollars(cap)} per contributor, including monthly gifts.</p>` : ''}
+  <button type="submit">${card ? 'Continue to payment' : 'Pledge my contribution'}</button>
+</form>`;
+};
+
+app.get('/d/:ws', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const rule = await capFor(db, ws.jurisdiction, new Date().getUTCFullYear(), ws.settings);
+  return c.html(page(ws, 'Contribute', donateForm(ws, rule?.capCents)));
+});
+
+app.post('/d/:ws', async (c) => {
+  if (limited(ipOf(c))) return c.text('too many requests', 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  const b = await readBody(c);
+  const v = { amount: str(b.amount, 12), other: str(b.other, 12), monthly: b.monthly === '1' || b.monthly === true,
+    name: str(b.name), email: str(b.email, 320), phone: str(b.phone, 40), address: str(b.address, 400) };
+  const year = new Date().getUTCFullYear();
+  const rule = await capFor(db, ws.jurisdiction, year, ws.settings);
+  const fail = (msg) => c.html(page(ws, 'Contribute', donateForm(ws, rule?.capCents, msg, v)), 400);
+
+  const raw = v.other || v.amount;
+  const cents = Math.round(Number.parseFloat(String(raw).replace(/[$,\s]/g, '')) * 100);
+  if (!Number.isFinite(cents) || cents < 100) return fail('Choose an amount of at least $1.');
+  if (!v.name || !v.address) return fail('Your full name and home address are required by election law.');
+  if (!emailOk(v.email)) return fail('A valid email is required so the campaign can confirm your contribution.');
+  const missing = ATTESTATIONS.filter(([k]) => !(b[`attest_${k}`] === '1' || b[`attest_${k}`] === true));
+  if (missing.length) return fail('Please confirm each eligibility statement — only eligible individuals may contribute.');
+
+  // Cap pre-check against this person's gifts so far this year (by email).
+  if (rule) {
+    if (cents > rule.capCents) return fail(`The most one person can give this year is ${dollars(rule.capCents)}.`);
+    const known = (await db.query(
+      'select id from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1',
+      [ws.id, v.email.toLowerCase()],
+    )).rows[0];
+    if (known) {
+      const so = await donorYearTotal(db, ws.id, known.id, year);
+      if (so + cents > rule.capCents) {
+        const left = Math.max(rule.capCents - so, 0);
+        return fail(left > 0
+          ? `Thank you — you can contribute up to ${dollars(left)} more this year under the annual limit.`
+          : `Thank you — you've reached this year's ${dollars(rule.capCents)} limit.`);
+      }
+    }
+  }
+
+  const { id: personId } = await upsertPersonFromPublic(db, ws,
+    { name: v.name, email: v.email, phone: v.phone, address: v.address }, ['donor']);
+  const cadence = v.monthly ? 'monthly' : 'one-time';
+  // The attestation (what was ticked, when, from where) is part of the record
+  // and of its event, so the log shows the contributor declared eligibility.
+  const attest = { ...Object.fromEntries(ATTESTATIONS.map(([k]) => [k, true])), at: new Date().toISOString(), ip: ipOf(c) };
+  const pledgeId = await publicAction(db, ws, 'public.pledge', async (tx, emit) => {
+    const id = newId();
+    const status = stripeConfigured() ? 'pending' : 'pledged';
+    await tx.query(
+      `insert into pledges (id, workspace_id, person_id, name, email, phone, address, amount_cents, cadence, status, attest)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [id, ws.id, personId, v.name, v.email.toLowerCase(), v.phone || null, v.address, cents,
+       cadence, status, JSON.stringify(attest)],
+    );
+    emit('pledge', id, 'create', {
+      person_id: personId, name: v.name, email: v.email.toLowerCase(), phone: v.phone || null, address: v.address,
+      amount_cents: cents, cadence, status, attest, source: 'donate-page',
+    });
+    return id;
+  });
+
+  if (stripeConfigured()) {
+    try {
+      const base = publicBase(c);
+      const session = await createCheckoutSession({
+        pledge: { id: pledgeId, amount_cents: cents, cadence, email: v.email },
+        workspace: ws,
+        successUrl: `${base}/d/${ws.slug}/thanks`,
+        cancelUrl: `${base}/d/${ws.slug}`,
+      });
+      await publicAction(db, ws, 'stripe.checkout', async (tx, emit) => {
+        await tx.query('update pledges set stripe_session_id = $3, updated_at = now() where id = $1 and workspace_id = $2',
+          [pledgeId, ws.id, session.id]);
+        emit('pledge', pledgeId, 'update', { stripe_session_id: session.id });
+      });
+      return c.redirect(session.url, 303);
+    } catch (e) {
+      return fail(`Card payment isn't available right now (${String(e.message).slice(0, 120)}). Please try again shortly.`);
+    }
+  }
+  return c.html(page(ws, 'Thank you', `<h1>Thank you, ${esc(v.name.split(' ')[0])}.</h1>
+<div class="done">Your ${v.monthly ? 'monthly ' : ''}pledge of <b>${dollars(cents)}</b> is recorded.
+${esc(ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.')}</div>`));
+});
+
+app.get('/d/:ws/thanks', async (c) => {
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.text('not found', 404);
+  return c.html(page(ws, 'Thank you', `<h1>Thank you.</h1><div class="done">Your contribution to ${esc(ws.name)} is being processed. Stripe emails the payment receipt.</div>`));
+});
+
+// Stripe → gifts. One-time: checkout.session.completed (paid). Monthly: every
+// invoice.paid. Each delivery applies once (stripe_events), and every payment
+// enters the books through logGift, so the cap check always runs.
+app.post('/api/public/stripe/webhook', async (c) => {
+  const raw = await c.req.text();
+  if (!verifyStripeSignature(raw, c.req.header('stripe-signature'), process.env.STRIPE_WEBHOOK_SECRET)) {
+    return c.json({ error: 'bad signature' }, 400);
+  }
+  const evt = JSON.parse(raw);
+  const obj = evt.data?.object || {};
+  const meta = obj.metadata?.pledge_id ? obj.metadata
+    : obj.subscription_details?.metadata?.pledge_id ? obj.subscription_details.metadata
+    : obj.parent?.subscription_details?.metadata?.pledge_id ? obj.parent.subscription_details.metadata
+    : obj.lines?.data?.[0]?.metadata?.pledge_id ? obj.lines.data[0].metadata
+    : null;
+  if (!meta) return c.json({ ok: true, ignored: 'no pledge metadata' });
+  const db = await getDb();
+  const ws = (await db.query('select id, name, slug, jurisdiction, settings from workspaces where id = $1', [meta.workspace_id])).rows[0];
+  if (!ws) return c.json({ ok: true, ignored: 'unknown workspace' });
+  ws.settings = settingsOf(ws);
+
+  const paidOneTime = evt.type === 'checkout.session.completed' && obj.mode === 'payment' && obj.payment_status === 'paid';
+  const paidMonthly = evt.type === 'invoice.paid';
+  const subStarted = evt.type === 'checkout.session.completed' && obj.mode === 'subscription';
+  if (!paidOneTime && !paidMonthly && !subStarted) return c.json({ ok: true, ignored: evt.type });
+
+  const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: 'stripe.payment' }, async (tx, emit) => {
+    const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
+      [evt.id, ws.id, evt.type]);
+    if (fresh.affectedRows === 0) return { duplicate: true };
+    const pledge = (await tx.query('select * from pledges where id = $1 and workspace_id = $2 for update', [meta.pledge_id, ws.id])).rows[0];
+    if (!pledge) return { ignored: 'unknown pledge' };
+    if (subStarted) {
+      await tx.query(`update pledges set status = 'paid', updated_at = now() where id = $1`, [pledge.id]);
+      emit('pledge', pledge.id, 'update', { status: 'paid', subscription: obj.subscription || null });
+      return { subscription: true };
+    }
+    const cents = paidOneTime ? Number(obj.amount_total) : Number(obj.amount_paid);
+    const paidAt = new Date(((paidMonthly ? obj.status_transitions?.paid_at : obj.created) || evt.created) * 1000);
+    // The campaign's calendar day, not the UTC one: a card gift at 7:30 pm
+    // Pacific on Oct 21 is dated Oct 21 (and Dec 31 stays in its own year).
+    const date = campaignDay(paidAt, ws.settings.tz);
+    // pledge_id links each card gift to its pledge (as pledge.receive does), so
+    // voiding one keeps the pledge honest (lib/gifts.js).
+    const { gift, compliance } = await logGift(tx, ws, {
+      person_id: pledge.person_id, amount_cents: cents, date,
+      method: 'card', cadence: pledge.cadence, note: `Stripe ${paidOneTime ? obj.payment_intent || obj.id : obj.id}`,
+      pledge_id: pledge.id,
+    }, emit);
+    if (pledge.cadence === 'monthly') {
+      // A monthly pledge records its latest month in, like pledge.receive.
+      const row = (await tx.query(
+        `update pledges set status = 'paid',
+           gift_id = case when last_received_on is null or $3::date >= last_received_on then $2 else gift_id end,
+           last_received_on = greatest(coalesce(last_received_on, $3::date), $3::date), updated_at = now()
+         where id = $1 returning gift_id, last_received_on`,
+        [pledge.id, gift.id, date],
+      )).rows[0];
+      const lastOn = row.last_received_on instanceof Date ? row.last_received_on.toISOString().slice(0, 10) : String(row.last_received_on).slice(0, 10);
+      emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id, last_received_on: lastOn });
+    } else {
+      const row = (await tx.query(
+        `update pledges set status = 'paid', gift_id = coalesce(gift_id, $2), updated_at = now() where id = $1 returning gift_id`,
+        [pledge.id, gift.id],
+      )).rows[0];
+      emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id });
+    }
+    return { gift_id: gift.id, flagged: gift.flagged, compliance };
+  });
+  return c.json({ ok: true, ...result });
+});
+
+// ── Website bridge: JSON endpoint for the campaign site's own forms ──
+app.options('/api/public/:ws/signup', (c) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type');
+  return c.body(null, 204);
+});
+
+app.post('/api/public/:ws/signup', async (c) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  if (limited(ipOf(c))) return c.json({ error: 'too many requests' }, 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.json({ error: 'unknown workspace' }, 404);
+  const b = await c.req.json().catch(() => ({}));
+  const kind = str(b.kind, 20);
+  const name = str(b.name); const email = str(b.email, 320); const phone = str(b.phone, 40); const address = str(b.address, 400);
+  if (email && !emailOk(email)) return c.json({ error: 'invalid email' }, 400);
+
+  if (kind === 'newsletter') {
+    if (!emailOk(email)) return c.json({ error: 'email required' }, 400);
+    await subscribe(db, ws, email, name, 'website');
+    if (name) await upsertPersonFromPublic(db, ws, { name, email }, ['newsletter']);
+    return c.json({ ok: true, kind });
+  }
+  if (kind === 'volunteer') {
+    if (!name) return c.json({ error: 'name required' }, 400);
+    const { id } = await upsertPersonFromPublic(db, ws, { name, email, phone, address }, ['volunteer-prospect']);
+    await saveVolunteer(db, ws, id, b);
+    return c.json({ ok: true, kind });
+  }
+  if (kind === 'petition') {
+    const pet = await loadPetition(db, ws, str(b.petition, 60));
+    if (!pet) return c.json({ error: 'unknown petition' }, 404);
+    if (!pet.active) return c.json({ error: 'this petition is closed' }, 410);
+    if (!name) return c.json({ error: 'name required' }, 400);
+    // A website checkbox posts true, "1", "true" or "on"; "0"/"false" is a no.
+    const wantsNews = [true, 1, '1', 'true', 'on', 'yes'].includes(b.subscribe);
+    await signPetition(db, ws, pet, { name, email, phone, address, wantsNews });
+    await upsertPersonFromPublic(db, ws, { name, email, phone, address }, ['petition', `petition:${pet.slug}`]);
+    return c.json({ ok: true, kind });
+  }
+  if (kind === 'rsvp') {
+    const ev = await loadEvent(db, ws, str(b.event, 60));
+    if (!ev || new Date(ev.starts_at) < new Date()) return c.json({ error: 'unknown event' }, 404);
+    if (!name) return c.json({ error: 'name required' }, 400);
+    const r = await rsvp(db, ws, ev, { name, email, phone, guests: b.guests });
+    if (r.full) return c.json({ error: 'this event is full' }, 409);
+    return c.json({ ok: true, kind });
+  }
+  return c.json({ error: "kind must be 'newsletter', 'volunteer', 'petition', or 'rsvp'" }, 400);
+});
+
+export default app;

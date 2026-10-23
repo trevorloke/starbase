@@ -1,0 +1,15 @@
+# PGlite data directory (regenerated on first run)
+data/
+
+# Dependencies and build output
+node_modules/
+web/dist/
+
+# Environment / secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+*.log

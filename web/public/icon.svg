@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Starbase</title>
+  <!-- Full-bleed so platforms can mask it; the S sits inside the central safe zone. -->
+  <rect width="512" height="512" fill="#ffd400"/>
+  <path d="M342 176 C322 150 292 136 256 136 C204 136 172 162 172 200 C172 242 210 254 256 264 C302 274 340 286 340 326 C340 364 306 388 256 388 C216 388 186 372 168 344"
+        fill="none" stroke="#141100" stroke-width="64" stroke-linecap="square" stroke-linejoin="round"/>
+</svg>

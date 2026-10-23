@@ -1,0 +1,12 @@
+First Name,Last Name,E-mail,Phone,Street Address,Apt,City,Postal Code,Groups,Support
+Alex,Morgan,alex.morgan@example.org,604-555-0151,13450 104 Ave,,Surrey,V3T 1V8,voters-2026;whalley,1
+Jordan,Lee,jordan.lee@example.org,604-555-0152,13730 72 Ave,,Surrey,V3W 2P4,voters-2026;newton,2
+Sam,Patel,,604-555-0153,15105 105 Ave,,Surrey,V3R 7G8,voters-2026;guildford,3
+Taylor,Singh,taylor.singh@example.org,,6188 176 St,,Surrey,V3S 4E7,voters-2026;cloverdale,4D
+Casey,Nguyen,casey.nguyen@example.org,604-555-0155,15996 84 Ave,,Surrey,V4N 0W1,voters-2026;fleetwood,
+Riley,Chen,,604-555-0156,14601 20 Ave,,Surrey,V4A 8H9,voters-2026;south-surrey,4B
+Morgan,Brooks,morgan.brooks@example.org,604-555-0157,10350 University Dr,,Surrey,V3T 4B8,voters-2026;whalley,1
+Jamie,Dhillon,jamie.dhillon@example.org,604-555-0158,13730 72 Ave,,Surrey,V3W 2P4,voters-2026;newton;volunteer-prospect,2
+Jordan,Lee,JORDAN.LEE@example.org,604-555-0152,,,,,donor-prospect,
+,,no.name@example.org,604-555-0160,13450 104 Ave,,Surrey,,voters-2026,
+Robin,Kaur,robin.kaur@example.org,604-555-0161,13450 104 Ave,Suite 2,Surrey,V3T 1V8,voters-2026;whalley,7

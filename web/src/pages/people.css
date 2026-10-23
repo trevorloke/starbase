@@ -1,0 +1,484 @@
+/* People · Person · Money additions — page-specific styles.
+   Ink on paper: mono micro-labels, hairline rules, quiet surfaces.
+   Ratings render with the shared RatingChip / RatingButtons (rb-*, styled in
+   map.css): support = green, undecided = ochre, opposed = red. The brand
+   yellow is only ever the screen's one primary button. Field controls are
+   real buttons with ≥48px taps.
+   pp-* = People list + shared bits, cl-* = Calls, pf-* = profile. */
+
+/* ── Tap-sized buttons for field screens ── */
+.btn-tap {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  font-size: 12px;
+}
+.btn-sm { padding: 4px 9px; font-size: 10px; }
+
+/* ── Filters ── */
+.filters { display: flex; flex-direction: column; gap: var(--s-2); margin: var(--s-3) 0 var(--s-4); }
+.filter-group { display: flex; align-items: center; gap: var(--s-1) var(--s-2); flex-wrap: wrap; }
+.filter-group > .eyebrow { min-width: 52px; }
+.chip-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: var(--border-2);
+  border-radius: 999px;
+  padding: 3px 9px;
+  min-height: 24px;
+  white-space: nowrap;
+  color: var(--text-2);
+  background: var(--paper-0);
+  cursor: pointer;
+  line-height: 1.3;
+}
+@media (hover: hover) { .chip-btn:hover { border-color: var(--ink); color: var(--text-1); } }
+.chip-btn.on { background: var(--ink); color: var(--paper-0); border-color: var(--ink); }
+.chip-btn:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }
+.chip-btn:disabled { opacity: 0.5; cursor: default; }
+.count-line { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.head-actions { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+
+/* ── People table (old class names kept for anything still using them) ── */
+.tel { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-decoration: none; border-bottom: 1px dotted var(--rule-2); }
+.tel:hover { border-bottom-color: var(--ink); }
+.tag-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tag-chips .chip { text-transform: none; letter-spacing: 0.04em; }
+.logged { font-family: var(--font-mono); font-size: 11px; color: var(--ok); letter-spacing: 0.04em; }
+.hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+/* ── Tag editor ── */
+.tag-editor { margin-top: var(--s-2); display: flex; flex-direction: column; gap: var(--s-2); }
+.tag-editor .row { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.tag-editor .input { max-width: 240px; }
+.tag-editor .chip-btn { min-height: 48px; padding: 0 12px; }
+.chip.removable { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; }
+.chip-x {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-3);
+}
+.chip-x:hover { background: var(--ink); color: var(--paper-0); }
+.chip-x:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }
+.chip-x:disabled { opacity: 0.4; cursor: default; }
+.contact-lines .act .chip-x { width: 36px; height: 36px; font-size: 15px; }
+
+/* ── Person profile ── */
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); flex-wrap: wrap; }
+.card-head .eyebrow { margin-bottom: 0; }
+
+.contact-lines { list-style: none; margin: 0; padding: 0; }
+.contact-lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.contact-lines li:last-child { border-bottom: 0; }
+.contact-lines .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); min-width: 64px; }
+.contact-lines .v { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.contact-lines .v a { text-decoration: none; border-bottom: 1px dotted var(--rule-2); }
+.contact-lines .v a:hover { border-bottom-color: var(--ink); }
+.contact-lines .act { display: flex; gap: var(--s-1); }
+.addr-lines { line-height: 1.4; }
+
+.socials-add { display: flex; gap: var(--s-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--s-2); }
+.socials-add .field { margin-bottom: 0; flex: 1 1 120px; }
+.socials-add .field.wide { flex: 2 1 160px; }
+
+/* Rating card */
+.channel-toggle { display: inline-flex; border: var(--border-2); border-radius: var(--r-ctrl); overflow: hidden; }
+.channel-toggle button {
+  min-height: 48px;
+  min-width: 64px;
+  border: 0;
+  border-right: 1px solid var(--rule-2);
+  background: var(--paper-0);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.channel-toggle button:last-child { border-right: 0; }
+@media (hover: hover) { .channel-toggle button:not([aria-pressed='true']):hover { background: var(--paper-1); } }
+.channel-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper-0); }
+.channel-toggle button:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.rate-block { display: flex; flex-direction: column; gap: var(--s-3); }
+.rate-block .label { display: block; margin-bottom: var(--s-1); }
+.outcome-row { display: flex; gap: var(--s-1); flex-wrap: wrap; }
+.status-line { font-family: var(--font-mono); font-size: 11px; color: var(--ok); min-height: 1.4em; }
+
+/* Roles / signs / shifts lists */
+.role-add { display: flex; gap: var(--s-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--s-2); }
+.role-add .field { margin-bottom: 0; flex: 1 1 140px; }
+.role-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.role-chips .chip { text-transform: none; letter-spacing: 0.04em; }
+.role-chips .chip .d { color: var(--text-3); }
+.sign-row { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.sign-row:last-child { border-bottom: 0; }
+.sign-row select.input { width: auto; padding: 5px 8px; font-size: 13px; }
+.chip-row { display: flex; gap: var(--s-1); flex-wrap: wrap; margin-top: var(--s-2); }
+.chip-mark { background: var(--mark-soft); border-color: var(--mark-deep); color: var(--text-1); }
+/* Donor tier on a profile: Star = ink outline, Superstar = ink fill. */
+.chip.pf-tier { border-color: var(--ink); color: var(--text-1); font-weight: 700; }
+.chip.pf-tier--super { background: var(--ink); color: var(--paper-0); }
+.chip-ghost { color: var(--text-4); border-color: var(--rule); }
+
+/* Contact history timeline */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+.timeline li:last-child { border-bottom: 0; }
+.timeline .when { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.timeline .what { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); align-items: center; }
+.timeline .note { flex-basis: 100%; color: var(--text-2); }
+.timeline .by { color: var(--text-3); font-size: 13px; }
+@media (max-width: 720px) {
+  .timeline li { grid-template-columns: 1fr; gap: 2px; }
+}
+
+.inline-form .form-row > .field { flex: 1 1 160px; }
+.form-actions { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-2); }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   Simple pass — People list, Calls, profile
+   ════════════════════════════════════════════════════════════════════════ */
+.pp-icon { flex: none; display: block; }
+.pp-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.btn.pp-btn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: 0 16px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pp-head { align-items: center; }
+.pp-head h1 { margin: 0; }
+
+/* More menu */
+.pp-menu { position: relative; }
+.pp-menu__panel {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 940;
+  min-width: 200px;
+  background: var(--paper-0); border: var(--border-ink); border-radius: var(--r-card);
+  box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.15);
+  padding: var(--s-1) 0;
+}
+.pp-menu__item {
+  display: flex; align-items: center; gap: var(--s-3);
+  min-height: 48px; padding: 0 var(--s-4);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-1); text-decoration: none;
+}
+.pp-menu__item + .pp-menu__item { border-top: 1px solid var(--rule); }
+@media (hover: hover) { .pp-menu__item:hover { background: var(--paper-1); } }
+.pp-menu__item:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+
+/* Search + Filter */
+.pp-bar { display: flex; gap: var(--s-2); align-items: stretch; margin-bottom: var(--s-3); }
+.pp-search { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+.pp-search .pp-icon { position: absolute; left: 12px; color: var(--text-3); pointer-events: none; }
+.pp-search .input { min-height: 48px; padding-left: 40px; font-size: 16px; }
+.btn.pp-filterbtn { min-height: 48px; flex: none; }
+.btn.pp-filterbtn.is-on { border-color: var(--ink); }
+.pp-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  background: var(--ink); color: var(--paper-0); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0;
+}
+
+/* Active filter chips */
+.pp-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.pp-fchip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 48px; padding: 0 12px 0 16px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em;
+  color: var(--paper-0); background: var(--ink);
+  border: 1px solid var(--ink); border-radius: 999px; cursor: pointer;
+}
+/* A band dot on the rating filter chips (same colours as the rating chip). */
+.pp-dot { flex: none; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; border: 1px solid transparent; vertical-align: -1px; }
+.pp-dot[data-band='support']   { background: var(--ok);     border-color: var(--ok); }
+.pp-dot[data-band='undecided'] { background: #e0990b;       border-color: #a87000; }
+.pp-dot[data-band='opposed']   { background: var(--danger); border-color: var(--danger); }
+.pp-dot[data-band='none']      { background: transparent;   border: 1px dashed currentColor; }
+.pp-fchip .pp-dot { box-shadow: 0 0 0 1.5px var(--paper-0); margin-right: 2px; }
+.chip-btn.pp-pick { display: inline-flex; align-items: center; }
+@media (hover: hover) { .pp-fchip:hover { background: var(--text-2); } }
+.pp-fchip:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+
+/* Filter sheet: inline panel on desks, bottom sheet on phones */
+.pp-sheet {
+  background: var(--paper-0); border: var(--border-ink); border-radius: var(--r-card);
+  margin: 0 0 var(--s-4); padding: var(--s-3) var(--s-4) var(--s-4);
+}
+.pp-sheet__head { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
+.pp-sheet__head h2 { margin: 0; flex: 1; }
+.pp-sheet__head h2:focus { outline: none; }
+.pp-sheet__body { display: flex; flex-direction: column; gap: var(--s-3); }
+.pp-group { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pp-group > legend { padding: 0; margin-bottom: var(--s-2); }
+.pp-group__opts { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chip-btn.pp-pick { min-height: 48px; padding: 0 14px; font-size: 11px; }
+.pp-morefilters { align-self: flex-start; }
+.pp-sheet__more { display: flex; flex-direction: column; gap: var(--s-3); }
+.pp-scrim { position: fixed; inset: 0; z-index: 945; background: rgba(12, 12, 12, 0.35); }
+.pp-sheet.is-phone {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; margin: 0;
+  max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
+  border-radius: 10px 10px 0 0; border-bottom: 0;
+  padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom));
+  box-shadow: 0 -6px 24px rgba(12, 12, 12, 0.18);
+}
+.pp-sheet.is-phone .pp-sheet__head { position: sticky; top: calc(-1 * var(--s-3)); background: var(--paper-0); padding: var(--s-3) 0 var(--s-2); margin-top: calc(-1 * var(--s-3)); z-index: 1; }
+
+/* Count + list */
+.pp-count { margin: 0 0 var(--s-2); color: var(--text-3); font-size: 14px; }
+.pp-count strong { color: var(--text-1); font-size: 15px; }
+.pp-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.pp-list li { border-bottom: 1px solid var(--rule); }
+.pp-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  min-height: 60px; padding: var(--s-2) var(--s-1);
+  text-decoration: none; color: inherit;
+}
+@media (hover: hover) { .pp-row:hover { background: var(--paper-1); } }
+.pp-row:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.pp-row__main { display: flex; flex-direction: column; min-width: 0; }
+.pp-row__name { font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.pp-row__fact { font-family: var(--font-mono); font-size: 13px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-row .rb-chip { flex: none; min-width: 32px; height: 26px; font-size: 12px; }
+
+.pp-table td { vertical-align: middle; padding-top: 10px; padding-bottom: 10px; }
+.pp-table__name a { text-decoration: none; font-weight: 600; }
+.pp-table__name a:hover { text-decoration: underline; }
+.pp-table__second { display: block; font-size: 13px; color: var(--text-3); overflow-wrap: anywhere; }
+
+.pp-more { display: flex; justify-content: center; margin: var(--s-4) 0; }
+.pp-empty { padding: var(--s-6) var(--s-4); text-align: center; border: 1px dashed var(--rule-2); border-radius: var(--r-card); }
+.pp-empty p { margin: 0 0 var(--s-3); font-size: 17px; }
+
+/* Add person */
+.pp-add h2 { margin-bottom: var(--s-3); }
+.pp-moredetails { margin-bottom: var(--s-2); }
+
+/* ── Calls ── */
+.cl-page { max-width: 560px; }
+.cl-head { align-items: center; }
+.cl-head h1 { margin: 0; }
+.cl-toggle { display: inline-flex; border: var(--border-ink); border-radius: 999px; overflow: hidden; }
+.cl-toggle button {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 48px; padding: 0 16px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-2); background: var(--paper-0); border: 0; cursor: pointer;
+}
+.cl-toggle button + button { border-left: 1px solid var(--ink); }
+.cl-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper-0); }
+.cl-toggle button:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -3px; }
+
+.cl-progress { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-3); font-size: 15px; color: var(--text-3); }
+.cl-progress strong { font-size: 22px; color: var(--text-1); }
+.cl-bar { flex: 1; height: 8px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+.cl-bar__fill { height: 100%; background: var(--ok); transition: width 0.3s ease; }
+@media (prefers-reduced-motion: reduce) { .cl-bar__fill { transition: none; } }
+
+.cl-card { padding: var(--s-4); }
+.cl-who { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-3); margin-bottom: var(--s-4); }
+.cl-who__main { display: flex; flex-direction: column; min-width: 0; }
+/* A 48px tap target that still sits tight above the phone number. */
+.cl-name { display: inline-flex; align-items: center; align-self: flex-start; min-height: 48px; margin: -8px 0 -6px; font-size: 24px; font-weight: 600; line-height: 1.2; text-decoration: none; overflow-wrap: anywhere; }
+.cl-name:hover { text-decoration: underline; }
+.cl-phone { font-size: 16px; margin-top: 2px; }
+.cl-addr { color: var(--text-3); font-size: 14px; }
+/* Their rating before this call: one quiet line, never a chip. */
+.cl-last { margin-top: var(--s-1); color: var(--text-3); font-size: 14px; }
+.cl-next__list .rb-chip { flex: none; }
+
+.btn.cl-call {
+  display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+  width: 100%; min-height: 56px; margin-bottom: var(--s-4);
+  font-size: 14px; letter-spacing: 0.08em;
+  border: 2px solid var(--ink); background: var(--paper-0);
+}
+@media (hover: hover) { .btn.cl-call:hover { background: var(--paper-1); border-color: var(--ink); } }
+
+.cl-rate { margin-bottom: var(--s-3); }
+.cl-outcomes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cl-out {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 48px; padding: 2px 6px;
+  font-family: var(--font-serif); font-size: 15px; line-height: 1.15;
+  color: var(--text-2); background: transparent;
+  border: 1px solid var(--rule-2); border-radius: var(--r-ctrl);
+  cursor: pointer; touch-action: manipulation;
+}
+@media (hover: hover) { .cl-out:hover { color: var(--text-1); border-color: var(--ink); background: var(--paper-1); } }
+.cl-out:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.cl-out:disabled { opacity: 0.5; cursor: default; }
+.cl-skip { border-color: transparent; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* "Up next" is the shared .disclose row (app.css); its label lines up with the names. */
+.cl-next { margin-top: var(--s-2); --disclose-x: var(--s-1); }
+.cl-next__list { list-style: none; margin: 0; padding: 0; }
+.cl-next__list li + li { border-top: 1px solid var(--rule); }
+.cl-next__list button {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--s-3);
+  min-height: 48px; padding: 0 var(--s-1);
+  font: inherit; font-size: 16px; text-align: left; color: var(--text-1);
+  background: transparent; border: 0; cursor: pointer;
+}
+@media (hover: hover) { .cl-next__list button:hover { background: var(--paper-1); } }
+.cl-big { font-size: 20px; }
+.cl-big strong { font-size: 40px; display: block; line-height: 1.1; }
+
+.toast.cl-toast { z-index: 1000; max-width: calc(100vw - 32px); width: max-content; min-height: 48px; padding: var(--s-1) var(--s-1) var(--s-1) var(--s-4); font-size: 13px; }
+.btn.cl-toast__btn { min-height: 48px; display: inline-flex; align-items: center; white-space: nowrap; }
+@media (max-width: 720px) {
+  .toast.cl-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+
+/* ── Profile ── */
+.pf-head { margin-bottom: var(--s-4); }
+.pf-back { display: inline-flex; align-items: center; min-height: 48px; text-decoration: none; }
+button.pf-back { padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+button.pf-back:hover { color: var(--text-1); }
+button.pf-back:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.pf-head h1 { margin: 0 0 var(--s-2); overflow-wrap: anywhere; }
+.pf-meta { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.pf-meta .rb-chip { height: 24px; min-width: 32px; font-size: 12px; }
+.pf-meta .pf-word { font-size: 15px; color: var(--text-2); }
+.pf-meta .pf-when { color: var(--text-3); }
+.pf-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.btn.pf-act {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-width: 72px; min-height: 60px; padding: 6px 12px;
+  font-size: 10px; letter-spacing: 0.1em;
+}
+.btn.pf-act .pp-icon { width: 22px; height: 22px; }
+
+.pf-rate { margin-bottom: var(--s-4); }
+.pf-rate .card-head { margin-bottom: var(--s-3); }
+.pf-rate .channel-toggle button { min-height: 48px; }
+/* Under the hero buttons: + Add a note, and how it was logged (Door · Phone · Text). */
+.pf-rate__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-3); }
+.pf-rate__foot .pf-note { flex: 1 1 100%; margin: 0; }
+.btn.pf-note-btn { margin-left: calc(-1 * var(--s-3)); }
+.channel-toggle.pf-channel { border: 1px solid var(--rule-2); margin-left: auto; }
+.channel-toggle.pf-channel button { min-width: 56px; padding: 0 10px; font-size: 10px; color: var(--text-3); }
+.channel-toggle.pf-channel button[aria-pressed='true'] { background: var(--paper-2); color: var(--text-1); font-weight: 700; }
+.pf-page { max-width: 680px; }
+.pf-status { font-family: var(--font-mono); font-size: 12px; color: var(--ok); min-height: 1.4em; margin: var(--s-2) 0 0; }
+.pf-status:empty { min-height: 0; margin: 0; }
+.pf-last { margin: calc(-1 * var(--s-2)) 0 var(--s-4); color: var(--text-3); font-size: 14px; }
+/* The supporter's own words from the volunteer form. */
+.pf-their-note { margin: var(--s-3) 0 0; padding: var(--s-2) var(--s-3); border-left: 3px solid var(--rule-2); background: var(--paper-0); }
+.pf-their-note .eyebrow { display: block; margin-bottom: var(--s-1); }
+.pf-their-note p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; color: var(--text-2); }
+.role-chips .chip { white-space: normal; overflow-wrap: anywhere; }
+
+/* Each section opens from the shared .disclose row (app.css). */
+.pf-sections { --disclose-x: var(--s-1); }
+.pf-sec__title { flex: 1; }
+.pf-sec__count { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text-3); }
+.pf-sec__body { padding: 0 var(--s-1) var(--s-4); }
+.pf-sec__body > :first-child { margin-top: 0; }
+.pf-empty { margin: 0 0 var(--s-2); color: var(--text-3); }
+.pf-row-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.pf-sub { margin: var(--s-4) 0 var(--s-2); }
+.pf-gifts { list-style: none; margin: 0; padding: 0; }
+.pf-gifts li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
+.pf-gifts .amt { font-family: var(--font-mono); font-weight: 600; min-width: 88px; }
+.pf-gifts .when { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.pf-gifts .note { flex-basis: 100%; color: var(--text-3); font-size: 14px; }
+.sign-row select.input { min-height: 48px; }
+.pf-chip-link { text-decoration: none; }
+
+@media (max-width: 720px) {
+  .pp-head .btn.pp-btn { padding: 0 12px; }
+  .btn.pf-act { flex: 1 1 0; min-width: 0; }
+  .cl-name { font-size: 22px; }
+}
+@media (pointer: coarse), (max-width: 720px) {
+  .chip-btn { min-height: 48px; padding: 0 12px; }
+  .chip-x { width: 36px; height: 36px; font-size: 14px; }
+}
+
+/* ── Fix round 3 ── */
+/* One input height on People, Add person and the profile forms. */
+.pp-add .input, .pf-page .input, .tag-editor .input, .pp-search .input { min-height: 48px; }
+
+/* Touch screens keep :hover on whatever was tapped last; app.css's .btn:hover
+   would leave these buttons looking pressed. Put the resting look back. */
+@media (hover: none) {
+  .btn.pp-btn:not(.btn-primary):not(.btn-quiet):hover,
+  .btn.pf-act:hover { border-color: var(--rule-2); background: var(--paper-0); }
+  .btn.pp-btn.btn-quiet:hover { color: var(--text-3); border-color: transparent; }
+  .btn.pp-btn.btn-primary:hover { background: var(--mark); border-color: var(--mark-deep); }
+  .btn.cl-call:hover { border-color: var(--ink); background: var(--paper-0); }
+}
+
+/* No signal, nothing cached: one line, never "no one". */
+.pp-offline {
+  margin: var(--s-3) 0;
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--rule-2);
+  background: var(--paper-0);
+  color: var(--text-2);
+  font-size: 16px;
+}
+
+/* A rating with its meaning: the chip, then the button's word. */
+.pp-rtag { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pp-rtag__word { font-size: 13px; color: var(--text-3); }
+
+/* Calls: the card takes focus after a tap (keyboard and screen readers). */
+.cl-card:focus { outline: none; }
+.cl-card:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+/* The supporter's own note: one line. */
+.cl-note {
+  margin-top: var(--s-1);
+  color: var(--text-2); font-size: 15px; font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Profile: Map as a quiet link when there's no Call or Text. */
+.pf-acts--quiet { margin-top: var(--s-2); }
+.btn.pf-maplink { margin-left: calc(-1 * var(--s-3)); gap: var(--s-2); }
+/* "Reached by" + Door · Phone · Text. */
+.pf-reach { display: inline-flex; align-items: center; gap: var(--s-2); margin-left: auto; }
+.pf-reach .eyebrow { white-space: nowrap; }
+.pf-reach .channel-toggle.pf-channel { margin-left: 0; }
+.pf-status-row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.pf-status-row .pf-status { margin: 0; }
+.pf-status-row:has(.pf-status:empty) { display: none; }
+.pf-status-row { margin-top: var(--s-2); }

@@ -1,0 +1,21 @@
+/* The Outreach → Ladders row: the .disclose shape (hairline above, body
+   font, 48px), but it goes somewhere, so a › instead of a +. */
+.lad-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 52px;
+  margin-top: var(--s-4);
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .lad-link:hover { color: var(--text-1); } }
+.lad-link:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.lad-link__sub { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--text-3); }
+.lad-link__chev { margin-left: auto; font-size: 22px; line-height: 1; color: var(--text-3); }

@@ -1,0 +1,113 @@
+/* "Saved on this phone" — the strip's chip and its sheet (OfflineSheet.jsx,
+   opened from Shell.jsx). Quiet paper, never the brand yellow: the screen
+   under it keeps its one primary button. Every button is a 48px target. */
+
+/* The chip in the strip: "3 saved on this phone · 1 refused". */
+.offline-strip__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  background: var(--paper-0);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* z-index: its padded hit area stays above the map canvas just under the strip. */
+  position: relative;
+  z-index: 1;
+}
+/* 36px chip (34px inside its border) + 7px above and below = 48px to the finger. */
+.offline-strip__chip::after { content: ''; position: absolute; inset: -7px -2px; }
+.offline-strip__btn { z-index: 1; } /* the same for Send now */
+.offline-strip__chip[aria-expanded='true'] { border-color: var(--ink); }
+.offline-strip__chip:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }
+.offline-strip__chip .is-refused { color: var(--danger); }
+
+/* "Not sent yet" on anything still on the phone (shifts, the door card). */
+.chip.obx-chip {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 70%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, var(--paper-0));
+}
+
+.offline-strip { position: relative; }
+
+.obx-scrim {
+  position: fixed; inset: 0; z-index: 970;
+  border: 0; padding: 0; margin: 0;
+  background: rgba(12, 12, 12, 0.18);
+  cursor: default;
+}
+
+/* Desk: a panel hanging under the strip, at the right. */
+.obx-sheet {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: max(var(--s-4), calc((100vw - var(--max-w)) / 2 + var(--s-4)));
+  z-index: 980;
+  width: min(400px, calc(100vw - 2 * var(--s-4)));
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  background: var(--paper-0);
+  border: 1px solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: 0 10px 30px rgba(12, 12, 12, 0.18);
+  color: var(--text-1);
+}
+
+.obx-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  border-bottom: 1px solid var(--rule);
+}
+.obx-title { margin: 0; font-size: 17px; }
+.btn.obx-x { min-width: 48px; min-height: 48px; font-size: 16px; padding: 0; }
+
+.obx-list { list-style: none; margin: 0; padding: 0; }
+.obx-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--rule);
+  min-height: 48px;
+  justify-content: center;
+}
+.obx-what { font-size: 15px; overflow-wrap: anywhere; }
+.obx-row.is-refused { border-left: 3px solid var(--danger); }
+.obx-why { font-size: 14px; color: var(--danger); overflow-wrap: anywhere; }
+.obx-btns { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-2); }
+.btn.obx-btn { min-height: 48px; padding-left: var(--s-4); padding-right: var(--s-4); }
+
+.obx-sub { display: block; padding: var(--s-3) var(--s-4) var(--s-1); margin: 0; color: var(--danger); }
+
+.obx-foot { padding: var(--s-3) var(--s-4); display: flex; justify-content: flex-end; }
+.obx-hint { margin: 0; font-size: 14px; font-style: italic; color: var(--text-3); }
+
+/* Phones: a bottom sheet over the tab bar, in thumb reach. */
+@media (max-width: 720px) {
+  .obx-sheet {
+    position: fixed;
+    top: auto; left: 0; right: 0; bottom: 0;
+    width: auto;
+    max-height: 75vh;
+    border-width: 1px 0 0;
+    border-radius: var(--r-card) var(--r-card) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .obx-foot .obx-send { width: 100%; }
+}
+
+/* "Offline copy" — a field screen showing what this phone kept (the map,
+   Calls, Shifts), the same chip the walk list uses. */
+.chip.obx-copy { background: var(--paper-0); color: var(--text-2); }
+.map-copy { align-self: flex-start; pointer-events: none; }
+.cl-copy, .ops-copy { margin: 0 0 var(--s-3); }
+
+/* Shifts: "Count me in · Not sent yet" in place of the button. */
+.ops-pending { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin: 0; min-height: 48px; font-size: 16px; }

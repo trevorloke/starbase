@@ -1,0 +1,139 @@
+/* Ladders (desk): list, builder, follow-ups, the profile's chip + section.
+   Built on the ops-* rows, forms and segmented rows from shifts.css; only
+   what's new lives here, prefixed lad-. Field targets are 48px. */
+.lad-page .input.lad-input,
+.lad-page .input.lad-select,
+.lad-page textarea.lad-input { min-height: 48px; font-size: 16px; }
+.lad-page textarea.lad-body { min-height: 140px; line-height: 1.45; }
+.lad-select { appearance: auto; }
+.lad-form .field:last-of-type { margin-bottom: var(--s-3); }
+
+.lad-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.lad-h { display: flex; align-items: baseline; gap: var(--s-2); font-size: 18px; margin: var(--s-5) 0 var(--s-3); }
+.lad-count { font-size: 13px; font-weight: 400; color: var(--text-3); }
+.lad-hint { margin: 0 0 var(--s-3); font-size: 14px; color: var(--text-3); }
+.lad-note { margin: 0 0 var(--s-3); font-size: 15px; color: var(--warn); }
+.lad-note a { color: inherit; font-weight: 600; }
+.lad-chev { margin-left: auto; font-size: 22px; line-height: 1; color: var(--text-3); }
+.lad-sec { margin-top: var(--s-2); }
+.lad-title { min-width: 0; }
+.lad-sub { margin: 2px 0 0; font-size: 15px; color: var(--text-3); }
+
+/* List: the follow-ups row on top, quiet links at the foot */
+.lad-fu-link,
+.lad-link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 56px;
+  margin: 0 0 var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--mark-deep);
+  border-left-width: 5px;
+  border-radius: var(--r-card);
+  background: var(--paper-0);
+  font-size: 17px;
+  color: var(--text-1);
+  text-decoration: none;
+}
+.lad-link-row {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+  background: none;
+  margin: 0;
+  padding: var(--s-2) 0;
+  min-height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+@media (hover: hover) { .lad-fu-link:hover { background: var(--paper-1); } .lad-link-row:hover { color: var(--text-1); } }
+.lad-fu-link:focus-visible, .lad-link-row:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+
+/* Engagement: one bar per level */
+.lad-levels { list-style: none; margin: 0 0 var(--s-3); padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.lad-levels__row { display: grid; grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr) 3.5em; align-items: center; gap: var(--s-3); min-height: 32px; }
+.lad-levels__label { font-size: 15px; overflow-wrap: anywhere; }
+.lad-levels__bar { display: block; height: 10px; background: var(--paper-2); border-radius: 2px; overflow: hidden; }
+.lad-levels__bar > span { display: block; height: 100%; background: var(--ink); min-width: 2px; }
+.lad-levels__n { text-align: right; font-size: 15px; }
+
+/* Builder */
+.lad-status { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; margin: 0 0 var(--s-2); }
+.lad-status__n { font-size: 13px; color: var(--text-2); }
+.btn.lad-off { margin-left: auto; }
+.lad-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 64px;
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin: var(--s-3) 0 0;
+}
+.lad-trigger .ops-row__main { gap: 2px; }
+.lad-trigger__line { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.lad-steps { counter-reset: none; }
+.lad-step .ops-row { justify-content: flex-start; }
+.lad-step .ops-row[aria-expanded]::after { margin-left: auto; }
+.lad-step__n {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--rule-2);
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.lad-step__line { font-weight: 500; }
+.lad-step-form { display: flex; flex-direction: column; }
+.lad-step-form .field { margin-bottom: var(--s-3); }
+.btn.lad-remove { align-self: flex-start; color: var(--danger); }
+.lad-wait { display: flex; gap: var(--s-3); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--s-3); }
+.lad-wait .field { margin: 0; flex: 0 0 7em; }
+.lad-wait .lad-seg { flex: 1 1 10em; width: auto; }
+.lad-num { text-align: center; }
+.lad-add { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.btn.lad-add__btn { flex: 1 1 7.5em; }
+.card.lad-new-step { margin-top: var(--s-3); }
+.lad-tokens { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.lad-step__who { overflow-wrap: anywhere; }
+.card.lad-new-step > .eyebrow { display: block; margin-bottom: var(--s-3); }
+.lad-log { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.lad-log__when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.lad-more { display: flex; flex-direction: column; gap: var(--s-4); }
+.lad-rename { display: flex; gap: var(--s-2); align-items: flex-end; flex-wrap: wrap; }
+.lad-rename .field { flex: 1 1 14em; margin: 0; }
+.lad-check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 48px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.lad-check input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--ink); }
+
+/* Follow-ups */
+.lad-fu__acts { display: flex; gap: var(--s-2); flex-wrap: wrap; padding: 0 var(--s-4) var(--s-3); }
+.lad-fu .ops-row { min-height: 0; padding-bottom: var(--s-2); }
+.lad-fu .ops-row__sub a { color: inherit; }
+
+/* Person profile: the level chip and the Ladders section */
+.chip.lad-level { color: var(--text-1); border-color: var(--ink); }
+.chip.lad-level[data-level='leader'] { background: var(--ink); color: var(--paper-0); }
+.lad-pf-runs li, .lad-pf-fu li { align-items: center; }
+.lad-where { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.btn.lad-done-btn { min-height: 48px; }

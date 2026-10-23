@@ -1,0 +1,384 @@
+/* Today — big numbers, one-line rows, the volunteer's "Start canvassing".
+   Everything here is today-* so it never collides (Today no longer borrows
+   the ops-* field strip from shifts.css). */
+
+.today { min-width: 0; }
+.today > h1 { margin-bottom: var(--s-4); }
+
+/* ── Shared bits ── */
+.today-actions { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.btn.today-tap {
+  min-height: 48px;
+  padding: 0 18px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.today-chev { font-family: var(--font-serif); font-size: 22px; line-height: 1; color: var(--text-3); flex: none; }
+.today-empty { color: var(--text-3); margin: 0; padding: var(--s-2) 0; }
+.today-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.today-section { margin: var(--s-5) 0; }
+h2.today-h {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 0 0 var(--s-2);
+}
+.today-subh { font-size: 15px; margin: var(--s-4) 0 var(--s-1); }
+.today-fieldline { font-size: 12px; color: var(--text-3); margin: var(--s-3) 0; }
+.today-more-link {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: 48px;
+  border-bottom: 2px solid transparent;
+}
+.today-more-link:hover { border-bottom-color: var(--mark); }
+
+/* ── No signal yet (brief paused offline) ── */
+.today-offline {
+  border-left: 3px solid var(--mark);
+  padding: var(--s-2) var(--s-3);
+  margin: var(--s-4) 0;
+  color: var(--text-2);
+  background: var(--paper-0);
+}
+
+/* ── The three big numbers (desk) ── */
+.today-nums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+  margin: var(--s-4) 0 var(--s-2);
+}
+.today-num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--s-2);
+  min-width: 0;
+  min-height: 112px;
+  padding: var(--s-3);
+  font: inherit;
+  text-align: left;
+  color: var(--text-1);
+  text-decoration: none;
+  background: var(--paper-0);
+  border: var(--border);
+  border-top: 3px solid var(--ink);
+  border-radius: var(--r-card);
+  cursor: pointer;
+}
+/* Hover tints only where there is a real pointer: on a phone a tapped row
+   would otherwise stay shaded when you come back to Today. */
+@media (hover: hover) {
+  .today-num:hover { border-color: var(--ink); background: var(--paper-1); }
+}
+.today-num:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.today-num[aria-expanded='true'] { border-color: var(--ink); background: var(--paper-1); }
+.today-num__n {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 8vw, 56px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.today-num__label {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  line-height: 1.3;
+}
+/* The tile's own glyph, as on the rows: › goes to a screen, + opens here
+   (the same plus as every "More" row, app.css .disclose). */
+.today-num__go {
+  flex: none;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 0.7;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+.today-num__plus {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-bottom: 1px;
+  color: var(--text-2);
+  background:
+    linear-gradient(currentColor, currentColor) center / 12px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 2px 12px no-repeat;
+}
+.today-num[aria-expanded='true'] .today-num__plus { background: linear-gradient(currentColor, currentColor) center / 12px 2px no-repeat; }
+@media (forced-colors: active) {
+  .today-num__plus { width: auto; height: auto; background: none; }
+  .today-num__plus::after { content: '+'; content: '+' / ''; }
+  .today-num[aria-expanded='true'] .today-num__plus::after { content: '−'; content: '−' / ''; }
+}
+
+/* Support bar: green / amber / red, from the doorstep ratings — the same
+   colours as the map pins. Undecided is amber, never the brand yellow. */
+.today-bar { display: flex; gap: 2px; width: 100%; height: 14px; background: var(--paper-2); border-radius: var(--r-ctrl); overflow: hidden; }
+.today-bar.is-small { height: 6px; gap: 1px; }
+.today-bar > span { display: block; height: 100%; min-width: 3px; }
+.today-bar [data-band='support'] { background: var(--ok); }
+.today-bar [data-band='undecided'] { background: var(--amber); }
+.today-bar [data-band='opposed'] { background: var(--danger); }
+
+.card.today-support { margin: 0 0 var(--s-2); }
+.today-legend { display: flex; gap: var(--s-2) var(--s-4); flex-wrap: wrap; margin: var(--s-3) 0 0; padding: 0; list-style: none; font-size: 14px; }
+.today-legend li { display: inline-flex; align-items: baseline; gap: 6px; }
+.today-support .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; align-self: center; flex: none; }
+.today-support .sw[data-band='support'] { background: var(--ok); }
+.today-support .sw[data-band='undecided'] { background: var(--amber); border: 1px solid var(--amber-deep); }
+.today-support .sw[data-band='opposed'] { background: var(--danger); }
+.today-legend .mono { font-size: 13px; }
+.today-legend .pct { color: var(--text-3); }
+/* Opposed, by candidate: one red-outlined pill each — "McCallum 3",
+   "Locke 2" … "Not sure 1" — biggest first; wraps cleanly on a phone. */
+.today-variants { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s-3) 0 0; padding: 0; }
+.today-variants li {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 3px 10px; white-space: nowrap;
+  font-size: 14px; color: var(--text-1);
+  border: 1px solid var(--danger); border-radius: 999px;
+}
+.today-variants .mono { font-size: 13px; font-weight: 700; color: var(--danger); }
+.today-support-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); margin-top: var(--s-2); flex-wrap: wrap; }
+.today-support-foot .mono { font-size: 12px; }
+
+/* ── One-line rows (Needs you, Coming up, walk lists) ── */
+.today-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--paper-0);
+  border: var(--border);
+  border-radius: var(--r-card);
+}
+.today-rows > li + li { border-top: 1px solid var(--rule); }
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4);
+  font: inherit;
+  text-align: left;
+  color: var(--text-1);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .today-row:hover { background: var(--paper-1); }
+}
+.today-row:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.today-row__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-row__main strong { font-weight: 600; }
+.today-row__kicker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.today-row__title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.today-row__when { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; }
+.today-row .chip { flex: none; }
+/* "Over limit", "5 short", "Due today": amber outline, as on Money and
+   Shifts — yellow belongs to the one primary button. */
+.today .chip.chip-warn { background: transparent; color: var(--warn); border-color: var(--warn); }
+.today-row__extra { color: var(--text-1); font-weight: 600; }
+.today-row__extra.is-warn { color: var(--warn); }
+/* The amount, on the right as on Money. */
+.today-row__end { flex: none; font-size: 14px; font-weight: 600; color: var(--text-1); }
+.today-fill { flex: none; font-size: 13px; color: var(--text-2); }
+/* Holds the volunteer's shift line while "which shifts am I on?" loads, so
+   the row doesn't jump from "Open shift" to "Your next shift". */
+.today-row--wait { min-height: 70px; }
+
+/* Getting started */
+.card.today-steps { border-top: 3px solid var(--mark); }
+.today-steps .today-rows { border: 0; background: none; }
+.today-step { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-1) 0; flex-wrap: wrap; }
+.today-step-who { font-size: 13px; }
+
+/* Event rows (volunteer "More") */
+.today-event { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1) var(--s-3); padding: var(--s-2) var(--s-4); }
+.today-event .today-row__main { white-space: normal; flex: 1 1 200px; }
+.today-rsvp {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  text-decoration: underline;
+  text-decoration-color: var(--mark-deep);
+  text-underline-offset: 3px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+.today-rsvp:hover { color: var(--text-1); }
+
+/* ── Volunteer: Start canvassing ── */
+.today-go { margin: var(--s-4) 0 var(--s-4); }
+.btn.btn-primary.today-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: 80px;
+  padding: var(--s-4);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border-width: 2px;
+  border-radius: var(--r-card);
+  box-shadow: 0 3px 0 var(--mark-deep);
+}
+.btn.btn-primary.today-start:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--mark-deep); }
+/* "Newton — 72 Ave — All done ✓ ›": still the way into the walk list. */
+.today-go__meta.today-go__link {
+  min-height: 48px;
+  margin-top: var(--s-2);
+  color: var(--text-1);
+  text-decoration: none;
+  flex-wrap: nowrap;
+}
+.today-go__link .today-chev { margin-left: auto; }
+@media (hover: hover) {
+  .today-go__link:hover .today-go__turf { text-decoration: underline; text-decoration-color: var(--mark-deep); text-underline-offset: 3px; }
+}
+.today-go__link:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.today-go__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  margin: var(--s-3) 0 0;
+  font-size: 14px;
+}
+.today-go__meta .mono { font-size: 12px; color: var(--text-3); }
+.today-go__turf { font-weight: 600; overflow-wrap: anywhere; }
+.today-go__done { color: var(--ok); font-weight: 600; }
+.today-progress { display: block; flex: 1 0 100%; height: 6px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+.today-progress > span { display: block; height: 100%; background: var(--ok); border-radius: 999px; }
+.today-next { margin-top: var(--s-4); }
+
+/* ── Quiet "More" at the bottom: the shared .disclose row (app.css) ── */
+.today-morebox { margin-top: var(--s-6); }
+.today-morebox__body { padding-bottom: var(--s-4); }
+.today-morebox__body .today-rows { margin: var(--s-2) 0; }
+.today-morebox__tools { margin-top: var(--s-4); }
+
+/* ── Sample data ── */
+.card.today-sample {
+  border-top: 3px solid var(--mark);
+  padding: var(--s-4);
+}
+.today-sample-lede { margin: 0 0 var(--s-3); font-size: 17px; }
+.today-sample .error { margin: var(--s-3) 0 0; }
+
+/* Quiet line under the title; "Clear sample data" is under More. */
+.today-sample-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin: calc(-1 * var(--s-2)) 0 var(--s-3);
+}
+.today-sample-clear { margin-top: var(--s-3); }
+.today-sample .today-sample-clear { margin-top: var(--s-2); }
+
+.today-confirm {
+  background: var(--paper-0);
+  border: var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--r-card) var(--r-card) 0;
+  padding: var(--s-3) var(--s-4);
+  margin: var(--s-2) 0;
+}
+.today-confirm p { margin: 0 0 var(--s-3); color: var(--text-2); }
+.btn.today-danger { color: var(--danger); border-color: var(--danger); }
+.btn.today-danger:hover { background: var(--danger); color: var(--paper-0); border-color: var(--danger); }
+
+/* ── Toast: above the phone tab bar ── */
+/* A long server message (Clear sample data) wraps to a readable width. */
+.toast.today-toast { max-width: min(560px, calc(100vw - 32px)); line-height: 1.45; }
+.toast.today-toast .btn { min-height: 44px; }
+
+@media (max-width: 720px) {
+  .toast.today-toast {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    z-index: 950;
+    width: max-content;
+  }
+  .today-nums { gap: 6px; }
+  .today-num { min-height: 96px; padding: var(--s-3) var(--s-2) var(--s-2); }
+}
+@media (max-width: 480px) {
+  .today-sample .today-actions .btn,
+  .today-confirm .today-actions .btn,
+  .today-morebox__tools .btn,
+  .today-sample-clear .btn { flex: 1 1 140px; }
+}
+
+/* ── Volunteer: "You 6 · Team 38 doors this week" — one line, numbers big ── */
+.today-mine {
+  margin: var(--s-4) 0 0;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--text-2);
+}
+.today-mine__pair { white-space: nowrap; }
+.today-mine__n {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-1);
+}
+.today-mine__dot { color: var(--text-3); }
+.today-mine__what { white-space: nowrap; }
+/* Calls and texts under More: the same shape, smaller. */
+.today-mine.is-small { margin: var(--s-2) 0; font-size: 14px; }
+.today-mine.is-small .today-mine__n { font-size: 22px; }
+.today-morebox__body > .today-mine.is-small:first-child { margin-top: var(--s-3); }

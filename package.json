@@ -1,0 +1,28 @@
+{
+  "name": "starbase",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Starbase \u2014 the campaign OS for Imagine Surrey. See README.md.",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "test": "node --test server/test/*.test.js",
+    "test:pg": "node scripts/test-pg.mjs",
+    "build": "npm run build -w web"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "@hono/node-server": "^1.19.9",
+    "hono": "^4.12.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite-socket": "^0.0.20"
+  }
+}

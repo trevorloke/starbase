@@ -1,0 +1,229 @@
+/* Turfs + walk lists. Phone-first: one column, every tap at least 48px,
+   nothing wider than the screen. Leans on the ink-on-paper tokens in
+   app.css; the rating buttons, chips (rb-*) and the field kit (fk-* tabs,
+   outcomes, "More") come with RatingButtons.jsx via map.css. */
+
+.turfs-page, .walk { max-width: 720px; margin: 0 auto; }
+.walk-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Shared: progress bar (green = done) */
+.walk-bar { display: block; width: 100%; height: 8px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+.walk-bar__fill { display: block; height: 100%; background: var(--ok); border-radius: 999px; transition: width 240ms ease; }
+@media (prefers-reduced-motion: reduce) { .walk-bar__fill { transition: none; } }
+
+.btn.walk-act, .btn.turfs-act, .btn.turfs-draw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+/* ── /turfs ── */
+.turfs-head { align-items: center; }
+.turfs-head h1 { margin: 0; }
+.turfs-empty { padding: var(--s-5) 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+.turfs-empty p { margin: 0; font-size: 18px; }
+.turfs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.turfs-item {
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-left: 5px solid var(--turf, var(--ink));
+  border-radius: var(--r-card);
+}
+.turfs-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-height: 64px;
+  padding: var(--s-3) var(--s-4);
+  color: inherit;
+  text-decoration: none;
+}
+@media (hover: hover) { .turfs-row:hover { background: var(--paper-1); } }
+.turfs-row:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.turfs-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-3); flex-wrap: wrap; }
+.turfs-row__name { font-size: 18px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.turfs-row__left { font-size: 13px; color: var(--text-1); white-space: nowrap; }
+.turfs-row__left.is-done { color: var(--ok); }
+.chip.turfs-row__flag { align-self: flex-start; }
+
+/* ── /turfs/:id — walk list ── */
+.walk-nav { display: flex; align-items: center; justify-content: space-between; margin: calc(-1 * var(--s-2)) 0 var(--s-2); }
+.btn.walk-back { margin-left: -14px; min-height: 48px; display: inline-flex; align-items: center; }
+.btn.walk-map { margin-right: -14px; }
+.walk-head { border-left: 4px solid var(--turf, var(--ink)); padding-left: var(--s-3); margin-bottom: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.walk-title { margin: 0; font-size: 26px; line-height: 1.2; overflow-wrap: anywhere; }
+.walk-progress { display: flex; flex-direction: column; gap: 6px; }
+.walk-progress__text { font-size: 14px; }
+.walk-progress__text strong { font-size: 22px; }
+/* All done: plain green words, not a box that looks like a button */
+.walk-progress__done { color: var(--ok); font-size: 18px; font-weight: 700; }
+.walk-calls {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) { .walk-calls:hover { color: var(--text-2); } }
+.walk-head .fk-more { margin-top: 0; --disclose-x: 0; }
+.walk-head .fk-more__body { padding: 0 0 var(--s-2); }
+.walk-notes { margin: 0; font-size: 15px; color: var(--text-2); white-space: pre-line; }
+.walk-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); margin: 0; }
+.walk-stats > div { border-top: 1px solid var(--rule); padding-top: 6px; }
+.walk-stats dt { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.walk-stats dd { margin: 2px 0 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 20px; }
+
+.walk-outbox { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
+.walk-outbox__err { font-size: 13px; color: var(--text-3); }
+.walk-stale { margin: 0 0 var(--s-3); }
+.walk-empty, .walk-gone { padding: var(--s-4) 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+.walk-empty p, .walk-gone p { margin: 0; font-size: 17px; }
+
+/* Doors: a row each — address big, names small, done tick */
+.walk { --dock-clear: calc(56px + var(--s-3) + var(--s-4)); /* docked bar + its gap + air */ }
+.walk-doors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+/* Room under the last door, so it (and its open buttons) can scroll clear
+   of the docked Next door bar. The page already pads for the tab bar. */
+.walk.has-next .walk-doors { padding-bottom: var(--dock-clear); }
+/* A door is open: room for it (the last one too) to sit clear of the toast. */
+.walk.has-open .walk-doors { padding-bottom: calc(var(--dock-clear) + 56px); }
+.walk-door {
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  scroll-margin-top: var(--s-3);
+  /* clear the tab bar, the docked bar and a toast raised over it */
+  scroll-margin-bottom: calc(var(--tabbar-h, 0px) + var(--dock-clear) + 56px);
+}
+/* "Voting for?" scrolls itself into view: keep it clear of the same bars. */
+.walk .rb-who { scroll-margin-bottom: calc(var(--tabbar-h, 0px) + var(--dock-clear)); }
+.walk-door:focus { outline: none; }
+.walk-door:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+/* The next door: an ink edge — the yellow is only the Next door button above it. */
+.walk-door.is-next { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--ink); }
+.walk-door.is-done { background: var(--paper); }
+.walk-door.is-open { border-color: var(--ink); }
+.walk-door__h { margin: 0; font-size: inherit; }
+.walk-door__head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 64px;
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-4);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+@media (hover: hover) { .walk-door__head:hover { background: var(--paper-1); } }
+.walk-door__head:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.walk-check {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--rule-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: transparent;
+}
+.walk-check[data-done] { background: var(--ok); border-color: var(--ok); color: var(--paper-0); }
+/* Reached only by a call or text: a phone, not a tick */
+.walk-check[data-phone] { background: var(--paper-0); color: var(--ok); }
+.walk-glyph { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
+.walk-door__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.walk-door__addr { font-family: var(--font-serif); font-size: 18px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.walk-door.is-done .walk-door__addr { color: var(--text-2); font-weight: 500; }
+.walk-door__names { font-size: 13px; font-weight: 400; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Chips stay on one line (a household shows "2 rated", not a pile of chips) */
+.walk-door__chips { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 4px; flex-shrink: 0; }
+.walk-door__chips .chip { font-size: 10px; }
+.chip.walk-rated { color: var(--text-2); }
+
+.walk-panel { padding: var(--s-2) var(--s-3) 0; border-top: 1px solid var(--rule); }
+.walk-panel .fk-tabs { margin-top: var(--s-1); }
+.walk-panel .fk-more { margin: var(--s-3) calc(-1 * var(--s-3)) 0; }
+.walk-dnc { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); font-size: 14px; color: var(--danger); }
+.walk-last { margin: 0; font-size: 12px; color: var(--text-3); }
+.walk-last strong { color: var(--text-1); }
+.walk-note { margin: 0; }
+.walk-note textarea { resize: vertical; min-height: 48px; }
+.walk-panel__links { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+/* Next door: in the header; docked at the bottom (thumb reach) once the
+   header has scrolled away. */
+.btn.walk-next__btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 56px;
+  padding: 0 var(--s-4);
+  text-align: left;
+  font-size: 12px;
+}
+.walk-next__label { flex: 0 0 auto; font-weight: 700; }
+.walk-next__addr {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: right;
+}
+.walk-dock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h, 0px) + var(--s-3));
+  width: min(720px, calc(100vw - 32px));
+  z-index: 60;
+  animation: walk-dock-in 160ms ease-out;
+}
+.walk-dock .btn.walk-next__btn { box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.22); }
+/* At an open door nobody has answered yet: "Skip → next", quiet — the
+   rating buttons are what to tap there. */
+.btn.walk-next__btn--skip { background: var(--paper-0); color: var(--text-1); border: 1px solid var(--ink); }
+@media (hover: hover) { .btn.walk-next__btn--skip:hover { background: var(--paper-1); } }
+.walk-next__btn--skip .walk-next__label { font-weight: 600; }
+@keyframes walk-dock-in { from { transform: translate(-50%, 12px); opacity: 0.5; } to { transform: translateX(-50%); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .walk-dock { animation: none; } }
+
+/* Toast after a tap, with "Change". Saved offline looks like any other
+   toast (dark); its button is app.css's light outline — the walk list's one
+   yellow thing is the Next door button. */
+.toast.walk-toast {
+  bottom: calc(var(--tabbar-h, 0px) + var(--s-4));
+  z-index: 70;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  min-height: 48px;
+  padding: var(--s-2) var(--s-4);
+  font-size: 13px;
+}
+.toast.walk-toast:has(button) { padding-right: var(--s-2); }
+.toast.walk-toast.is-raised { bottom: calc(var(--tabbar-h, 0px) + var(--s-3) + 68px); }
+.toast.walk-toast--error { background: var(--danger); color: var(--paper-0); }
+.btn.walk-toast__btn { min-height: 48px; white-space: nowrap; display: inline-flex; align-items: center; }

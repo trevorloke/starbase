@@ -1,0 +1,96 @@
+/* Offline strip — the slim line under the nav (inside header.nav, so the map's
+   nav-height measurement includes it). Two states:
+     .is-offline  no signal: quiet paper, hollow dot
+     (default)    online with knocks still in the outbox: mark-soft, filled dot
+   Imported by Shell.jsx. */
+
+.offline-strip {
+  border-top: 1px solid var(--rule);
+  background: var(--mark-soft);
+  color: var(--text-1);
+}
+.offline-strip.is-offline { background: var(--paper-1); }
+
+.offline-strip__inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 4px var(--s-4);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+}
+
+.offline-strip__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mark-deep);
+}
+.offline-strip.is-offline .offline-strip__dot {
+  background: transparent;
+  border: 1.5px solid var(--text-2);
+}
+
+.offline-strip__text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.offline-strip__hint {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-3);
+}
+
+/* Visually slim, but a full-size tap target: the ::after pads the hit area
+   out past 44px without making the strip taller. */
+.offline-strip__btn {
+  position: relative;
+  padding: 5px 12px;
+  margin-left: auto;
+}
+.offline-strip__btn::after {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+
+.offline-strip__error {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 13px;
+  color: var(--danger);
+}
+.offline-strip__error .offline-strip__btn { margin-left: auto; flex: none; }
+/* Only a refusal to report (queue empty): quiet paper, red dot. */
+.offline-strip.is-refused { background: var(--paper-1); }
+.offline-strip.is-refused .offline-strip__dot { background: var(--danger); }
+
+/* "4 sent": everything on the phone reached the server — quiet paper, green dot. */
+.offline-strip.is-sent { background: var(--paper-1); }
+.offline-strip.is-sent .offline-strip__dot { background: var(--ok); }
+.offline-strip__sent { color: var(--ok); }
+
+@media (max-width: 480px) {
+  .offline-strip__hint { display: none; }
+}
+
+/* "Waiting for signal" — shown instead of the app when the sign-in check went
+   out with no signal (Shell.jsx). Quiet page, no chrome. */
+.offline-gate {
+  max-width: 440px;
+  padding-top: var(--s-7);
+}
+.offline-gate__title { margin: var(--s-2) 0 var(--s-3); }
+.offline-gate p { color: var(--text-2); }
+.offline-gate__saved {
+  border-left: 3px solid var(--mark);
+  padding-left: var(--s-3);
+}

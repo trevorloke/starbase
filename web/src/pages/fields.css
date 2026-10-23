@@ -1,0 +1,21 @@
+/* Profile fields (managers). Built on the ops-* rows (shifts.css) and the
+   survey builder's kinds, choices and switch (surveys.css); only what's new
+   lives here. */
+.fd-fform { gap: 0; }
+/* In an open row the fields lose their margins (shifts.css): space them here. */
+.ops-body .fd-fform { gap: var(--s-3); }
+.ops-body .fd-fform .sv-switch.fd-switch { margin: 0; }
+/* A kind it can't become now (filled in): plainly off. */
+.fd-fform .sv-kind:disabled { opacity: 0.4; cursor: default; }
+.input.fd-input { min-height: 48px; font-size: 16px; }
+.fd-why { margin: var(--s-1) 0 0; font-size: 13px; }
+.fd-choice--kept {
+  min-height: 48px;
+  padding: 0 var(--s-3);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--r-ctrl);
+  justify-content: space-between;
+}
+.fd-choice__words { min-width: 0; overflow-wrap: anywhere; font-size: 15px; }
+.fd-choice__n { flex: none; font-size: 12px; color: var(--text-3); }
+.sv-switch.fd-switch { align-self: flex-start; margin: 0 0 var(--s-3); font-size: 15px; font-weight: 500; }

@@ -1,0 +1,433 @@
+/* Outreach + Team — same shape as the ops screens: title left, the one yellow
+   action right, tabs under it, then a stack of rows that open in place.
+   Tap targets: ≥ 44px everywhere, ≥ 48px on touch. Money's pledge queue
+   (pl-*) also lives here.
+   Page-specific styles only; primitives (.card .btn .chip .input .toast) come
+   from app.css. Everything here is prefixed ot- so it never collides. Rules
+   that refine a primitive double the class (.btn.ot-btn-tap) so they win
+   whatever the bundle order. */
+
+/* ── Page frame ── */
+.ot-page { max-width: 720px; margin: 0 auto; }
+.ot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  flex-wrap: wrap;
+  min-height: 48px; /* same height with or without the action, so nothing jumps */
+  margin-bottom: var(--s-4);
+}
+.ot-top h1 { margin: 0; }
+
+/* ── Tabs: icon + word, all five fit a phone ── */
+.ot-tabs {
+  display: grid;
+  grid-template-columns: repeat(var(--ot-tabs, 5), minmax(0, 1fr));
+  border-bottom: 1px solid var(--rule-2);
+  margin: 0 0 var(--s-4);
+}
+.ot-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 6px 2px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  -webkit-tap-highlight-color: transparent;
+}
+.ot-tab:hover { color: var(--text-1); }
+.ot-tab.active { color: var(--text-1); border-bottom-color: var(--mark); font-weight: 600; }
+.ot-tab:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -3px; }
+.ot-tab-icon { position: relative; display: inline-flex; }
+.ot-tab-svg { width: 22px; height: 22px; flex: none; }
+.ot-tab.active .ot-tab-svg { stroke-width: 2.2; }
+.ot-tab-label { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 721px) {
+  .ot-tab { flex-direction: row; gap: 12px; min-height: 52px; font-size: 11px; letter-spacing: 0.1em; }
+}
+
+/* ── Buttons ── */
+.btn.ot-btn-tap {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: 0 16px;
+  font-size: 12px;
+}
+.btn.ot-solid { background: var(--ink); color: var(--paper-0); border-color: var(--ink); }
+.btn.ot-solid:hover { background: var(--ink); border-color: var(--ink); opacity: 0.88; }
+.btn.ot-copy { flex: none; }
+.btn.ot-copy[data-copied='true'] { background: var(--ok); color: var(--paper-0); border-color: var(--ok); }
+.btn.ot-btn-danger { background: var(--danger); color: var(--paper-0); border-color: var(--danger); }
+.btn.ot-btn-danger:hover { background: var(--danger); border-color: var(--danger); opacity: 0.9; }
+.ot-actions { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.ot-page > .ot-actions { margin-bottom: var(--s-4); }
+
+/* ── A big number with a short label ── */
+.ot-big { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; margin: 0 0 var(--s-3); }
+.ot-big .n { font-size: 44px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.ot-big .lbl { font-size: 17px; color: var(--text-2); }
+.ot-big--sm { margin: 0; }
+.ot-big--sm .n { font-size: 28px; }
+.ot-big--sm .lbl { font-size: 15px; }
+
+/* ── Rows: name first, at most two facts; tap opens in place ── */
+.ot-list { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ot-item {
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.ot-item[data-open] { border-color: var(--ink); }
+.ot-item[data-tone='past'] .ot-row__name { color: var(--text-3); }
+.ot-line { display: flex; align-items: center; gap: var(--s-2); padding-right: var(--s-3); }
+.ot-line > .ot-row { flex: 1 1 auto; min-width: 0; }
+.ot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s-3) var(--s-4);
+  background: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
+.ot-row:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.ot-row--static { cursor: default; }
+.ot-row__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.ot-row__name { font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.ot-row__name.ot-email { font-size: 14px; }
+.ot-row__sub {
+  display: flex;
+  align-items: center;
+  gap: 4px var(--s-2);
+  flex-wrap: wrap;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* Separators hang off the end of a fact, so a wrapped line never starts with one */
+.ot-row__sub > span:not(.chip):not(:last-child)::after { content: '·'; margin-left: var(--s-2); }
+/* Stacked facts (Team: email, then "since Oct 21") — one per line, no dots */
+.ot-row__sub--stack { flex-direction: column; align-items: flex-start; gap: 2px; }
+.ot-row__sub--stack > span:not(.chip):not(:last-child)::after { content: none; }
+.ot-row__sub--stack .ot-email { max-width: 100%; }
+.ot-num { font-size: 14px; color: var(--text-1); }
+/* Rows that open in place carry a small chevron */
+.ot-row[aria-expanded]::after {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--text-3);
+  border-bottom: 1.5px solid var(--text-3);
+  transform: rotate(45deg);
+  margin: -4px 2px 0 0;
+}
+.ot-row[aria-expanded='true']::after { transform: rotate(-135deg); margin-top: 4px; }
+
+/* What a row reveals */
+.ot-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border-top: 1px solid var(--rule);
+}
+.ot-body > p { margin: 0; }
+.ot-body .field { margin-bottom: var(--s-3); }
+.ot-text { white-space: pre-line; color: var(--text-2); margin: 0; }
+.ot-where { color: var(--text-2); overflow-wrap: anywhere; }
+/* "RSVP page" / "Petition page": opens the public page in a new tab */
+.ot-url {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+  text-decoration: underline dotted var(--rule-2);
+  text-underline-offset: 4px;
+}
+.ot-url::after { content: '↗'; content: '↗' / ''; margin-left: 6px; }
+.ot-url:hover { text-decoration-color: var(--ink); }
+.ot-url:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.ot-email { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; color: inherit; }
+.chip.ot-chip-ghost { color: var(--text-4); border-color: var(--rule); }
+.chip.ot-chip-soon { color: var(--text-1); border-color: var(--ink); }
+
+/* ── "More": the shared .disclose row (app.css); what it reveals is only rendered when open ── */
+.ot-more-wrap { margin: var(--s-2) 0 var(--s-4); }
+.ot-more-body { display: flex; flex-direction: column; gap: var(--s-5); padding-top: var(--s-2); }
+.ot-compose .ot-more-body, .ot-event-form .ot-more-body { gap: 0; }
+.ot-more-wrap + .ot-more-wrap { margin-top: calc(-1 * var(--s-4)); }
+
+/* Sections inside More */
+.ot-sec { margin: 0; }
+.ot-sec-h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ot-count { color: var(--text-1); font-weight: 600; letter-spacing: 0.04em; }
+.ot-sec .ot-list { margin-bottom: var(--s-2); }
+
+/* ── Compose / new forms (open in place, under the tabs) ── */
+.ot-compose { border-color: var(--ink); }
+.ot-compose textarea.input { min-height: 160px; resize: vertical; line-height: 1.5; }
+.ot-compose .input { min-height: 44px; }
+.ot-foot { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; margin-top: var(--s-2); }
+.ot-audience { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--text-3); }
+.ot-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); overflow-wrap: anywhere; margin: 0; }
+.ot-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  flex-wrap: wrap;
+  width: 100%;
+  background: var(--paper-1);
+  border-radius: var(--r-ctrl);
+  padding: var(--s-2) var(--s-3);
+}
+.ot-confirm > span { font-size: 15px; }
+@media (max-width: 560px) { .ot-confirm > span { flex: 1 1 100%; } }
+.ot-confirm-note { flex: 1 1 100%; font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.ot-confirm.ot-confirm-danger { background: var(--paper-0); border: 1px solid var(--danger); }
+.ot-check { display: flex; align-items: center; gap: var(--s-3); min-height: 48px; cursor: pointer; margin-bottom: var(--s-2); }
+.ot-check input { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--ink); }
+.ot-check input:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+
+/* Send result — one line; status colour is one rule: sent = ok, queued = warn
+   (ochre — the brand yellow is only for the one primary button), failed = danger */
+.ot-result {
+  border: 1px solid var(--rule-2);
+  border-left-width: 4px;
+  border-radius: var(--r-card);
+  background: var(--paper-0);
+  padding: var(--s-1) var(--s-1) var(--s-1) var(--s-3);
+  margin: 0 0 var(--s-4);
+}
+.ot-compose .ot-result { margin: var(--s-3) 0 0; }
+.ot-result-head { display: flex; align-items: center; gap: var(--s-2); }
+.ot-result-head strong { font-size: 15px; font-weight: 600; flex: 1 1 auto; min-width: 0; }
+.ot-result[data-status='sent']   { border-color: var(--ok); }
+.ot-result[data-status='queued'] { border-color: var(--warn); }
+.ot-result[data-status='failed'] { border-color: var(--danger); }
+/* Why some didn't go out, in plain words (never the provider's raw reply);
+   then a quiet "Try again · N" */
+.ot-result-why { font-size: 13px; color: var(--text-2); padding: 0 var(--s-2) var(--s-2) 0; }
+.ot-result-why a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.ot-result-acts { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); padding: 0 var(--s-2) var(--s-2) 0; }
+.ot-result-acts > .ot-confirm { align-self: stretch; width: auto; }
+/* The next step after the outcome ("Connect email, then Send now.") — same line, not bold */
+.ot-result-next { font-weight: 400; }
+.ot-result-next a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.ot-status-dot {
+  display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--text-4);
+}
+.ot-status-dot[data-status='sent']   { background: var(--ok); }
+.ot-status-dot[data-status='queued'] { background: var(--warn); }
+.chip.ot-chip-queued { background: transparent; border-color: var(--warn); color: var(--warn); }
+.ot-status-dot[data-status='failed'] { background: var(--danger); }
+
+/* One-line bits */
+.ot-note { color: var(--text-3); font-size: 14px; margin: 0; }
+.ot-note code, .ot-dev-links code {
+  font-family: var(--font-mono); font-size: 11.5px; background: var(--paper-1);
+  padding: 1px 4px; border-radius: 2px; overflow-wrap: anywhere;
+}
+.ot-empty { font-size: 17px; color: var(--text-2); margin: var(--s-4) 0; }
+.ot-row-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); overflow-wrap: anywhere; }
+.ot-pay { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin: 0; font-weight: 600; }
+/* "Connect" after "Email not connected": a quiet link, thumb-sized */
+.ot-connect {
+  display: inline-flex; align-items: center; min-height: 44px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-1); text-decoration: underline; text-underline-offset: 4px;
+}
+.ot-connect:hover { text-decoration-thickness: 2px; }
+.ot-connect:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+
+/* Inline add (email + name + button), site link */
+.ot-inline-add { display: flex; gap: var(--s-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--s-2); }
+.ot-inline-add .field { margin-bottom: 0; flex: 1 1 180px; }
+.ot-inline-add .input { min-height: 44px; }
+
+/* ── Petition signatures ── */
+.ot-list--flat { gap: 0; margin: 0; }
+.ot-sig { display: flex; flex-direction: column; gap: 2px; padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
+.ot-sig:last-child { border-bottom: 0; }
+.ot-sig__name { font-weight: 600; display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
+
+/* ── Events: going / capacity ── */
+.ot-meter { display: flex; flex-direction: column; gap: 4px; max-width: 320px; }
+.ot-meter-n { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ot-meter-n strong { font-size: 22px; }
+.ot-meter-n .lbl { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10.5px; }
+.ot-meter-bar { height: 6px; background: var(--paper-1); border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+.ot-meter-bar span { display: block; height: 100%; background: var(--ink); }
+.ot-meter[data-full='true'] .ot-meter-bar span { background: var(--danger); }
+
+/* RSVP list: a row per RSVP, status select on the right — no table, so it
+   never scrolls sideways on a phone at the door. */
+.ot-rsvp-sum { display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: baseline; margin: 0; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ot-rsvps { list-style: none; margin: 0; padding: 0; }
+.ot-rsvp { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
+.ot-rsvp:last-child { border-bottom: 0; }
+.ot-rsvp .who { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.ot-rsvp .name { font-weight: 600; overflow-wrap: anywhere; }
+.ot-rsvp .name a { text-decoration: none; border-bottom: 1px dotted var(--rule-2); }
+.ot-rsvp .guests { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--text-3); }
+.ot-rsvp .contact { display: flex; gap: var(--s-1) var(--s-3); flex-wrap: wrap; align-items: baseline; }
+.ot-rsvp .ot-email { font-size: 12px; color: var(--text-2); }
+.ot-rsvp .when { font-family: var(--font-mono); font-size: 11px; color: var(--text-4); }
+.ot-rsvp[data-status='cancelled'] .name { color: var(--text-4); text-decoration: line-through; }
+.ot-rsvp[data-status='attended'] .name::after { content: ' ✓'; color: var(--ok); }
+.input.ot-rsvp-status { flex: 0 0 auto; width: auto; min-width: 128px; min-height: 48px; font-family: var(--font-mono); font-size: 12px; }
+
+/* ── Website: embed code for the developer ── */
+.ot-dev-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ot-dev-links li { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.ot-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: var(--border-2); border-radius: var(--r-ctrl); overflow: hidden; }
+.ot-seg button {
+  min-height: 48px;
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--rule-2);
+  background: var(--paper-0);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.ot-seg button:last-child { border-right: 0; }
+.ot-seg button:hover { background: var(--paper-1); }
+.ot-seg button[aria-pressed='true'] { background: var(--ink); color: var(--paper-0); }
+.ot-seg button:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.ot-snippet-event { max-width: 480px; margin-bottom: 0; }
+.ot-snippet-event .input { min-height: 48px; }
+.ot-pre-wrap { display: flex; flex-direction: column; gap: var(--s-2); }
+.ot-pre-wrap .ot-copy { align-self: flex-end; }
+.ot-pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-1);
+  background: var(--paper);
+  border: var(--border);
+  border-radius: var(--r-ctrl);
+  padding: var(--s-3);
+  overflow-x: auto;
+  tab-size: 2;
+  max-height: 420px;
+}
+
+/* ── Team ── */
+.ot-invite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--s-2);
+  align-items: stretch;
+  margin: 0 0 var(--s-3);
+}
+.ot-invite .input { min-height: 48px; }
+.ot-invite .btn { min-height: 48px; }
+@media (max-width: 560px) {
+  .ot-invite { grid-template-columns: minmax(0, 1fr) auto; }
+  .ot-invite .ot-invite__email { grid-column: 1 / -1; }
+}
+.input.ot-role { width: auto; min-width: 132px; min-height: 48px; font-family: var(--font-mono); font-size: 12px; flex: none; }
+.ot-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ot-joinlink { display: block; font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; color: var(--text-2); }
+/* Invited rows: email + facts, then New link · Cancel (wrap under on a phone) */
+.ot-row--wrap { flex-wrap: wrap; }
+.ot-row--wrap > .ot-row__main { flex: 1 1 200px; }
+.ot-row__acts { flex: none; }
+.ot-body > .ot-result { margin: 0; }
+/* Send now · N / Try again · N under a row: a quiet button, not a bar */
+.ot-body > .btn { align-self: flex-start; }
+.ot-roles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ot-roles li { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: baseline; }
+.ot-roles strong { min-width: 96px; }
+
+/* ── Money: the pledge queue (pl-*) ── */
+.pl-list { list-style: none; margin: 0; padding: 0; }
+.pl-row { padding: var(--s-3) 0; border-bottom: 1px solid var(--rule); }
+.pl-row:last-child { border-bottom: 0; }
+.pl-main { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.pl-who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pl-who .name { font-weight: 600; overflow-wrap: anywhere; }
+.pl-who .name a { text-decoration: none; border-bottom: 1px dotted var(--rule-2); }
+.pl-who .email { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+.pl-amt { display: flex; align-items: baseline; gap: var(--s-2); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.pl-amt strong { font-size: 17px; }
+.pl-meta { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-1); font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); }
+.pl-actions { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-2); }
+.pl-receive { margin-top: var(--s-2); padding: var(--s-3); border: 1px dashed var(--rule-2); border-radius: var(--r-card); background: var(--paper); }
+.pl-receive .form-row { align-items: flex-end; }
+.pl-receive .field { margin-bottom: var(--s-2); }
+.pl-receive .input { min-height: 44px; }
+.pl-receive .ot-note { margin-bottom: var(--s-2); }
+.pl-result {
+  border: 1px solid var(--ok); border-left-width: 4px; border-radius: var(--r-card);
+  background: var(--paper-0); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3);
+  display: flex; gap: var(--s-3); align-items: baseline; justify-content: space-between; flex-wrap: wrap;
+}
+.pl-history { margin-top: var(--s-3); border-top: 1px solid var(--rule); padding-top: var(--s-2); }
+.pl-history > summary {
+  cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: var(--s-2);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3);
+}
+.pl-history > summary:hover { color: var(--text-1); }
+.pl-history > summary:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }
+.pl-history .pl-row { padding: var(--s-2) 0; }
+.pl-history .pl-who .name { font-weight: 400; }
+
+/* ── Toast: keep above the phone tab bar ── */
+.toast.ot-toast { max-width: calc(100vw - 32px); text-align: center; }
+@media (max-width: 720px) { .toast.ot-toast { bottom: calc(60px + env(safe-area-inset-bottom) + var(--s-3)); } }
+
+/* ── Touch screens: fingers, not cursors ── */
+@media (pointer: coarse), (max-width: 720px) {
+  .ot-compose .input, .ot-inline-add .input { min-height: 48px; }
+}

@@ -1,0 +1,23 @@
+/* The desk with no signal (components/KeptCopies.js, NoSignal.jsx, the
+   profile's queued changes in pages/Person.jsx). */
+
+/* "Adding people needs signal" — a write that's off, under the title. */
+.ds-needs {
+  margin: 0 0 var(--s-3);
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* The strip's "No signal · from 2:14 pm" (Shell.jsx). */
+.chip.offline-strip__kept { flex: none; }
+
+/* Profile: "Saved on this device — sends when you're back online". */
+.ds-waiting {
+  margin: 0 0 var(--s-3);
+  border-left: 3px solid var(--mark);
+  padding: 2px 0 2px var(--s-3);
+  color: var(--text-2);
+  font-size: 15px;
+}
+/* History: a contact still on this device. */
+.timeline .chip.ds-pending { flex: none; }

@@ -1,0 +1,309 @@
+/* Import people + GeocodeButton — page styles.
+   Ink on paper: numbered steps on hairline rules, mono micro-labels; "you
+   are here" is an ink step marker and progress is green — the brand yellow
+   is only the screen's one primary button. Phones first: ≥48px taps, the
+   preview table scrolls inside its own box, never the page. */
+
+.imp-page { max-width: 760px; }
+.imp-head { margin-bottom: var(--s-2); }
+.imp-head h1 { margin-bottom: 0; }
+.imp-back { display: inline-block; text-decoration: none; padding: var(--s-1) 0; margin-bottom: var(--s-1); }
+.imp-back:hover { color: var(--text-1); }
+.imp-lead { color: var(--text-2); margin: 0 0 var(--s-4); max-width: 62ch; }
+
+.imp-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.btn.imp-tap {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+.imp-hint { color: var(--text-3); margin: 0 0 var(--s-3); }
+.imp-hint--sm { font-size: 13px; margin: var(--s-1) 0 0; }
+.imp-actions { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; margin-top: var(--s-3); }
+
+/* ── Steps ── */
+.imp-step {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--s-4);
+  padding: var(--s-5) 0;
+  border-top: 1px solid var(--rule);
+}
+.imp-step__num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--rule-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-4);
+  background: var(--paper-0);
+}
+.imp-step.is-now .imp-step__num { background: var(--ink); border-color: var(--ink); color: var(--paper-0); }
+.imp-step.is-done .imp-step__num { color: var(--ok); border-color: var(--ok); }
+.imp-step__body h2 { margin: 3px 0 var(--s-2); }
+.imp-step.is-todo .imp-step__body h2 { color: var(--text-2); }
+
+/* ── 1. Choose ── */
+.imp-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-6) var(--s-4);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--r-card);
+  background: var(--paper-0);
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: var(--s-2);
+}
+.imp-drop:hover { border-color: var(--ink); }
+.imp-drop.is-over { border-style: solid; border-color: var(--ink); background: var(--paper-1); }
+.imp-drop.is-busy { cursor: progress; opacity: 0.8; }
+.imp-drop:focus-within { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+.imp-file-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.imp-drop__btn { pointer-events: none; }
+.imp-drop__or { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+/* Phones and tablets can't drag a file in: just the button. (Phone width
+   too, for browsers that don't report a coarse pointer.) */
+@media (pointer: coarse), (max-width: 560px) { .imp-drop__or { display: none; } }
+.imp-paste { margin-top: var(--s-2); }
+.imp-paste__text { font-family: var(--font-mono); font-size: 13px; line-height: 1.45; resize: vertical; min-height: 140px; }
+
+.imp-source { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.imp-source p { margin: 0; overflow-wrap: anywhere; }
+
+/* ── 2. Match columns ── */
+.imp-map { list-style: none; margin: 0 0 var(--s-4); padding: 0; border-top: 1px solid var(--rule-2); }
+.imp-map__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(150px, 220px);
+  gap: var(--s-1) var(--s-3);
+  align-items: center;
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.imp-map__src { min-width: 0; display: flex; flex-direction: column; }
+.imp-map__head {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+.imp-map__row.is-used .imp-map__head { color: var(--text-1); }
+.imp-map__ex {
+  font-size: 13px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.imp-map__arrow { color: var(--text-4); font-family: var(--font-mono); }
+.imp-map__row.is-used .imp-map__arrow { color: var(--text-1); }
+.imp-map__select { min-height: 48px; }
+.imp-map__row:not(.is-used) .imp-map__select { color: var(--text-3); }
+.imp-map__note { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--text-2); }
+.imp-map__note.is-warn { color: var(--text-1); border-left: 3px solid var(--warn); padding-left: var(--s-2); }
+
+.imp-need {
+  border-left: 3px solid var(--danger);
+  background: var(--paper-0);
+  padding: var(--s-2) var(--s-3);
+  margin: 0 0 var(--s-4);
+}
+
+.imp-tagfield { max-width: 520px; margin-bottom: var(--s-4); }
+.imp-tagrow { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
+.imp-tagrow .input { flex: 1 1 220px; min-height: 48px; }
+
+.imp-preview > .eyebrow { display: block; margin-bottom: var(--s-2); }
+.imp-preview__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: var(--border);
+  border-radius: var(--r-card);
+  background: var(--paper-0);
+}
+.imp-preview__table { min-width: 100%; }
+.imp-preview__table td,
+.imp-preview__table th { white-space: nowrap; }
+.imp-preview__table td { font-size: 14px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.imp-preview__table tr:last-child td { border-bottom: 0; }
+.imp-tags { display: inline-flex; gap: 4px; flex-wrap: nowrap; }
+.imp-tags .chip { text-transform: none; letter-spacing: 0.04em; }
+
+/* ── Progress bar (import + geocode) ── */
+.imp-bar {
+  height: 10px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: var(--s-2) 0;
+}
+.imp-bar__fill { height: 100%; background: var(--ok); transition: width 0.3s ease; }
+.imp-bar__fill.is-waiting {
+  background: repeating-linear-gradient(-45deg, var(--ok) 0 8px, var(--paper-1) 8px 16px);
+  background-size: 200% 100%;
+  animation: imp-wait 1.2s linear infinite;
+}
+@keyframes imp-wait { to { background-position: -45px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .imp-bar__fill { transition: none; }
+  .imp-bar__fill.is-waiting { animation: none; }
+}
+.imp-running .imp-hint { margin-bottom: var(--s-2); }
+
+/* ── 3. Check results ── */
+.imp-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s-3) var(--s-4);
+  margin: 0 0 var(--s-3);
+}
+.imp-count { border-top: 2px solid var(--rule-2); padding-top: var(--s-2); }
+.imp-count.is-ok { border-top-color: var(--ok); }
+.imp-count.is-danger { border-top-color: var(--danger); }
+.imp-count dd { margin: 0; }
+.imp-count__n { display: block; font-size: 28px; font-weight: 600; line-height: 1.2; }
+.imp-count.is-danger .imp-count__n { color: var(--danger); }
+.imp-count__note { display: block; font-size: 12px; color: var(--text-3); line-height: 1.35; }
+
+.imp-matches { margin: var(--s-2) 0; }
+.imp-matches summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.imp-matches summary:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }
+.imp-matches ul { list-style: none; margin: 0; padding: 0; }
+.imp-matches li { padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px; overflow-wrap: anywhere; }
+.imp-matches li .mono { font-size: 11px; margin-right: var(--s-2); }
+
+.imp-invalid { margin-top: var(--s-3); }
+.imp-invalid__intro { margin: 0 0 var(--s-2); color: var(--text-2); }
+.imp-invalid__list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.imp-invalid__list li {
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.imp-invalid__row { flex: 0 0 auto; font-size: 11px; color: var(--danger); white-space: nowrap; }
+
+/* ── 4. Import ── */
+.imp-done { font-size: 17px; font-weight: 600; margin: 0 0 var(--s-2); }
+.imp-running > .btn { margin-top: var(--s-2); }
+.imp-next { margin-top: var(--s-4); }
+
+/* ── GeocodeButton ── */
+.geo--compact { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.geo--compact .geo-live { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.btn.geo-btn--compact { min-height: 28px; padding: 4px 12px; border-radius: 999px; }
+
+.geo--full { display: flex; flex-direction: column; gap: var(--s-2); margin: var(--s-2) 0; }
+.geo-run { max-width: 520px; }
+.geo-live--full { margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em; color: var(--text-2); }
+.geo-live--full:empty { display: none; }
+.geo-summary {
+  border-left: 3px solid var(--ok);
+  background: var(--paper-0);
+  padding: var(--s-2) var(--s-3);
+  max-width: 62ch;
+}
+.geo-summary.is-error { border-left-color: var(--danger); }
+.geo-summary.is-paused { border-left-color: var(--warn); }
+.geo-summary__lead { margin: 0; font-weight: 600; }
+.geo-summary__note { margin: var(--s-2) 0 0; color: var(--text-2); }
+.geo-actions:empty { display: none; }
+
+@media (max-width: 720px) {
+  .btn.geo-btn--compact { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; }
+}
+
+@media (max-width: 560px) {
+  .imp-step { grid-template-columns: 26px minmax(0, 1fr); gap: var(--s-3); padding: var(--s-4) 0; }
+  .imp-step__num { width: 26px; height: 26px; font-size: 11px; }
+  .imp-step__body h2 { margin-top: 1px; }
+  .imp-map__row { grid-template-columns: minmax(0, 1fr); }
+  .imp-map__arrow { display: none; }
+  .imp-drop { padding: var(--s-5) var(--s-3); }
+  .imp-source .btn { width: 100%; }
+  .imp-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .imp-count__n { font-size: 24px; }
+}
+
+/* Folded steps once the import has started */
+.imp-summary { margin: 0; color: var(--text-2); }
+.imp-chip { text-transform: none; letter-spacing: 0.04em; vertical-align: 1px; }
+.imp-matches summary { list-style: none; gap: var(--s-2); }
+.imp-matches summary::-webkit-details-marker { display: none; }
+.imp-matches summary::before { content: '+'; display: inline-block; width: 1em; text-align: center; font-size: 14px; color: var(--text-3); }
+.imp-matches[open] summary::before { content: '−'; }
+
+/* ── Simple pass: one line per step, reveals, the map step ── */
+.imp-line { margin: 0 0 var(--s-3); color: var(--text-3); }
+.imp-line--inline { margin: 0; font-size: 14px; }
+.imp-step.is-todo { padding: var(--s-4) 0; }
+.imp-step.is-todo .imp-step__body h2 { margin-bottom: 0; }
+.imp-step.is-done .imp-step__body h2 { color: var(--text-2); }
+.imp-reveal { margin: 0 0 var(--s-2); }
+.imp-reveal__body { padding: var(--s-1) 0 var(--s-3); }
+.imp-reveal__body .imp-tagfield { margin-bottom: 0; }
+.imp-matches__list { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+.imp-matches__list li { padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px; overflow-wrap: anywhere; }
+.imp-matches__list li .mono { font-size: 11px; margin-right: var(--s-2); }
+.imp-place { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--rule); }
+.imp-place__title { font-size: 16px; margin: 0 0 var(--s-2); }
+.imp-result .imp-actions { margin-top: var(--s-4); }
+
+/* ── Fix round 3 ── */
+/* One input height (48px), as on People and the profile. */
+.imp-page .input:not(textarea) { min-height: 48px; }
+/* "First row is column names": one quiet switch above the columns. */
+.imp-headrow {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  min-height: 48px; margin: 0 0 var(--s-2);
+  font-size: 15px; color: var(--text-2); cursor: pointer;
+}
+.imp-headrow input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); cursor: pointer; }
+.imp-headrow input:disabled { cursor: default; }
+.imp-headrow input:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+/* Touch screens keep :hover after a tap: the drop box only darkens for a mouse. */
+@media (hover: none) { .imp-drop:hover { border-color: var(--rule-2); } }

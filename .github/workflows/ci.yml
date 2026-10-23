@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  starbase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Test (event log, cap engine, API)
+        run: npm test
+      - name: Test over the Postgres wire protocol (DATABASE_URL adapter)
+        run: npm run test:pg
+      - name: Build (web)
+        run: npm run build

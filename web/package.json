@@ -1,0 +1,21 @@
+{
+  "name": "@starbase/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.2",
+    "leaflet": "^1.9.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "vite": "^7.1.9"
+  }
+}

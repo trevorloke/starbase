@@ -1,0 +1,116 @@
+/* Receipts — Money → More → Receipts, one receipt, and the line under a gift
+   on Money. Leans on the ops-* frame (shifts.css) and the tokens in app.css;
+   every class here is rc-* so nothing collides. */
+
+/* ── The list ── */
+.rc-num { font-family: var(--font-mono); color: var(--text-2); }
+.rc-status { font-size: 16px; font-weight: 600; }
+.rc-line { margin: 0 0 var(--s-4); }
+.rc-confirm { margin: 0 0 var(--s-4); }
+.rc-setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  flex-wrap: wrap;
+  border: 1px solid var(--warn);
+  border-left-width: 5px;
+  border-radius: var(--r-card);
+  background: var(--paper-0);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  margin: 0 0 var(--s-4);
+  font-size: 16px;
+}
+.rc-more { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+/* More: "Disclosure (over $100) · Period · Download for a spreadsheet" */
+.rc-dl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); max-width: 100%; }
+.rc-dl .rc-period { width: auto; max-width: 100%; min-height: 48px; }
+
+/* Money: "Receipt already emailed — send a void notice? Yes · No" */
+.rc-voidask { flex-wrap: wrap; align-items: center; }
+.rc-voidask__err { flex-basis: 100%; margin: 0; }
+
+/* ── Money: "Receipt 2026-0007 · Sent" under a gift ── */
+.rc-giftline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  align-self: flex-start;
+  font-size: 15px;
+  color: var(--text-1);
+  text-decoration: none;
+}
+.rc-giftline > span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.rc-giftline .mono { font-size: 14px; }
+.rc-giftline--none { margin: 0; }
+/* Money → More: the Receipts row */
+.btn.rc-moneylink { margin-bottom: var(--s-3); }
+
+/* ── One receipt, as the donor reads it ── */
+.rc-one-status { font-size: 17px; font-weight: 600; margin: 0 0 var(--s-4); }
+.rc-one-status[data-code='sent'] { color: var(--ok); }
+.rc-one-status[data-code='void'] { color: var(--danger); }
+.rc-doc {
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  padding: var(--s-5) var(--s-4);
+  margin: 0 0 var(--s-4);
+  font-size: 16px;
+}
+.rc-doc p { margin: 0 0 var(--s-2); }
+.rc-doc__camp {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  padding-bottom: var(--s-3);
+  margin-bottom: var(--s-4);
+  border-bottom: 4px solid var(--mark);
+  overflow-wrap: anywhere;
+}
+.rc-doc__title { font-size: 20px; margin: 0 0 var(--s-3); }
+.rc-doc__stamp {
+  border: 3px solid var(--danger);
+  color: var(--danger);
+  font: 700 20px/1.2 var(--font-mono);
+  letter-spacing: 0.2em;
+  text-align: center;
+  padding: var(--s-2);
+  margin: 0 0 var(--s-3);
+}
+.rc-doc__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--s-2) var(--s-4);
+  margin: 0 0 var(--s-4);
+}
+.rc-doc__facts dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding-top: 3px;
+}
+.rc-doc__facts dd { margin: 0; overflow-wrap: anywhere; }
+.rc-doc__notice { font-weight: 700; }
+@media (max-width: 420px) {
+  .rc-doc { padding: var(--s-4) var(--s-3); }
+  .rc-doc__facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rc-doc__facts dd { margin-bottom: var(--s-2); }
+}
+.rc-link { display: flex; flex-direction: column; gap: var(--s-2); }
+.rc-send { margin: 0 0 var(--s-4); }
+
+/* Printing one receipt: the receipt and nothing else. */
+@media print {
+  body:has(.rc-print) .nav,
+  body:has(.rc-print) .tabbar,
+  body:has(.rc-print) .offline-strip,
+  body:has(.rc-print) .toast,
+  .rc-print .rc-noprint { display: none !important; }
+  html:has(.rc-print), body:has(.rc-print) { background: #fff; }
+  body:has(.rc-print) .page { padding: 0; margin: 0; max-width: none; }
+  .rc-print .rc-doc { border: 0; padding: 0; background: #fff; color: #000; }
+  .rc-print .rc-doc__facts dt { color: #333; }
+}

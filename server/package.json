@@ -1,0 +1,10 @@
+{
+  "name": "@starbase/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@starbase/shared": "*",
+    "pg": "^8.16.3"
+  }
+}

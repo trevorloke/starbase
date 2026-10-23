@@ -1,0 +1,33 @@
+/* A/B subject lines + open/click stats (components/AbTests.jsx).
+   Primitives (.field .input .disclose .ot-*) come from app.css and
+   pages/outreach.css; these are the few extras. */
+
+/* "Try two subject lines": the in-form disclosure, sitting under Subject */
+.ab-fields { margin: calc(-1 * var(--s-2)) 0 var(--s-3); }
+.ab-toggle { color: var(--text-3); font-size: 15px; font-weight: 500; }
+.ab-body { padding-top: var(--s-2); }
+.ab-body > .ot-note { padding: var(--s-1) 0 var(--s-2); }
+
+/* Test group · Wait · Winner by: one row on a desk, two or one on a phone */
+.ab-opts { display: flex; flex-wrap: wrap; gap: 0 var(--s-3); }
+.ab-opts > .field { flex: 1 1 140px; min-width: 0; }
+.ab-opts select.input { width: 100%; }
+
+/* Past sends: "Opened 42% · Clicked 8%" and the test's one line */
+.ab-stats, .ab-line, .ab-b {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ab-stats { color: var(--text-2); }
+.ab-b { color: var(--text-3); }
+.ab-line { color: var(--text-1); font-weight: 600; }
+.ab-line[data-tone='queued'] { color: var(--warn); }
+.ab-line[data-tone='failed'] { color: var(--danger); }
+.ab-note { font-size: 13px; }
+
+@media (pointer: coarse), (max-width: 720px) {
+  .ab-opts select.input, .ab-fields .input { min-height: 48px; }
+}
