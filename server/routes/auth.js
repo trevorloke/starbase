@@ -1,6 +1,7 @@
-// /api/auth — signup creates user + workspace + manager membership in one
-// transaction (every tenant is small and self-serve; there is no operator
-// console). Login binds the session to the user's workspace membership.
+// /api/auth — first-run setup creates user + the Imagine Surrey workspace +
+// manager membership in one transaction; after that, sign-up is closed and
+// everyone else joins by invite (/join). Login binds the session to the
+// user's workspace membership.
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
@@ -11,6 +12,7 @@ import {
   hashPassword, verifyPassword, dummyVerify,
   createSession, destroySession, loadContext, SESSION_COOKIE,
 } from '../lib/auth.js';
+import { ORG_NAME, ORG_JURISDICTION, openSignupForced, SETUP_CLOSED_MESSAGE } from '../lib/org.js';
 
 const app = new Hono();
 
@@ -24,10 +26,18 @@ const signupInput = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().email().max(320),
   password: z.string().min(8).max(200),
-  workspaceName: z.string().trim().min(1).max(200),
+  // Always Imagine Surrey on screen; a name and jurisdiction are still taken
+  // (tests make several workspaces to check they stay apart).
+  workspaceName: z.string().trim().min(1).max(200).default(ORG_NAME),
   candidate: z.string().trim().max(200).optional(),
-  jurisdiction: z.enum(['bc-municipal', 'bc-provincial', 'federal']).default('bc-municipal'),
+  jurisdiction: z.enum(['bc-municipal', 'bc-provincial', 'federal']).default(ORG_JURISDICTION),
 });
+
+// Setup is open until the first workspace exists (or STARBASE_OPEN_SIGNUP=1).
+const setupOpen = async (db) => openSignupForced()
+  || !(await db.query('select 1 from workspaces limit 1')).rows[0];
+
+class SetupClosed extends Error {}
 
 // What the browser gets about the workspace: settings minus the sample
 // bookkeeping (the ids of every sample row), which only the server needs.
@@ -47,8 +57,15 @@ const uniqueSlug = async (tx, base) => {
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 };
 
+// What the sign-in screens need before anyone is signed in.
+app.get('/setup', async (c) => {
+  const db = await getDb();
+  return c.json({ open: await setupOpen(db), organization: ORG_NAME });
+});
+
 app.post('/signup', async (c) => {
   const db = await getDb();
+  if (!(await setupOpen(db))) return c.json({ error: SETUP_CLOSED_MESSAGE }, 403);
   const parsed = signupInput.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0].message }, 400);
   const input = parsed.data;
@@ -59,6 +76,10 @@ app.post('/signup', async (c) => {
   const workspaceId = newId();
   try {
     await db.transaction(async (tx) => {
+      // Checked again inside the write, under a lock held to commit, so two
+      // first-run sign-ups at the same moment can't both land.
+      await tx.query('select pg_advisory_xact_lock(7240526)');
+      if (!(await setupOpen(tx))) throw new SetupClosed();
       await tx.query(
         'insert into users (id, email, name, password_hash) values ($1, $2, $3, $4)',
         [userId, email, input.name, passwordHash],
@@ -74,6 +95,7 @@ app.post('/signup', async (c) => {
       );
     });
   } catch (e) {
+    if (e instanceof SetupClosed) return c.json({ error: SETUP_CLOSED_MESSAGE }, 403);
     if (String(e.message).includes('users_email_key')) {
       return c.json({ error: 'an account with that email already exists' }, 409);
     }

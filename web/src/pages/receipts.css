@@ -73,7 +73,7 @@
   border: 3px solid var(--danger);
   color: var(--danger);
   font: 700 20px/1.2 var(--font-mono);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.03em;
   text-align: center;
   padding: var(--s-2);
   margin: 0 0 var(--s-3);
@@ -87,7 +87,7 @@
 .rc-doc__facts dt {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-3);
   padding-top: 3px;

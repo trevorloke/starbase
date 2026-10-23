@@ -20,10 +20,19 @@ import './import.css';
 const DESK = ['manager', 'treasurer', 'staff'];
 const CHECK_CHUNK = 2000; // server max per call
 const IMPORT_CHUNK = 1000;
-const MAX_FILE_BYTES = 30 * 1024 * 1024;
+// A whole voter file (~500,000 rows, 250 MB) fits; the cap keeps the text
+// well under what a browser can hold as one string (~512 million characters).
+const MAX_FILE_BYTES = 300 * 1024 * 1024;
+const PARSE_SLICE = 20000; // rows parsed between breaths, so the page stays alive
 const TAG_MAX = 40;
 
 const fmtN = (n) => Number(n || 0).toLocaleString('en-CA');
+const fmtMB = (bytes) => `${fmtN(Math.max(1, Math.round(bytes / (1024 * 1024))))} MB`;
+// Let the browser paint (a progress line) before the next stretch of work.
+const breathe = () => new Promise((resolve) => {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(resolve, 0));
+  else setTimeout(resolve, 0);
+});
 const plural = (n, one, many) => `${fmtN(n)} ${n === 1 ? one : many}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +66,14 @@ export function detectDelimiter(text) {
 // → { delimiter, rows: string[][] } (blank lines kept as [''] so row numbers
 // match the spreadsheet).
 export function parseCSV(input, forced) {
+  const p = csvParser(input, forced);
+  p.step(Infinity);
+  return { delimiter: p.delimiter, rows: p.rows };
+}
+
+// The same parse a slice at a time: step(max) reads up to max more rows and
+// says whether it reached the end; at() is how far through the text it is (0–1).
+function csvParser(input, forced) {
   const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
   const delim = forced || detectDelimiter(text);
   const rows = [];
@@ -64,45 +81,49 @@ export function parseCSV(input, forced) {
   const n = text.length;
   let i = 0;
   const endRow = () => { rows.push(row); row = []; };
-  while (i < n) {
-    // Start of a field. Allow spaces before an opening quote.
-    let j = i;
-    while (j < n && (text[j] === ' ' || (text[j] === '\t' && delim !== '\t'))) j++;
-    if (text[j] === '"') {
-      let value = '';
-      let k = j + 1;
-      for (;;) {
-        const q = text.indexOf('"', k);
-        if (q === -1) { value += text.slice(k); k = n; break; } // unterminated: take the rest
-        value += text.slice(k, q);
-        if (text[q + 1] === '"') { value += '"'; k = q + 2; continue; }
-        k = q + 1;
-        break;
+  const step = (max) => {
+    const stop = rows.length + max;
+    while (i < n && rows.length < stop) {
+      // Start of a field. Allow spaces before an opening quote.
+      let j = i;
+      while (j < n && (text[j] === ' ' || (text[j] === '\t' && delim !== '\t'))) j++;
+      if (text[j] === '"') {
+        let value = '';
+        let k = j + 1;
+        for (;;) {
+          const q = text.indexOf('"', k);
+          if (q === -1) { value += text.slice(k); k = n; break; } // unterminated: take the rest
+          value += text.slice(k, q);
+          if (text[q + 1] === '"') { value += '"'; k = q + 2; continue; }
+          k = q + 1;
+          break;
+        }
+        // Anything between the closing quote and the next delimiter/newline.
+        let e = k;
+        while (e < n && text[e] !== delim && text[e] !== '\n' && text[e] !== '\r') e++;
+        value += text.slice(k, e).trim() ? text.slice(k, e) : '';
+        row.push(value);
+        i = e;
+      } else {
+        let e = i;
+        while (e < n && text[e] !== delim && text[e] !== '\n' && text[e] !== '\r') e++;
+        row.push(text.slice(i, e));
+        i = e;
       }
-      // Anything between the closing quote and the next delimiter/newline.
-      let e = k;
-      while (e < n && text[e] !== delim && text[e] !== '\n' && text[e] !== '\r') e++;
-      value += text.slice(k, e).trim() ? text.slice(k, e) : '';
-      row.push(value);
-      i = e;
-    } else {
-      let e = i;
-      while (e < n && text[e] !== delim && text[e] !== '\n' && text[e] !== '\r') e++;
-      row.push(text.slice(i, e));
-      i = e;
+      if (i >= n) { endRow(); break; }
+      const ch = text[i];
+      if (ch === delim) {
+        i += 1;
+        if (i >= n) { row.push(''); endRow(); }
+      } else {
+        // newline: \r\n, \n or \r
+        i += ch === '\r' && text[i + 1] === '\n' ? 2 : 1;
+        endRow();
+      }
     }
-    if (i >= n) { endRow(); break; }
-    const ch = text[i];
-    if (ch === delim) {
-      i += 1;
-      if (i >= n) { row.push(''); endRow(); }
-    } else {
-      // newline: \r\n, \n or \r
-      i += ch === '\r' && text[i + 1] === '\n' ? 2 : 1;
-      endRow();
-    }
-  }
-  return { delimiter: delim, rows };
+    return i >= n;
+  };
+  return { delimiter: delim, rows, step, at: () => (n ? i / n : 1) };
 }
 
 const isBlankRow = (cells) => cells.every((c) => !String(c).trim());
@@ -143,9 +164,15 @@ export function looksLikeData(cells) {
 
 // Text → { delimiter, all: [{ cells, row }], header } or { error }.
 // header: whether the first non-blank row is column names (a guess).
-function readTable(text) {
-  if (!text || !text.trim()) return { error: 'That file is empty. Choose a CSV with at least one person in it.' };
-  const { delimiter, rows } = parseCSV(text);
+// A big file is parsed a slice at a time; progress(share) hears how far (0–1).
+async function readTable(text, progress) {
+  if (!text || !/\S/.test(text)) return { error: 'That file is empty. Choose a CSV with at least one person in it.' };
+  const parser = csvParser(text);
+  while (!parser.step(PARSE_SLICE)) {
+    progress?.(parser.at());
+    await breathe();
+  }
+  const { delimiter, rows } = parser;
   const all = [];
   rows.forEach((cells, i) => { if (!isBlankRow(cells)) all.push({ cells, row: i + 1 }); }); // spreadsheet row numbers
   if (!all.length) return { error: 'That file is empty. Choose a CSV with at least one person in it.' };
@@ -183,10 +210,14 @@ const FIELDS = [
   { key: 'postal', label: 'Postal code' },
   { key: 'tags', label: 'Tags' },
   { key: 'rating', label: 'Rating (1–4)' },
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'x', label: 'X (Twitter)' },
+  { key: 'tiktok', label: 'TikTok' },
+  { key: 'reddit', label: 'Reddit' },
 ];
 const SKIP = '';
 const fieldLabel = (key) => FIELDS.find((f) => f.key === key)?.label || key;
-const FIELD_WORD = { email: 'email', phone: 'phone', address: 'address', unit: 'unit', city: 'city', postal: 'postal code', tags: 'tags', rating: 'rating' };
+const FIELD_WORD = { socials: 'social handles', email: 'email', phone: 'phone', address: 'address', unit: 'unit', city: 'city', postal: 'postal code', tags: 'tags', rating: 'rating', instagram: 'Instagram', x: 'X', tiktok: 'TikTok', reddit: 'Reddit' };
 const MULTI = new Set(['tags']); // several columns can feed tags; every other field takes one column
 
 const normHeader = (h) =>
@@ -210,6 +241,10 @@ const EXACT = [
   ['postal', /^(postal|postalcode|postcode|zip|zipcode|pc)$/],
   ['tags', /^(tags?|groups?|labels?|lists?|segments?|categories|category)$/],
   ['rating', /^(rating|support|supportlevel|supportid|id|idlevel|supportscore|canvassid|canvassrating|doorrating)$/],
+  ['instagram', /^(instagram|insta|ig|instagramhandle|instagramusername)$/],
+  ['x', /^(twitter|xhandle|twitterhandle|twitterusername|xtwitter|twitterx)$/],
+  ['tiktok', /^(tiktok|tiktokhandle|tiktokusername)$/],
+  ['reddit', /^(reddit|reddithandle|redditusername|redditname)$/],
 ];
 const CONTAINS = [
   ['email', /e?mail/],
@@ -222,6 +257,10 @@ const CONTAINS = [
   ['city', /(^|home|mailing|mail|res|residential|billing)city|^town|municipal/],
   ['tags', /^tags?|tags?$|groups?$|labels?$|segments?$/],
   ['rating', /support|rating/],
+  ['instagram', /instagram/],
+  ['x', /twitter/],
+  ['tiktok', /tiktok/],
+  ['reddit', /reddit/],
   ['name', /^(?!.*(user|file|middle|nick)).*name/],
 ];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -465,7 +504,7 @@ function ImportFlow() {
   // Step 1 — the source
   const [source, setSource] = useState(null); // { name, headers, records, delimiter }
   const [loadError, setLoadError] = useState(null);
-  const [reading, setReading] = useState(false);
+  const [reading, setReading] = useState(null); // what it's doing, e.g. Reading 182 MB… 40%
   const [dragOver, setDragOver] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -478,7 +517,7 @@ function ImportFlow() {
   // Step 3 — import (then place on the map)
   const [imp, setImp] = useState(null); // { phase, sent, total, created, merged, unchanged, invalid, error, resumeAt }
 
-  const busy = reading || check?.phase === 'running' || imp?.phase === 'running';
+  const busy = Boolean(reading) || check?.phase === 'running' || imp?.phase === 'running';
   const locked = busy || imp?.phase === 'done' || imp?.phase === 'error';
 
   // Don't lose a half-sent import to a stray tab close.
@@ -491,8 +530,13 @@ function ImportFlow() {
 
   const resetAfterSource = () => { setCheck(null); setImp(null); setBumped(null); };
 
-  const loadText = (text, name) => {
-    const t = readTable(text);
+  const loadText = async (text, name, size = text.length) => {
+    const what = `Reading ${fmtMB(size)}…`;
+    let shown = -1;
+    const t = await readTable(text, (share) => {
+      const pct = Math.floor(share * 100);
+      if (pct !== shown) { shown = pct; setReading(`${what} ${pct}%`); }
+    });
     if (t.error) { setLoadError(t.error); return; }
     const shaped = shapeTable(t.all, t.header);
     if (shaped.error) { setLoadError(shaped.error); return; }
@@ -516,21 +560,25 @@ function ImportFlow() {
     if (!file) return;
     setLoadError(null);
     if (file.size > MAX_FILE_BYTES) {
-      setLoadError('That file is over 30 MB. Split it and import the parts one at a time.');
+      setLoadError(`That file is over ${fmtMB(MAX_FILE_BYTES)}. Split it into parts and import them one at a time.`);
       return;
     }
-    setReading(true);
+    // A big file takes a few seconds to read: say so before the work starts.
+    setReading(`Reading ${fmtMB(file.size)}…`);
+    await breathe();
     try {
-      const buf = await file.arrayBuffer();
+      let buf = await file.arrayBuffer();
       if (isSpreadsheetBinary(buf, file.name)) {
         setLoadError('That’s a spreadsheet, not a CSV. Save it as CSV (File → Download → CSV), then choose that.');
         return;
       }
-      loadText(decodeBytes(buf), file.name);
+      const text = decodeBytes(buf);
+      buf = null; // the bytes can go once they're text
+      await loadText(text, file.name, file.size);
     } catch {
       setLoadError('Couldn’t read that file. Try saving it again as CSV.');
     } finally {
-      setReading(false);
+      setReading(null);
     }
   };
 
@@ -545,9 +593,14 @@ function ImportFlow() {
     if (locked) return;
     loadFile(e.dataTransfer?.files?.[0]);
   };
-  const usePaste = () => {
+  const usePaste = async () => {
     if (!pasteText.trim()) { setLoadError('Paste some rows first.'); return; }
-    loadText(pasteText, 'Pasted text');
+    setReading('Reading…');
+    try {
+      await loadText(pasteText, 'Pasted text');
+    } finally {
+      setReading(null);
+    }
     setPasteOpen(false);
   };
   const startOver = () => {
@@ -573,8 +626,14 @@ function ImportFlow() {
   const onTag = (v) => { setTag(v.slice(0, TAG_MAX)); setCheck(null); };
 
   // ── Derived ──
-  const rows = useMemo(
-    () => (source ? source.records.map((r) => ({ data: toRow(scale, r.cells, mapping), row: r.row, cells: r.cells })) : []),
+  // Rows take the server's shape a chunk at a time, as they're sent: a voter
+  // file is never held twice. The preview shapes only its first few.
+  const records = source?.records || [];
+  const total = records.length;
+  const partAt = (start, size) => records.slice(start, start + size)
+    .map((r) => ({ data: toRow(scale, r.cells, mapping), row: r.row }));
+  const preview = useMemo(
+    () => (source ? source.records.slice(0, 5).map((r) => ({ data: toRow(scale, r.cells, mapping), row: r.row, cells: r.cells })) : []),
     [source, mapping, scale],
   );
   const ratingCol = mapping.indexOf('rating');
@@ -617,13 +676,12 @@ function ImportFlow() {
 
   // ── Check (dry run: nothing is saved) ──
   const runCheck = async () => {
-    const total = rows.length;
     const acc = { ...ZERO, invalid: [], matches: [] };
     const parts = Math.ceil(total / CHECK_CHUNK);
     setCheck({ phase: 'running', done: 0, total, parts, ...acc });
     try {
       for (let start = 0; start < total; start += CHECK_CHUNK) {
-        const part = rows.slice(start, start + CHECK_CHUNK);
+        const part = partAt(start, CHECK_CHUNK);
         const r = await apiPost('/data/import', { rows: part.map((x) => x.data), tag: tagClean || undefined, dryRun: true });
         acc.created += r.created || 0;
         acc.merged += r.merged || 0;
@@ -645,14 +703,13 @@ function ImportFlow() {
   // ── Import, 1,000 rows a call; each call is its own transaction ──
   const accRef = useRef(null);
   const runImport = async (from = 0) => {
-    const total = rows.length;
     if (from === 0) accRef.current = { ...ZERO, invalid: [] };
     const acc = accRef.current;
     setImp({ phase: 'running', sent: from, total, ...acc });
     let start = from;
     try {
       for (; start < total; start += IMPORT_CHUNK) {
-        const part = rows.slice(start, start + IMPORT_CHUNK);
+        const part = partAt(start, IMPORT_CHUNK);
         const r = await apiPost('/data/import', { rows: part.map((x) => x.data), tag: tagClean || undefined });
         acc.created += r.created || 0;
         acc.merged += r.merged || 0;
@@ -721,11 +778,11 @@ function ImportFlow() {
                 type="file"
                 accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
                 onChange={onPick}
-                disabled={reading}
+                disabled={Boolean(reading)}
               />
               {/* The paste box's "Use this text" is the yellow button while it's open. */}
               <span className={`btn ${pasteOpen ? 'btn-quiet' : 'btn-primary'} imp-tap imp-drop__btn`}>
-                {reading ? 'Reading…' : 'Choose CSV file'}
+                {reading || 'Choose CSV file'}
               </span>
               <span className="imp-drop__or">or drop it here</span>
             </label>
@@ -748,7 +805,7 @@ function ImportFlow() {
                   />
                 </div>
                 <div className="imp-actions">
-                  <button type="button" className="btn btn-primary imp-tap" onClick={usePaste}>Use this text</button>
+                  <button type="button" className="btn btn-primary imp-tap" onClick={usePaste} disabled={busy}>Use this text</button>
                   <button type="button" className="btn btn-quiet imp-tap" onClick={() => setPasteOpen(false)}>Cancel</button>
                 </div>
               </div>
@@ -849,7 +906,7 @@ function ImportFlow() {
               </div>
             </Reveal>
 
-            {hasName && rows.length > 0 && (
+            {hasName && preview.length > 0 && (
               <Reveal label="Preview">
                 <div className="imp-preview__scroll">
                   <table className="table imp-preview__table">
@@ -860,7 +917,7 @@ function ImportFlow() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.slice(0, 5).map(({ data, row, cells }) => {
+                      {preview.map(({ data, row, cells }) => {
                         const tags = [...new Set([...splitTags(data.tags), ...(tagClean ? [tagClean] : [])])];
                         const rawRating = ratingCol === -1 ? '' : String(cells[ratingCol] ?? '').trim();
                         return (
@@ -898,7 +955,7 @@ function ImportFlow() {
             ) : (
               <div className="imp-actions">
                 <button type="button" className="btn btn-primary imp-tap" onClick={runCheck} disabled={!hasName || busy || locked}>
-                  Check {plural(rows.length, 'row', 'rows')}
+                  Check {plural(total, 'row', 'rows')}
                 </button>
                 <span className="imp-line imp-line--inline">{fmtN(usedCount)} of {fmtN(source.headers.length)} columns</span>
               </div>

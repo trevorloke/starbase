@@ -6,7 +6,7 @@
 // claim on a screen is checked against the API; the new screens are
 // measured (visible words, yellow buttons, sideways scroll, 48px targets).
 //
-//   STARBASE_DATA=memory PORT=4101 node server/index.js &
+//   STARBASE_OPEN_SIGNUP=1 STARBASE_DATA=memory PORT=4101 node server/index.js &
 //   BASE=http://127.0.0.1:4101 SHOTS=/tmp/surveys node e2e-surveys.mjs
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -91,7 +91,6 @@ await D.go('/signup');
 await page.fill('#su-name', 'Riley Desk');
 await page.fill('#su-email', `riley+${tag}@surveys.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey');
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 const P = {};

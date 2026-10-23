@@ -2,6 +2,7 @@
 // contributions, and webhook signature verification.
 //   STRIPE_SECRET_KEY      sk_live_… / sk_test_…  (unset → donations are pledges)
 //   STRIPE_WEBHOOK_SECRET  whsec_…                 (required to accept webhooks)
+// The website's store uses the same key and webhook (ext/website/store.js).
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const stripeConfigured = () => !!process.env.STRIPE_SECRET_KEY;
@@ -47,6 +48,22 @@ export const createCheckoutSession = async ({ pledge, workspace, successUrl, can
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error?.message || `stripe ${res.status}`);
   return json; // { id, url, … }
+};
+
+// Any other Stripe POST (the store's Checkout Sessions — ext/website/store.js
+// builds the fields): form-encoded, nested keys as Stripe expects.
+export const stripePost = async (path, params) => {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: form(params),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error?.message || `stripe ${res.status}`);
+  return json;
 };
 
 // Verify a Stripe-Signature header against the raw body (5-minute tolerance).

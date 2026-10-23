@@ -45,7 +45,13 @@ const rowSchema = z.object({
   postal: z.string().max(20).nullish(),
   tags: z.union([z.string().max(2000), z.array(z.string().max(40)).max(50)]).nullish(),
   rating: z.string().max(80).nullish(), // a code or the scale's words: "4B", "Locke", "Strong yes"
+  // Social handles, one column each (a handle or a profile link).
+  instagram: z.string().max(300).nullish(),
+  x: z.string().max(300).nullish(),
+  tiktok: z.string().max(300).nullish(),
+  reddit: z.string().max(300).nullish(),
 });
+const IMPORT_SOCIALS = ['instagram', 'x', 'tiktok', 'reddit'];
 const importInput = z.object({
   rows: z.array(z.record(z.string(), z.unknown())).min(1).max(2000),
   tag: z.string().trim().max(40).nullish(),   // applied to every imported row
@@ -68,9 +74,11 @@ const cleanRow = (raw, i, scale) => {
   if (hit?.off) return { error: `row ${i + 1}: rating “${v.rating}” is off the list` };
   const rating = hit?.code || null;
   const tags = Array.isArray(v.tags) ? v.tags : norm(v.tags).split(/[;,|]/);
+  const socials = {};
+  for (const k of IMPORT_SOCIALS) if (norm(v[k])) socials[k] = norm(v[k]);
   return {
     row: {
-      name, email, rating,
+      name, email, rating, socials,
       phone: norm(v.phone) || null,
       address: norm(v.address) || null,
       unit: norm(v.unit) || null,
@@ -79,6 +87,66 @@ const cleanRow = (raw, i, scale) => {
       tags: [...new Set(tags.map((t) => norm(t)).filter((t) => t && t.length <= 40))].slice(0, 50),
     },
   };
+};
+
+// Only the people a chunk could match are loaded, not the whole list: those
+// with a row's email, or its name and phone digits, or its name and street,
+// or (for a row with only a name) its name and nothing else — each lookup
+// indexed (db/schema.js), so a call costs its own rows. KEY is looser than
+// the matching (case, spaces and punctuation dropped) and computed in SQL on
+// both sides, so it never misses; the exact rules then run in JS as before,
+// over the people in the same order as the whole list (oldest first), so the
+// same person wins a tie. Of the name-only people, only the oldest of each
+// spelling can be the one a row matches. Each value is looked up on its own
+// (lateral, "offset 0" keeps it so): handed a thousand values at once, the
+// planner takes them for most of the list and reads it all.
+const KEY = (col) => `regexp_replace(lower(${col}), '[^[:alnum:]]+', '', 'g')`;
+const NAME_PHONE = (n, p) => `${KEY(n)} || '|' || regexp_replace(${p}, '[^0-9]+', '', 'g')`;
+const NAME_ADDR = (n, a) => `${KEY(n)} || '|' || ${KEY(a)}`;
+const NAME_ONLY = "coalesce(email, '') = '' and coalesce(phone, '') = '' and coalesce(address, '') = ''";
+const eachValue = (sql) => `select x.id from unnest($2::text[]) as k(v) cross join lateral (${sql} offset 0) as x`;
+const candidates = async (tx, workspaceId, clean) => {
+  if (!clean.length) return [];
+  const keys = { p: [], a: [], n: [] };
+  for (const r of (await tx.query(
+    `select 'p' as kind, ${NAME_PHONE('n', 'v')} as k from unnest($1::text[], $2::text[]) as t(n, v) where v is not null
+     union select 'a', ${NAME_ADDR('n', 'v')} from unnest($1::text[], $3::text[]) as t(n, v) where v is not null
+     union select 'n', ${KEY('n')} from unnest($4::text[]) as n`,
+    [clean.map((r) => r.name), clean.map((r) => r.phone), clean.map((r) => r.address),
+     clean.filter(nameOnly).map((r) => r.name)],
+  )).rows) keys[r.kind].push(r.k);
+  const emails = [...new Set(clean.map((r) => r.email).filter(Boolean))];
+  const live = 'select id from persons where workspace_id = $1 and deleted_at is null';
+  const lookups = [
+    [emails, eachValue(`${live} and lower(email) = k.v`)],
+    [keys.p, eachValue(`${live} and ${NAME_PHONE('name', 'phone')} = k.v`)],
+    [keys.a, eachValue(`${live} and ${NAME_ADDR('name', 'address')} = k.v`)],
+    [keys.n, eachValue(`select distinct on (name) id from persons where workspace_id = $1 and deleted_at is null
+      and ${NAME_ONLY} and ${KEY('name')} = k.v order by name, created_at, id`)],
+  ];
+  const ids = new Set();
+  for (const [values, sql] of lookups) {
+    if (values.length) for (const r of (await tx.query(sql, [workspaceId, values])).rows) ids.add(r.id);
+  }
+  if (!ids.size) return [];
+  return (await tx.query(
+    `select p.* from unnest($2::uuid[]) as k(id) cross join lateral (
+       select id, name, email, phone, address, unit, city, postal, tags, socials, rating, created_at from persons
+       where id = k.id and workspace_id = $1 offset 0) as p
+     order by p.created_at, p.id`, [workspaceId, [...ids]],
+  )).rows.map(({ created_at: _, ...p }) => ({ ...p, tags: parseJson(p.tags, []), socials: parseJson(p.socials, {}) }));
+};
+
+// PGlite runs no autovacuum, so persons may never have been analyzed: its
+// indexes then still count the rows they had when made (none), every index
+// looks alike to the planner, and a lookup can read the whole list. One
+// ANALYZE once there are people fixes that for good (the planner scales the
+// counts with the table from then on). Hosted Postgres analyzes on its own.
+const statsReady = async (db) => {
+  try {
+    const idx = (await db.query(`select reltuples from pg_class where oid = 'persons_ws_name_idx'::regclass`)).rows[0];
+    if (idx && Number(idx.reltuples) <= 0) await db.query('analyze persons');
+  } catch { /* only a speed-up */ }
 };
 
 app.post('/import', async (c) => {
@@ -109,12 +177,10 @@ app.post('/import', async (c) => {
     else clean.push({ ...r.row, tags: tag ? [...new Set([...r.row.tags, tag])] : r.row.tags, index: i, extras: more.map((m) => m.value) });
   });
 
+  await statsReady(c.get('db'));
   // write=false is the dry run: identical decisions, no writes.
   const run = async (tx, emit, write = true) => {
-    const existing = (await tx.query(
-      `select id, name, email, phone, address, unit, city, postal, tags, rating from persons
-       where workspace_id = $1 and deleted_at is null order by created_at, id`, [ctx.workspaceId],
-    )).rows.map((p) => ({ ...p, tags: parseJson(p.tags, []) }));
+    const existing = await candidates(tx, ctx.workspaceId, clean);
     const byEmail = new Map(); const byNamePhone = new Map(); const byNameAddr = new Map();
     const byName = new Map(); // name-only people (the oldest of a name wins)
     const index = (p) => {
@@ -142,6 +208,9 @@ app.post('/import', async (c) => {
         const tags = [...new Set([...(match.tags || []), ...r.tags])].slice(0, 50);
         if (tags.length !== (match.tags || []).length) patch.tags = tags;
         if (!match.rating && r.rating) patch.rating = r.rating;
+        // Handles fill only the platforms with none on file.
+        const newHandles = Object.entries(r.socials).filter(([k]) => !String(match.socials?.[k] || '').trim());
+        if (newHandles.length) patch.socials = { ...(match.socials || {}), ...Object.fromEntries(newHandles) };
         const filled = await fillExtras(tx, match.id, r, write, emit);
         if (Object.keys(patch).length === 0 && !filled.length) { unchanged += 1; decisions.push({ row: r.index + 1, name: r.name, action: 'unchanged', id: match.id }); continue; }
         merged += 1;
@@ -150,9 +219,9 @@ app.post('/import', async (c) => {
           const next = { ...match, ...patch };
           await tx.query(
             `update persons set email = $3, phone = $4, address = $5, unit = $6, city = $7, postal = $8, tags = $9,
-               rating = $10, updated_at = now() where id = $1 and workspace_id = $2`,
+               rating = $10, socials = $11, updated_at = now() where id = $1 and workspace_id = $2`,
             [match.id, ctx.workspaceId, next.email, next.phone, next.address, next.unit, next.city, next.postal,
-             JSON.stringify(next.tags || []), next.rating || null],
+             JSON.stringify(next.tags || []), next.rating || null, JSON.stringify(next.socials || {})],
           );
           emit('person', match.id, 'update', { ...patch, source: 'import' });
           Object.assign(match, patch);
@@ -163,13 +232,13 @@ app.post('/import', async (c) => {
         const id = newId();
         decisions.push({ row: r.index + 1, name: r.name, action: 'created', id });
         const p = { id, name: r.name, email: r.email, phone: r.phone, address: r.address, unit: r.unit,
-          city: r.city, postal: r.postal, tags: r.tags, rating: r.rating };
+          city: r.city, postal: r.postal, tags: r.tags, socials: r.socials, rating: r.rating };
         if (write) {
           await tx.query(
-            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, rating)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, socials, rating)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
             [id, ctx.workspaceId, p.name, p.email, p.phone, p.address, p.unit, p.city, p.postal,
-             JSON.stringify(p.tags), p.rating],
+             JSON.stringify(p.tags), JSON.stringify(p.socials), p.rating],
           );
           emit('person', id, 'create', { ...p, source: 'import' });
         }

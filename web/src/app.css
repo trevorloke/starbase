@@ -1,73 +1,89 @@
 /* Starbase — one stylesheet.
-   Ink on paper, ported from v1 tokens.css: warm off-white paper, deep ink,
-   one editorial serif for body + display, one operator mono for micro-labels,
-   hairline rules, the yellow mark accent. ~12 primitives, no per-screen CSS. */
+   Imagine Surrey's field app: a navy sidebar (a navy tab bar on phones),
+   white rounded cards on a cool grey page, one clean sans-serif, and a single
+   violet accent (--mark) for the one primary button on each screen. The
+   brand colours live here only — swap --mark/--navy to re-brand. */
 
 :root {
-  /* Type — ONE serif + ONE mono */
-  --font-serif: 'GT Super Text', 'Source Serif 4', 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-mono: 'Berkeley Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Type — one sans for everything; numbers line up (tabular). */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Older names, kept so every screen picks up the same face. */
+  --font-serif: var(--font-sans);
+  --font-mono: var(--font-sans);
 
-  /* Ink on paper */
-  --ink: #0c0c0c;
-  --paper-0: #faf8f1;
-  --paper: #f4f1e8;
-  --paper-1: #eeeadc;
-  --paper-2: #e6e1ce;
-  --rule: #c9c3aa;
-  --rule-2: #b6af93;
+  /* Brand */
+  --navy: #0f1733;
+  --navy-2: #1a2450;
+  --navy-text: #cfd5f5;
+  --gold: #ffd166;
+
+  /* Surfaces: --paper is the page, --paper-0 a card */
+  --ink: #161a2e;
+  --paper-0: #ffffff;
+  --paper: #f4f5fa;
+  --paper-1: #eef0f7;
+  --paper-2: #e4e7f2;
+  --rule: #dde0ec;
+  --rule-2: #c9cee0;
 
   --text-1: var(--ink);
-  --text-2: #3a3834;
-  --text-3: #6f6c63;
-  --text-4: #9c9887;
+  --text-2: #2c3250;
+  --text-3: #5d6481;
+  --text-4: #8f95ad;
 
-  /* The mark — campaign yellow */
-  --mark: #ffd400;
-  --mark-ink: #141100;
-  --mark-soft: #fff4b3;
-  --mark-deep: #d9ad00;
+  /* The mark — the one accent (primary button, active tab, focus) */
+  --mark: #6d4aff;
+  --mark-ink: #ffffff;
+  --mark-soft: #ece8ff;
+  --mark-deep: #5536e0;
 
-  /* Status — editorial, desaturated */
-  --ok: #2e6b3e;
-  --warn: #8a6206;
-  --danger: #8a1414;
-  /* Undecided — the map pins' amber. Never the brand yellow (--mark), which is
-     only for the one primary button on a screen. */
-  --amber: #e0990b;
-  --amber-deep: #a87000;
+  /* Status */
+  --ok: #138a52;
+  --warn: #9a5b00;
+  --danger: #d43c3c;
+  /* Undecided — the map pins' amber. */
+  --amber: #f5a524;
+  --amber-deep: #b87400;
 
   /* Geometry */
-  --r-ctrl: 2px;
-  --r-card: 3px;
+  --r-ctrl: 10px;
+  --r-card: 14px;
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --shadow-1: 0 1px 2px rgba(15, 23, 51, 0.06), 0 1px 1px rgba(15, 23, 51, 0.03);
+  --shadow-2: 0 8px 28px rgba(15, 23, 51, 0.14);
+  --side-w: 232px;
 
   --border: 1px solid var(--rule);
   --border-2: 1px solid var(--rule-2);
-  --border-ink: 1px solid var(--ink);
+  --border-ink: 1px solid var(--rule-2);
   /* One column for every screen (Map is the only full-width one). --max-w is
      the column plus its side gutters, for the nav and page boxes. */
-  --page-w: 720px;
+  --page-w: 960px;
   --max-w: calc(var(--page-w) + 2 * var(--s-4));
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ink: #ece9df;
-    --paper-0: #191813;
-    --paper: #141310;
-    --paper-1: #1e1d17;
-    --paper-2: #26241c;
-    --rule: #3b3930;
-    --rule-2: #4d4a3e;
-    --text-2: #cfccc2;
-    --text-3: #98948a;
-    --text-4: #6f6c63;
-    --mark-soft: #33300f;
-    --mark-deep: #a98700;
-    --ok: #7fbb8d;
-    --warn: #d9a83e;
-    --danger: #e08a8a;
+    --ink: #e8eaf6;
+    --paper-0: #161c35;
+    --paper: #0d1226;
+    --paper-1: #1d2442;
+    --paper-2: #252d50;
+    --rule: #2a3254;
+    --rule-2: #3a4470;
+    --text-2: #c5cae0;
+    --text-3: #9aa1c2;
+    --text-4: #6f7699;
+    --navy: #090d1f;
+    --navy-2: #1a2142;
+    --mark: #7d5fff;
+    --mark-soft: #2a2357;
+    --mark-deep: #9b85ff;
+    --ok: #5fd39a;
+    --warn: #f0b955;
+    --danger: #ff8a8a;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -75,86 +91,93 @@
 
 html, body {
   margin: 0; padding: 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   color: var(--text-1);
   background: var(--paper);
   font-size: 15px;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 a { color: inherit; }
-::selection { background: var(--mark); color: var(--mark-ink); }
+::selection { background: var(--mark-soft); color: var(--text-1); }
 
-h1, h2, h3 { font-weight: 600; margin: 0 0 var(--s-3); line-height: 1.2; }
+h1, h2, h3 { font-weight: 700; margin: 0 0 var(--s-3); line-height: 1.2; letter-spacing: -0.01em; }
 h1 { font-size: 26px; }
 h2 { font-size: 18px; }
 
-/* ── 1. Micro-label (eyebrow) — mono, uppercase, letter-spaced ── */
+/* ── 1. Micro-label (eyebrow) — small, uppercase, quiet ── */
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-3);
-  font-weight: 500;
+  font-weight: 600;
 }
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
 
 /* ── 2. Hairline rule ── */
 .hairline { height: 1px; background: var(--rule); border: 0; margin: var(--s-4) 0; }
 
 /* ── 3. Button ── */
 .btn {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-1);
   background: var(--paper-0);
   border: var(--border-2);
   border-radius: var(--r-ctrl);
-  padding: 7px 14px;
+  padding: 8px 14px;
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
   line-height: 1.3;
+  transition: background-color 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
-.btn-primary { background: var(--mark); color: var(--mark-ink); border: 1px solid var(--mark-deep); }
+.btn-primary {
+  background: var(--mark); color: var(--mark-ink); border: 1px solid var(--mark);
+  box-shadow: 0 1px 2px rgba(85, 54, 224, 0.25);
+}
 .btn-quiet { border-color: transparent; background: transparent; color: var(--text-3); }
 /* Hover only where a pointer hovers. On a phone a tapped button keeps
    :hover until the next tap, so it would still look pressed on the next
    screen. Every :hover that changes a fill or edge sits in (hover: hover). */
 @media (hover: hover) {
-  .btn:hover { border-color: var(--ink); background: var(--paper-1); }
+  .btn:hover { border-color: var(--mark); background: var(--paper-0); }
   .btn-primary:hover { background: var(--mark-deep); border-color: var(--mark-deep); }
   .btn-quiet:hover { color: var(--text-1); border-color: var(--rule-2); background: transparent; }
 }
 .btn:focus-visible, .input:focus-visible, a:focus-visible, [role='option']:focus-visible {
-  outline: 2px solid var(--mark-deep);
-  outline-offset: 1px;
+  outline: 2px solid var(--mark);
+  outline-offset: 2px;
 }
 .btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── 4. Input + field ── */
 .input {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 15px;
   color: var(--text-1);
   background: var(--paper-0);
   border: var(--border-2);
   border-radius: var(--r-ctrl);
-  padding: 7px 10px;
+  padding: 9px 12px;
   width: 100%;
 }
-.input:focus { outline: 2px solid var(--mark-deep); outline-offset: 1px; border-color: var(--ink); }
+.input:focus { outline: 3px solid var(--mark-soft); outline-offset: 0; border-color: var(--mark); }
 .field { display: flex; flex-direction: column; gap: var(--s-1); margin-bottom: var(--s-3); }
 .field > label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-3);
 }
 .form-row { display: flex; gap: var(--s-3); flex-wrap: wrap; }
@@ -165,54 +188,59 @@ h2 { font-size: 18px; }
   background: var(--paper-0);
   border: var(--border);
   border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
   padding: var(--s-4) var(--s-4);
   margin-bottom: var(--s-4);
 }
 .card > .eyebrow { display: block; margin-bottom: var(--s-2); }
 
 /* ── 6. Table ── */
-.table { width: 100%; border-collapse: collapse; }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--paper-0); border: var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-1); overflow: hidden; }
 .table th {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-3);
   text-align: left;
-  padding: var(--s-2) var(--s-2);
-  border-bottom: 1px solid var(--rule-2);
+  background: var(--paper-1);
+  padding: 10px var(--s-3);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
 }
 .table td {
-  padding: var(--s-2) var(--s-2);
+  padding: 11px var(--s-3);
   border-bottom: 1px solid var(--rule);
   vertical-align: baseline;
 }
+.table tr:last-child td { border-bottom: 0; }
 .table tr.rowlink { cursor: pointer; }
-@media (hover: hover) { .table tr.rowlink:hover td { background: var(--paper-1); } }
-.table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .table tr.rowlink:hover td { background: color-mix(in srgb, var(--mark-soft) 45%, var(--paper-0)); } }
+.table .num { text-align: right; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
 .table th.num { text-align: right; }
 
 /* ── 7. Chip ── */
 .chip {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: var(--border-2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 2px 9px;
   white-space: nowrap;
   color: var(--text-2);
-  background: var(--paper-0);
+  background: var(--paper-1);
 }
-.chip-warn { background: var(--mark-soft); border-color: var(--mark-deep); color: var(--text-1); }
-.chip-danger { color: var(--danger); border-color: var(--danger); }
-.chip-ok { color: var(--ok); border-color: var(--ok); }
+.chip-warn { background: #fff3d6; border-color: transparent; color: #8a5a00; }
+.chip-danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--paper-0)); border-color: transparent; }
+.chip-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--paper-0)); border-color: transparent; }
 
 /* ── 8. Banner ── */
 .banner {
-  border: 1px solid var(--mark-deep);
+  border: 1px solid color-mix(in srgb, var(--mark) 30%, transparent);
   background: var(--mark-soft);
   border-radius: var(--r-card);
   padding: var(--s-3) var(--s-4);
@@ -229,19 +257,21 @@ h2 { font-size: 18px; }
   bottom: var(--s-5);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: var(--paper-0);
-  border-radius: var(--r-card);
+  background: var(--navy);
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-2);
   padding: var(--s-3) var(--s-4);
   display: flex;
   gap: var(--s-4);
   align-items: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
   z-index: 50;
 }
 /* The toast's button (Change, Undo, OK): a light outline in the toast's own
-   ink — never the brand yellow, which is the screen's one primary button. */
+   ink — never the accent, which is the screen's one primary button. */
 .toast .btn {
   color: inherit;
   background: transparent;
@@ -252,10 +282,12 @@ h2 { font-size: 18px; }
   .toast .btn:hover { color: inherit; background: color-mix(in srgb, currentColor 14%, transparent); border-color: currentColor; }
 }
 
-/* ── 10. Nav / shell ── */
+/* ── 10. Nav / shell ──
+   Desktop: a navy sidebar down the left. Phones (≤ 720px): a navy top bar
+   with the brand and avatar, and the tab bar along the bottom (§11). */
 .nav {
-  border-bottom: 1px solid var(--ink);
-  background: var(--paper-0);
+  background: var(--navy);
+  color: var(--navy-text);
 }
 .nav-inner {
   max-width: var(--max-w);
@@ -264,68 +296,101 @@ h2 { font-size: 18px; }
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  min-height: 48px;
+  min-height: 56px;
   flex-wrap: wrap;
 }
 .nav .brand {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  text-decoration: none;
-  background: var(--mark);
-  color: var(--mark-ink);
-  padding: 2px 6px;
+  display: inline-flex; align-items: center; gap: 10px;
+  text-decoration: none; color: #fff;
 }
-.nav .links { display: flex; gap: var(--s-2); }
+.brand-mark { width: 32px; height: 32px; flex: none; display: block; border-radius: 8px; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand-name { font-size: 17px; font-weight: 700; letter-spacing: 0.01em; }
+.brand-org { font-size: 12px; font-weight: 600; color: var(--gold); }
+.nav .links { display: flex; gap: var(--s-1); }
 .nav .links a {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  font-weight: 500;
   text-decoration: none;
-  color: var(--text-3);
-  padding: var(--s-3) var(--s-2);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  color: var(--navy-text);
+  padding: 9px 12px;
+  border-radius: 10px;
 }
-@media (hover: hover) { .nav .links a:hover { color: var(--text-1); } }
-.nav .links a.active { color: var(--text-1); border-bottom-color: var(--mark); }
+.nav .links .tab-icon { width: 20px; height: 20px; flex: none; opacity: 0.9; }
+@media (hover: hover) { .nav .links a:hover { color: #fff; background: var(--navy-2); } }
+.nav .links a.active { color: #fff; background: var(--mark); }
+.nav .links a:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 /* A small count on a tab (new replies on Calls). */
 .tab-badge {
   display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
-  margin-left: 6px; border-radius: 9px; background: var(--ok); color: var(--paper-0);
+  margin-left: 6px; border-radius: 9px; background: var(--gold); color: var(--navy);
   font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
 }
 .tab-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .spacer { flex: 1; }
-.nav .ws { font-size: 13px; color: var(--text-3); font-style: italic; }
+.nav .ws { font-size: 13px; color: var(--navy-text); }
+
+@media (min-width: 721px) {
+  #root:has(> .nav) { padding-left: var(--side-w); }
+  .nav {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 950;
+    width: var(--side-w);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .nav-inner {
+    flex: 1; width: 100%; max-width: none; margin: 0;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--s-1);
+    padding: 20px 12px 14px;
+  }
+  .nav .brand { padding: 0 8px 18px; }
+  .nav .links { flex-direction: column; gap: 2px; }
+  .nav .acct { margin-top: var(--s-3); }
+}
 
 /* Account menu: the avatar opens name · campaign · Team · Sign out */
 .acct { position: relative; }
 .acct-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; padding: 0; margin: 0 calc(-1 * var(--s-2));
-  background: none; border: 0; border-radius: 50%; cursor: pointer; color: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 44px; height: 44px; padding: 0; margin: 0 calc(-1 * var(--s-2));
+  background: none; border: 0; border-radius: 999px; cursor: pointer; color: inherit;
+  font: inherit;
 }
-.acct-btn[aria-expanded='true'] .avatar { background: var(--mark); color: var(--mark-ink); border-color: var(--mark-deep); }
-@media (hover: hover) { .acct-btn:hover .avatar { background: var(--mark); color: var(--mark-ink); border-color: var(--mark-deep); } }
-.acct-btn:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.acct-btn__who { display: none; }
+.acct-btn[aria-expanded='true'] .avatar { background: var(--mark); color: var(--mark-ink); }
+@media (hover: hover) { .acct-btn:hover .avatar { background: var(--mark); color: var(--mark-ink); } }
+.acct-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 0; }
+@media (min-width: 721px) {
+  .acct-btn {
+    width: 100%; height: auto; margin: 0; padding: 8px; justify-content: flex-start;
+    border-radius: 10px; text-align: left;
+  }
+  @media (hover: hover) { .acct-btn:hover { background: var(--navy-2); } }
+  .acct-btn__who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+  .acct-btn__name { color: #fff; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acct-btn__role { color: var(--navy-text); font-size: 12px; text-transform: capitalize; opacity: 0.8; }
+}
 .acct-panel {
-  position: absolute; right: calc(-1 * var(--s-2)); top: calc(100% + 4px); z-index: 960;
+  position: absolute; right: calc(-1 * var(--s-2)); top: calc(100% + 6px); z-index: 960;
   min-width: 220px; max-width: calc(100vw - 2 * var(--s-4));
-  background: var(--paper-0); border: var(--border-ink); border-radius: var(--r-card);
-  box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.15);
+  background: var(--paper-0); color: var(--text-1);
+  border: var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-2);
   padding: var(--s-1) 0;
+  overflow: hidden;
+}
+@media (min-width: 721px) {
+  .acct-panel { top: auto; bottom: calc(100% + 6px); left: 0; right: auto; }
 }
 .acct-panel[hidden] { display: none; }
 .acct-who { display: flex; flex-direction: column; padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--rule); }
-.acct-name { font-weight: 600; overflow-wrap: anywhere; }
-.acct-ws { font-size: 13px; color: var(--text-3); font-style: italic; overflow-wrap: anywhere; }
+.acct-name { font-weight: 700; overflow-wrap: anywhere; }
+.acct-ws { font-size: 13px; color: var(--text-3); overflow-wrap: anywhere; }
 .acct-item {
-  display: flex; align-items: center; width: 100%; min-height: 48px; padding: 0 var(--s-4);
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  display: flex; align-items: center; width: 100%; min-height: 46px; padding: 0 var(--s-4);
+  font-family: var(--font-sans); font-size: 14.5px; font-weight: 500; letter-spacing: 0; text-transform: none;
   color: var(--text-1); text-decoration: none; text-align: left;
   background: none; border: 0; cursor: pointer;
 }
@@ -333,41 +398,43 @@ h2 { font-size: 18px; }
 @media (hover: hover) { .acct-item:hover { background: var(--paper-1); } }
 .acct-item.active { box-shadow: inset 3px 0 0 var(--mark); }
 .acct-item:disabled { opacity: 0.5; cursor: default; }
-.acct-item:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.acct-item:focus-visible { outline: 2px solid var(--mark); outline-offset: -2px; }
 .acct-confirm { padding: var(--s-3) var(--s-4); border-top: 1px solid var(--rule); }
 .acct-confirm p { margin: 0 0 var(--s-3); font-size: 14px; }
 .acct-confirm__row { display: flex; gap: var(--s-2); flex-wrap: wrap; }
 .btn.acct-danger { color: var(--danger); border-color: var(--danger); }
-@media (hover: hover) { .btn.acct-danger:hover { background: var(--danger); color: var(--paper-0); } }
+@media (hover: hover) { .btn.acct-danger:hover { background: var(--danger); color: #fff; } }
 
 .avatar {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  width: 30px; height: 30px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  width: 34px; height: 34px; flex: none;
   border-radius: 50%;
-  border: var(--border-ink);
+  border: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-1);
-  background: var(--paper);
+  color: var(--navy);
+  background: var(--gold);
 }
 
-.page { max-width: var(--max-w); margin: 0 auto; padding: var(--s-5) var(--s-4) var(--s-7); }
+.page { max-width: var(--max-w); margin: 0 auto; padding: var(--s-6) var(--s-5) var(--s-7); }
 /* A screen narrower than the column (e.g. the call card) sits centred in it. */
 .page > * { margin-inline: auto; }
 /* The map is the one full-width screen. */
 .page:has(> .map-page) { max-width: none; }
-.page-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); flex-wrap: wrap; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-5); flex-wrap: wrap; }
+.page-head h1 { margin: 0; }
 
 /* ── 11. Hero stat ── */
 .stat-hero { margin: var(--s-4) 0 var(--s-5); }
 .stat-hero .amount {
-  font-size: 56px;
-  font-weight: 600;
+  font-size: 52px;
+  font-weight: 800;
   line-height: 1.05;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .stat-hero .sub { color: var(--text-3); margin-top: var(--s-1); }
@@ -376,17 +443,17 @@ h2 { font-size: 18px; }
 .picker { position: relative; }
 .picker-list {
   position: absolute;
-  top: calc(100% + 2px);
+  top: calc(100% + 4px);
   left: 0; right: 0;
   background: var(--paper-0);
-  border: var(--border-ink);
+  border: var(--border);
   border-radius: var(--r-ctrl);
   z-index: 20;
   max-height: 260px;
   overflow-y: auto;
   margin: 0; padding: 0;
   list-style: none;
-  box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.15);
+  box-shadow: var(--shadow-2);
 }
 .picker-list li { padding: var(--s-2) var(--s-3); cursor: pointer; border-bottom: 1px solid var(--rule); }
 .picker-list li:last-child { border-bottom: 0; }
@@ -403,33 +470,46 @@ h2 { font-size: 18px; }
   margin: var(--s-3) 0;
   padding: var(--s-3) var(--s-4);
   border-left: 3px solid var(--rule-2);
+  border-radius: 0 var(--r-ctrl) var(--r-ctrl) 0;
   background: var(--paper-0);
   color: var(--text-2);
   font-size: 16px;
 }
 .error {
   color: var(--danger);
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
   margin: var(--s-2) 0;
 }
 .list-plain { list-style: none; margin: 0; padding: 0; }
 .list-plain li { padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); display: flex; gap: var(--s-3); align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
 .list-plain li:last-child { border-bottom: 0; }
-.footer-row { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--rule-2); flex-wrap: wrap; }
-.auth-page { max-width: 380px; margin: 10vh auto 0; padding: 0 var(--s-4); }
-.auth-page .brand {
-  font-family: var(--font-mono);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  background: var(--mark);
-  color: var(--mark-ink);
-  padding: 2px 6px;
-  display: inline-block;
-  margin-bottom: var(--s-4);
+.footer-row { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--rule); flex-wrap: wrap; }
+
+/* Sign in / set up: a white card on a navy night sky. */
+html:has(.auth-page) { min-height: 100%; background: var(--navy) radial-gradient(circle at 30% 15%, #2b2a7c, var(--navy) 62%) fixed; }
+html:has(.auth-page) body { background: transparent; }
+.auth-page {
+  max-width: 420px; margin: 9vh auto var(--s-6); padding: 28px;
+  background: var(--paper-0); color: var(--text-1);
+  border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
-.check { font-family: var(--font-mono); }
+@media (max-width: 460px) { .auth-page { margin: 6vh var(--s-3) var(--s-5); padding: 22px; } }
+.auth-page .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 18px; font-weight: 800; letter-spacing: 0.01em; text-transform: none;
+  color: var(--text-1); background: none; padding: 0;
+  margin-bottom: var(--s-5);
+}
+.auth-page .brand::before {
+  content: ''; width: 36px; height: 36px; flex: none;
+  background: url('/icon.svg') center / contain no-repeat;
+  border-radius: 10px;
+}
+.auth-page .brand-org { color: var(--mark); }
+.auth-page h1 { font-size: 24px; }
+.check { font-family: var(--font-sans); }
 .done { text-decoration: line-through; color: var(--text-4); }
 
 /* ── 11. Mobile tab bar (field mode) ── */
@@ -437,45 +517,50 @@ h2 { font-size: 18px; }
 @media (max-width: 720px) {
   .nav .links { display: none; }
   .nav .ws { display: none; }
-  .nav-inner { min-height: 52px; }
+  .nav-inner { min-height: 56px; }
+  .brand-mark { width: 30px; height: 30px; }
   /* Clear the tab bar; the full-bleed map cancels exactly 64px itself. */
-  .page { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .page { padding: var(--s-5) var(--s-4) calc(92px + env(safe-area-inset-bottom)); }
   .page:has(> .map-page) { padding-bottom: 64px; }
-  /* Labels big enough to read at arm's length: 12px untracked mono, darker
-     than other micro-labels. A tab is at least as wide as its label
-     (minmax(min-content, 1fr) — "OUTREACH" ≈ 58px takes a little from the
-     shorter ones), so all seven desk tabs fit a 360px phone whole, with an
-     8px gutter at each end. */
+  /* A tab is at least as wide as its label (minmax(min-content, 1fr) —
+     "Outreach" takes a little from the shorter ones), so all seven desk
+     tabs fit a 360px phone whole, with an 8px gutter at each end. */
   .tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
     display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr));
-    background: var(--paper-0); border-top: 1px solid var(--ink);
-    padding: 0 var(--s-2) env(safe-area-inset-bottom);
+    gap: 2px;
+    background: var(--navy);
+    padding: 6px var(--s-2) calc(6px + env(safe-area-inset-bottom));
   }
   .tabbar a {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    min-width: 0; min-height: 58px; padding: 6px 0 5px;
-    font-family: var(--font-mono); font-size: 12px; line-height: 1.2; letter-spacing: 0; text-transform: uppercase;
-    text-decoration: none; color: var(--text-2); text-align: center;
-    border-top: 3px solid transparent; margin-top: -1px;
+    min-width: 0; min-height: 54px; padding: 5px 3px 4px;
+    font-family: var(--font-sans); font-size: 11.5px; font-weight: 500; line-height: 1.2; letter-spacing: 0; text-transform: none;
+    text-decoration: none; color: var(--navy-text); text-align: center;
+    border-radius: 10px;
     -webkit-tap-highlight-color: transparent;
   }
   .tabbar .tab-icon { width: 22px; height: 22px; flex: none; }
   .tabbar .tab-iconwrap { position: relative; display: inline-flex; }
   .tabbar .tab-badge { position: absolute; top: -6px; right: -12px; margin: 0; }
   .tabbar .tab-label { display: block; white-space: nowrap; }
-  .tabbar a.active { color: var(--text-1); border-top-color: var(--mark); font-weight: 700; }
-  .tabbar a.active .tab-icon { stroke-width: 2.2; }
-  .tabbar a:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -3px; }
+  .tabbar a.active { color: #fff; background: var(--navy-2); font-weight: 700; }
+  .tabbar a.active .tab-icon { stroke-width: 2.2; color: var(--gold); }
+  .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
   /* Volunteers: four tabs, so everything is bigger. */
-  .tabbar[data-count='4'] a { min-height: 64px; font-size: 14px; letter-spacing: 0.02em; gap: 4px; }
+  .tabbar[data-count='4'] a { min-height: 60px; font-size: 13.5px; gap: 4px; }
   .tabbar[data-count='4'] .tab-icon { width: 26px; height: 26px; }
 }
-/* Very narrow phones (≤ 359px): seven 11px labels still fit whole. */
+/* Eight desk tabs (Website): a little tighter on small phones, labels whole. */
+@media (max-width: 400px) {
+  .tabbar[data-count='8'] { gap: 0; padding-left: var(--s-1); padding-right: var(--s-1); }
+  .tabbar[data-count='8'] a { font-size: 10.5px; padding-left: 2px; padding-right: 2px; }
+}
+/* Very narrow phones (≤ 359px): seven 10.5px labels still fit whole. */
 @media (max-width: 359px) {
   .tabbar { padding-left: var(--s-1); padding-right: var(--s-1); }
-  .tabbar a { font-size: 11px; }
-  .tabbar[data-count='4'] a { font-size: 13px; }
+  .tabbar a { font-size: 10.5px; }
+  .tabbar[data-count='4'] a { font-size: 12.5px; }
 }
 
 /* ── 13. Touch: fingers, not cursors ──
@@ -510,8 +595,8 @@ h2 { font-size: 18px; }
   min-height: 48px;
   margin: 0;
   padding: var(--s-2) var(--disclose-x, 0);
-  font-family: var(--font-serif);
-  font-size: 16px;
+  font-family: var(--font-sans);
+  font-size: 15.5px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: normal;
@@ -539,7 +624,7 @@ h2 { font-size: 18px; }
 .disclose[aria-expanded='true'] { color: var(--text-1); }
 .disclose[aria-expanded='true']::after { background: linear-gradient(currentColor, currentColor) center / 14px 2px no-repeat; }
 @media (hover: hover) { .disclose:hover { color: var(--text-1); } }
-.disclose:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.disclose:focus-visible { outline: 2px solid var(--mark); outline-offset: -2px; }
 .disclose:disabled { opacity: 0.5; cursor: default; }
 .disclose--inline {
   display: inline-flex;

@@ -42,7 +42,7 @@
 .obx-scrim {
   position: fixed; inset: 0; z-index: 970;
   border: 0; padding: 0; margin: 0;
-  background: rgba(12, 12, 12, 0.18);
+  background: rgba(15, 23, 51, 0.18);
   cursor: default;
 }
 
@@ -56,9 +56,9 @@
   max-height: min(70vh, 560px);
   overflow-y: auto;
   background: var(--paper-0);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--rule-2);
   border-radius: var(--r-card);
-  box-shadow: 0 10px 30px rgba(12, 12, 12, 0.18);
+  box-shadow: 0 10px 30px rgba(15, 23, 51, 0.18);
   color: var(--text-1);
 }
 

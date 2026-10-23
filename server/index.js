@@ -11,8 +11,17 @@ import publicRoutes from './routes/public.js';
 import { getDb } from './db/client.js';
 import { EXTENSIONS } from './ext.js';
 import { startJobRunner, stopJobRunner } from './lib/jobs.js';
+import { siteApp, siteOnItsOwnHost } from './ext/website/site.js';
 
 export const app = new Hono();
+
+// The public website (ext/website). On a host listed in STARBASE_SITE_HOSTS
+// (imaginesurrey.ca, www.imaginesurrey.ca) the site answers at / and its own
+// paths (/news, /events, /store, /about …); everything the staff app and the
+// public forms use (/api, /assets, /login, /e, /d, /n, …) falls through to
+// the routes below, unchanged. Every host also has the site at /site.
+app.use('*', siteOnItsOwnHost);
+app.route('/site', siteApp);
 
 app.get('/api/health', (c) => c.json({ ok: true, service: 'starbase' }));
 app.route('/api/auth', authRoutes);

@@ -17,12 +17,13 @@
  *               src/offline.js handles knocks), public form pages
  *               (/p /n /v /u /e /d), feature pages served to people
  *               outside the app (/r receipts, /lu ladder unsubscribe,
- *               /o and /c email open and click tracking) and /join links,
+ *               /o and /c email open and click tracking), /join links, and
+ *               the public website (/site, /site-assets, /media),
  *               or any non-GET.
  *
  * Bump VERSION to throw every cache away on the next activate.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `starbase-shell-${VERSION}`;
 const ASSETS = `starbase-assets-${VERSION}`;
 const TILES = `starbase-tiles-${VERSION}`;
@@ -37,7 +38,7 @@ const TILE_MAX = 1500;
 const TILE_FRESH_MS = 7 * 24 * 3600 * 1000; // re-check a cached tile after a week
 const TILE_AT = 'x-starbase-cached-at';
 
-const NEVER = /^\/(?:api|p|n|v|u|e|d|r|lu|o|c|join)(?:\/|$)/;
+const NEVER = /^\/(?:api|p|n|v|u|e|d|r|lu|o|c|join|site|site-assets|media)(?:\/|$)/;
 const isTileHost = (host) => host === 'tile.openstreetmap.org' || host.endsWith('.tile.openstreetmap.org');
 
 // The configured provider, from a template like
@@ -241,12 +242,12 @@ async function syncAssets(html) {
 function offlinePage() {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Starbase — offline</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#0c0c0c;
-font-family:Georgia,serif;padding:24px;box-sizing:border-box}main{max-width:340px}
-p.e{font:500 10px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#6f6c63}
-button{font:11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;background:#ffd400;
-color:#141100;border:1px solid #d9ad00;padding:12px 18px;min-height:44px;cursor:pointer}
-@media (prefers-color-scheme:dark){body{background:#141310;color:#ece9df}p.e{color:#98948a}}</style></head>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f5fa;color:#161a2e;
+font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:24px;box-sizing:border-box}main{max-width:340px}
+p.e{font:600 12px system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5d6481}
+button{font:600 15px system-ui,sans-serif;background:#6d4aff;
+color:#fff;border:0;border-radius:10px;padding:12px 18px;min-height:44px;cursor:pointer}
+@media (prefers-color-scheme:dark){body{background:#0d1226;color:#e8eaf6}p.e{color:#9aa1c2}}</style></head>
 <body><main><p class="e">Starbase · offline</p><h1>No signal yet</h1>
 <p>Open Starbase once with signal and it will work offline after that.</p>
 <button type="button" onclick="location.reload()">Try again</button></main></body></html>`;
@@ -311,7 +312,7 @@ async function trimTiles(cache) {
 // Paper-coloured stand-in for a street we've never loaded: pins still sit on
 // it, and it isn't a broken image.
 function blankTile() {
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eeeadc"/><path d="M0 .5H256M.5 0V256" stroke="#c9c3aa" stroke-width="1"/></svg>';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#e8ebf3"/><path d="M0 .5H256M.5 0V256" stroke="#d3d8e6" stroke-width="1"/></svg>';
   return new Response(svg, { status: 200, headers: { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' } });
 }
 

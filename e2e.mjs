@@ -55,18 +55,16 @@ const api = (path, body) => page.evaluate(async ([p, b]) => {
 const act = (name, input) => api(`/actions/${name}`, input);
 const go = async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); };
 
-// ── 1. Signup: Imagine Surrey, municipal by default ──
+// ── 1. First-run setup: always Imagine Surrey, BC municipal ──
 await go('/signup');
 await page.fill('#su-name', 'Trevor Loke');
 await page.fill('#su-email', 'trevor@imaginesurrey.example');
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey');
-const jur = await page.$eval('#su-jurisdiction', (el) => el.value);
-check('signup defaults to BC municipal', jur === 'bc-municipal', jur);
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 const me = (await api('/auth/me')).json;
 check('workspace created with slug', me.workspace.slug === 'imagine-surrey', me.workspace.slug);
+check('setup is BC municipal', me.workspace.jurisdiction === 'bc-municipal', me.workspace.jurisdiction);
 check('brand reads Starbase', /starbase/i.test(await text()));
 
 // ── 2. Seed Surrey doors (Newton) ──

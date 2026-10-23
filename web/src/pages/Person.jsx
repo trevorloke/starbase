@@ -85,19 +85,22 @@ const SIGN_SHORT = { lawn: 'Lawn', large: 'Large', billboard: 'Billboard' };
 const SIGN_BUTTONS = [...SIGN_KINDS].sort((a, b) => SIGN_ORDER.indexOf(a.code) - SIGN_ORDER.indexOf(b.code));
 
 const stripHandle = (h) => String(h || '').trim().replace(/^@/, '');
+// Reddit names are often written u/name (or /u/name).
+const stripReddit = (h) => stripHandle(h).replace(/^\/?u\//i, '');
 const isUrl = (h) => /^https?:\/\//i.test(String(h || '').trim());
 const SOCIAL_URL = {
   facebook: (h) => `https://facebook.com/${stripHandle(h)}`,
   instagram: (h) => `https://instagram.com/${stripHandle(h)}`,
   x: (h) => `https://x.com/${stripHandle(h)}`,
   tiktok: (h) => `https://tiktok.com/@${stripHandle(h)}`,
+  reddit: (h) => `https://reddit.com/user/${stripReddit(h)}`,
   youtube: (h) => `https://youtube.com/@${stripHandle(h)}`,
   linkedin: (h) => `https://linkedin.com/in/${stripHandle(h)}`,
   bluesky: (h) => `https://bsky.app/profile/${stripHandle(h)}`,
   other: (h) => (isUrl(h) ? h.trim() : null),
 };
 const socialHref = (platform, handle) => (isUrl(handle) ? handle.trim() : SOCIAL_URL[platform]?.(handle) ?? null);
-const PLATFORM_LABEL = { x: 'X', tiktok: 'TikTok', youtube: 'YouTube', linkedin: 'LinkedIn', bluesky: 'Bluesky' };
+const PLATFORM_LABEL = { x: 'X', tiktok: 'TikTok', reddit: 'Reddit', youtube: 'YouTube', linkedin: 'LinkedIn', bluesky: 'Bluesky' };
 const platformLabel = (p) => PLATFORM_LABEL[p] || p.charAt(0).toUpperCase() + p.slice(1);
 
 // ─────────────────────────────────────────────────────────────────────────────

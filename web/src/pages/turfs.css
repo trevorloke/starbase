@@ -67,7 +67,7 @@
   min-height: 48px;
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-1);
   text-decoration: underline;
@@ -79,7 +79,7 @@
 .walk-notes { margin: 0; font-size: 15px; color: var(--text-2); white-space: pre-line; }
 .walk-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); margin: 0; }
 .walk-stats > div { border-top: 1px solid var(--rule); padding-top: 6px; }
-.walk-stats dt { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.walk-stats dt { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); }
 .walk-stats dd { margin: 2px 0 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 20px; }
 
 .walk-outbox { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
@@ -155,7 +155,7 @@
 .walk-door__names { font-size: 13px; font-weight: 400; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Chips stay on one line (a household shows "2 rated", not a pile of chips) */
 .walk-door__chips { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 4px; flex-shrink: 0; }
-.walk-door__chips .chip { font-size: 10px; }
+.walk-door__chips .chip { font-size: 11.5px; }
 .chip.walk-rated { color: var(--text-2); }
 
 .walk-panel { padding: var(--s-2) var(--s-3) 0; border-top: 1px solid var(--rule); }
@@ -202,10 +202,10 @@
   z-index: 60;
   animation: walk-dock-in 160ms ease-out;
 }
-.walk-dock .btn.walk-next__btn { box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.22); }
+.walk-dock .btn.walk-next__btn { box-shadow: var(--shadow-2); }
 /* At an open door nobody has answered yet: "Skip → next", quiet — the
    rating buttons are what to tap there. */
-.btn.walk-next__btn--skip { background: var(--paper-0); color: var(--text-1); border: 1px solid var(--ink); }
+.btn.walk-next__btn--skip { background: var(--paper-0); color: var(--text-1); border: 1px solid var(--rule-2); }
 @media (hover: hover) { .btn.walk-next__btn--skip:hover { background: var(--paper-1); } }
 .walk-next__btn--skip .walk-next__label { font-weight: 600; }
 @keyframes walk-dock-in { from { transform: translate(-50%, 12px); opacity: 0.5; } to { transform: translateX(-50%); opacity: 1; } }

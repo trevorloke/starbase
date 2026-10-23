@@ -11,6 +11,7 @@ import { ACTIONS, httpError } from '../actions/index.js';
 import { tierFor } from '../lib/tiers.js';
 import { emailConfigured, textConfigured } from '../lib/notify.js';
 import { RECORD_TYPES } from '@starbase/shared/registry';
+import { SOCIAL_PLATFORMS } from '@starbase/shared/canvass';
 import dataRoutes from './data.js';
 import { pointInPolygon, groupDoors, walkOrder } from '../lib/geo.js';
 import { checkCap } from '../lib/cap.js';
@@ -48,7 +49,7 @@ const DESK_ONLY_READS = [
   /^\/api\/records\//, /^\/api\/export$/, /^\/api\/events$/, /^\/api\/audit\/verify$/,
   /^\/api\/subscriptions$/, /^\/api\/blasts$/, /^\/api\/petitions\/[^/]+\/signatures$/,
   /^\/api\/pledges$/, /^\/api\/campaign-events\/[^/]+\/rsvps$/, /^\/api\/members$/,
-  /^\/api\/contacts$/,
+  /^\/api\/contacts$/, /^\/api\/shifts\/board$/,
   // Feature modules name their own desk-only reads (paths under /api).
   ...EXTENSIONS.flatMap((e) => (e.deskOnlyReads || []).map(pathPattern)),
 ];
@@ -123,7 +124,7 @@ app.get('/persons', async (c) => {
   const tag = (c.req.query('tag') || '').trim();
   const rating = (c.req.query('rating') || '').trim();
   const role = (c.req.query('role') || '').trim();
-  const has = (c.req.query('has') || '').trim();       // phone | email | location
+  const has = (c.req.query('has') || '').trim();       // phone | email | location | a social platform
   const limit = Math.min(Number(c.req.query('limit')) || 25, 2000);
   const like = `%${q.replace(/[%_\\]/g, (m) => '\\' + m)}%`;
   const params = [ctx.workspaceId, q, like, limit];
@@ -133,9 +134,14 @@ app.get('/persons', async (c) => {
   // record (Shifts and Today look themselves up that way).
   if (vol) params.push(loginEmail(ctx));
   const ownEmail = `($5::text <> '' and lower(p.email) = $5::text)`;
+  // A social handle matches with or without its @ (or Reddit's u/).
+  params.push(`%${q.replace(/^@|^\/?u\//i, '').replace(/[%_\\]/g, (m) => '\\' + m)}%`);
+  const handleLike = `$${params.length}`;
   let where = `p.workspace_id = $1 and p.deleted_at is null
        and ($2 = '' or p.name ilike $3 or p.address ilike $3 or p.phone ilike $3
-            or (p.email ilike $3${vol ? ` and ${ownEmail}` : ''}))`;
+            or (p.email ilike $3${vol ? ` and ${ownEmail}` : ''})
+            or exists (select 1 from jsonb_each_text(p.socials) s
+                       where regexp_replace(s.value, '^@|^/?u/', '', 'i') ilike ${handleLike}))`;
   if (tag && vol && isMoneyTag(tag)) where += ' and false';
   else if (tag) { params.push(JSON.stringify(tag)); where += ` and p.tags @> $${params.length}::jsonb`; }
   // rating: one code (4B), a comma list for a band (1,2 · 4,4D,4B,4F,4N,4C),
@@ -158,6 +164,10 @@ app.get('/persons', async (c) => {
   if (has === 'phone') where += ' and p.phone is not null';
   if (has === 'email') where += vol ? ` and ${ownEmail}` : ' and p.email is not null';
   if (has === 'location') where += ' and p.lat is not null and p.lng is not null';
+  if (SOCIAL_PLATFORMS.includes(has)) {
+    params.push(has);
+    where += ` and coalesce(trim(p.socials ->> $${params.length}), '') <> ''`;
+  }
   // Features' own filters (?field= — ext/fields), on the same params.
   const more = { params, where: '' };
   await runHooks('personsWhere', c.get('db'), ctx, c.req.query(), more);
@@ -457,6 +467,50 @@ app.get('/shifts', async (c) => {
     [ctx.workspaceId, loginEmail(ctx)],
   );
   return c.json({ shifts: rows.map((s) => ({ ...s, mine: !!s.mine })) });
+});
+
+// The desk's week board: every shift starting in [from, to) with who's on
+// it (assigned or confirmed — names only), and the people to drag in:
+// anyone holding a volunteer role or signed in as a volunteer (matched by
+// email). The client sorts shifts into Morning / Afternoon / Evening
+// (shared/dayparts.js). At most 15 days per read.
+app.get('/shifts/board', async (c) => {
+  const ctx = c.get('ctx');
+  const db = c.get('db');
+  const from = new Date(c.req.query('from') || '');
+  const to = new Date(c.req.query('to') || '');
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from || to - from > 15 * 864e5) {
+    return c.json({ error: 'from and to: a week, as timestamps' }, 400);
+  }
+  const shifts = (await db.query(
+    `select s.id, s.title, s.role, s.location, s.starts_at, s.ends_at, s.capacity,
+            (select count(*)::int from shift_assignments a where a.shift_id = s.id and a.status in ('assigned', 'confirmed')) as filled
+     from shifts s where s.workspace_id = $1 and s.deleted_at is null and s.starts_at >= $2 and s.starts_at < $3
+     order by s.starts_at, s.title limit 500`,
+    [ctx.workspaceId, from.toISOString(), to.toISOString()],
+  )).rows;
+  const ids = shifts.map((s) => s.id);
+  const assignments = ids.length ? (await db.query(
+    `select a.id, a.shift_id, a.person_id, a.status, p.name
+     from shift_assignments a join persons p on p.id = a.person_id
+     where a.workspace_id = $1 and a.shift_id = any($2::uuid[]) and a.status in ('assigned', 'confirmed')
+     order by lower(p.name)`,
+    [ctx.workspaceId, ids],
+  )).rows : [];
+  const people = (await db.query(
+    `select p.id, p.name,
+            coalesce((select json_agg(distinct v.role) from volunteer_roles v
+                      where v.person_id = p.id and v.workspace_id = p.workspace_id), '[]'::json) as roles
+     from persons p
+     where p.workspace_id = $1 and p.deleted_at is null and (
+       exists (select 1 from volunteer_roles v where v.person_id = p.id and v.workspace_id = p.workspace_id)
+       or exists (select 1 from memberships m join users u on u.id = m.user_id
+                  where m.workspace_id = p.workspace_id and m.role = 'volunteer'
+                    and p.email is not null and lower(u.email) = lower(p.email)))
+     order by lower(p.name) limit 1000`,
+    [ctx.workspaceId],
+  )).rows.map((p) => ({ ...p, roles: typeof p.roles === 'string' ? JSON.parse(p.roles) : p.roles }));
+  return c.json({ shifts, assignments, people });
 });
 
 app.get('/shifts/:id', async (c) => {

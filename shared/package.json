@@ -6,6 +6,8 @@
   "exports": {
     "./registry": "./registry.js",
     "./canvass": "./canvass.js",
-    "./scale": "./scale.js"
+    "./scale": "./scale.js",
+    "./dayparts": "./dayparts.js",
+    "./markdown": "./markdown.js"
   }
 }

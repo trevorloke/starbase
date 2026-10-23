@@ -18,9 +18,19 @@ button, no paragraphs, everything else one tap away.
 | **Money** | Gifts (one-time / monthly) with the entity-keyed cap engine; donor tiers; filings |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
 | **Outreach** | Newsletter + press-release blasts, petitions, and the Imagine Surrey website bridge |
+| **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
 
 Volunteers get four tabs — **Today · Map · Calls · Shifts** — plus *Signs to
 put up* for sign crews; desk-only addresses send them back to Today.
+
+**Setup is one-time.** Starbase runs for Imagine Surrey only: the first
+person to open `/signup` sets it up (name, email, password) and becomes its
+manager — the workspace is *Imagine Surrey*, `bc-municipal`
+(`server/lib/org.js`). After that sign-up is closed (`POST /api/auth/signup`
+→ 403) and Sign in hides the link; `GET /api/auth/setup` says which
+(`{ open, organization }`). `STARBASE_OPEN_SIGNUP=1` keeps it open — the
+test suite sets it, since tests make several workspaces to check they stay
+apart.
 
 Managers reach **Team** from the account menu (their initials): invite volunteers and staff by email
 (or copy the join link and text it), set roles, see pending invites. Invitees
@@ -83,7 +93,7 @@ than a week after they came off is refused. Contacts are door, phone, text or
 
 ## Website bridge (Imagine Surrey)
 
-Public pages, no login, linkable from the site (workspace slug from signup):
+Public pages, no login, linkable from the site (workspace slug from setup: `imagine-surrey`):
 
 - `/p/:slug/:petition` — petition signature page
 - `/n/:slug` — newsletter signup · `/u/:subscriptionId` — unsubscribe (the link
@@ -102,6 +112,49 @@ POST /api/public/:slug/signup
 
 Every public submission lands in the directory as a Person (deduped by email),
 tagged by source, and is appended to the event log under a system actor.
+
+## Website (imaginesurrey.ca) and store
+
+Starbase hosts the campaign's public website, edited from **Website** in
+the staff app (managers and staff; treasurers see Orders):
+**Pages · News · Events · Team · Store · Orders · Settings** and *View site*.
+
+- **Where it answers.** `/site/…` on every host, and `/` on the hosts in
+  `STARBASE_SITE_HOSTS` (e.g. `imaginesurrey.ca,www.imaginesurrey.ca`). On
+  those hosts the site claims `/`, `/news`, `/events`, `/our-team`,
+  `/store`, `/cart`, `/sitemap.xml`, `/robots.txt` and any one-word path that
+  isn't the staff app's (`/about`, `/platform` …); `/api`, `/assets`, `/login`
+  and the other app screens, and the public forms (`/e /d /n /v /p /u`) work
+  unchanged on every host. The site belongs to the oldest workspace (or
+  `STARBASE_SITE_WORKSPACE=<slug>`).
+- **Content.** Pages and news are Markdown with a toolbar and Preview,
+  rendered by one small safe renderer (`shared/markdown.js`: everything is
+  escaped first; links only http(s), mailto or site paths). Drafts never
+  show. Pictures upload from the admin (shrunk to 2000px / ~1.5 MB in the
+  browser; JPG, PNG or WebP checked by their bytes; 2 MB at most), are kept
+  in the database and served at `/media/:id`, cached a year. Events are the
+  campaign's own events (the same list as Outreach), with a picture added.
+  New sites start with draft pages full of placeholder words — the
+  campaign writes the real ones. Settings holds the title, hero, the two
+  brand colours (`--primary`, `--accent`), contact, social links, the menu
+  order and the **Authorized by** line (election ads carry one).
+- **Look.** Server-rendered HTML with per-page title, description and Open
+  Graph tags, a sitemap and robots.txt; one stylesheet
+  (`server/ext/website/assets/site.css`). The public forms (RSVP, donate,
+  newsletter, volunteer, petition, unsubscribe) wear the same header and footer.
+- **Store.** Products with photos, CAD prices, optional sizes with their own
+  stock. The cart lives in the browser; prices and stock are always worked
+  out on the server. Checkout is Stripe Checkout with inline prices (nothing
+  to set up per product in Stripe), shipping (fee in Settings) or pick-up.
+  The Stripe webhook (`checkout.session.completed`) marks the order paid
+  once — retries change nothing — takes the items out of stock and puts the
+  buyer in People tagged `store`; `checkout.session.expired` cancels an
+  unpaid one. Without `STRIPE_SECRET_KEY` the store shows its items and
+  says *Online store opens soon*. Ask your financial agent how merchandise
+  sales are reported.
+
+Code: `server/ext/website/` (site.js pages and host routing, store.js,
+actions.js, api.js), admin screens `web/src/pages/Website*.jsx`.
 
 ## Sending email and text
 

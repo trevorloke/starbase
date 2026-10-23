@@ -1,0 +1,318 @@
+/* Shifts → Week: the slot board (ShiftsBoard.jsx). Classes are sb-*; every
+   colour, radius, space and font is a token from app.css, so the board
+   follows whatever the app's look is. */
+
+/* The board wants room: the page goes wider than a list screen. */
+.page:has(.sb) { max-width: 1400px; }
+.ops-page:has(> .sb) { max-width: none; }
+
+.sb { --sb-gap: var(--s-2); }
+.ops-seg.sb-views { max-width: 280px; }
+
+/* Week: ‹ Oct 26 – Nov 1 › · This week */
+.sb-week { display: flex; align-items: center; gap: var(--s-1) var(--s-2); flex-wrap: wrap; margin: 0 0 var(--s-3); }
+.sb-week__label { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--text-1); min-width: 9em; text-align: center; }
+.btn.sb-nav { min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.btn.sb-today { min-height: 44px; }
+
+.sb-ask { margin: 0 0 var(--s-3); padding: var(--s-3) var(--s-4); background: var(--paper-0); border: 1px solid var(--warn); border-radius: var(--r-card); }
+.sb-new { margin: 0 0 var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.sb-new__fields { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: var(--s-3); }
+.sb-new .field { margin: 0; }
+
+/* Tray left, board right; on a phone the tray sits on top. */
+.sb-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: var(--s-4); align-items: start; }
+
+.sb-tray {
+  position: sticky;
+  top: var(--s-3);
+  max-height: calc(100vh - 2 * var(--s-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  min-width: 0;
+}
+.sb-tray[data-hot] { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger); }
+.sb-tray__find { display: flex; flex-direction: column; gap: var(--s-2); }
+.sb-tray .input { min-height: 40px; width: 100%; }
+.sb-tray__drop { margin: 0; font-size: 13px; color: var(--danger); }
+.sb-tray__none { margin: 0; }
+.sb-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); overflow-y: auto; min-height: 0; }
+
+/* A person you can pick up */
+.sb-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--s-1) var(--s-3);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text-1);
+  background: var(--paper-1);
+  border: 1px solid transparent;
+  border-radius: var(--r-ctrl);
+  cursor: grab;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.sb-person[data-extra] { background: var(--paper-0); border-color: var(--rule); border-style: dashed; }
+.sb-person:hover { border-color: var(--rule-2); }
+.sb-person[aria-pressed='true'] { background: var(--mark-soft); border-color: var(--mark); }
+.sb-person:focus-visible, .sb-chip__name:focus-visible, .sb-shift__head:focus-visible, .sb-add:focus-visible, .sb-day:focus-visible {
+  outline: 2px solid var(--mark); outline-offset: 1px;
+}
+.sb-person:disabled { cursor: default; opacity: 0.6; }
+.sb-person__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sb-person__n {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  background: var(--paper-0);
+  border-radius: 999px;
+  padding: 0 7px;
+  line-height: 18px;
+}
+
+/* "Sam — tap a shift or a slot · Take off · Cancel" */
+.sb-hand {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  flex-wrap: wrap;
+  margin: 0 0 var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--mark-soft);
+  border: 1px solid var(--mark);
+  border-radius: var(--r-ctrl);
+  font-size: 14px;
+  color: var(--text-1);
+}
+.sb-hand > span { flex: 1 1 auto; min-width: 0; }
+.btn.sb-hand__btn { min-height: 36px; }
+
+/* ── The grid: a corner + day headings, then one row per part of day ── */
+.sb-grid {
+  display: grid;
+  grid-template-columns: 76px repeat(var(--sb-cols, 7), minmax(0, 1fr));
+  gap: var(--sb-gap);
+}
+.sb-grid[data-narrow] { grid-template-columns: minmax(0, 1fr); }
+.sb-row { display: contents; }
+.sb-colhead {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: var(--s-1) 0;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-colhead__wd { font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.sb-colhead[data-today] { border-bottom-color: var(--mark); }
+.sb-colhead[data-today] .sb-colhead__wd { color: var(--mark-deep); }
+.sb-rowhead {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: var(--s-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.sb-rowhead small, .sb-cell__part small { font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--text-4); }
+
+/* A slot: that day's morning, afternoon or evening */
+.sb-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  min-height: 96px;
+  padding: var(--s-1);
+  background: var(--paper-1);
+  border: 1px solid transparent;
+  border-radius: var(--r-ctrl);
+  transition: background-color 0.1s, border-color 0.1s;
+}
+.sb-cell[data-past] { opacity: 0.6; }
+.sb[data-dragging] .sb-cell { border-color: var(--rule-2); border-style: dashed; }
+.sb-cell[data-hot], .sb[data-dragging] .sb-cell[data-hot] { background: var(--mark-soft); border-color: var(--mark); border-style: solid; }
+.sb-cell__part { font-size: 13px; font-weight: 600; color: var(--text-2); padding: var(--s-1) var(--s-1) 0; }
+
+/* A shift in a slot */
+.sb-shift {
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-ctrl);
+  min-width: 0;
+  overflow: hidden;
+}
+.sb-shift[data-hot] { border-color: var(--mark); box-shadow: 0 0 0 2px var(--mark); }
+.sb-shift[data-hot][data-full] { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger); }
+.sb-shift__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--s-1) var(--s-2);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sb-shift__head:hover { background: var(--paper-1); }
+.sb-shift__title { font-size: 13px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; color: var(--text-1); }
+.sb-shift__meta { display: flex; justify-content: space-between; gap: var(--s-1); flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.sb-cap { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-2); }
+.sb-cap[data-full] { color: var(--ok); }
+
+/* Name chips: tap/drag the name to move; × takes them off */
+.sb-chips { list-style: none; margin: 0; padding: 0 var(--s-1) var(--s-1); display: flex; flex-wrap: wrap; gap: 3px; }
+.sb-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  min-width: 0;
+  background: var(--mark-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sb-chip[data-temp] { opacity: 0.6; }
+.sb-chip__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 4px 3px 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-1);
+  background: none;
+  border: 0;
+  cursor: grab;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.sb-chip__name[aria-pressed='true'] { background: var(--mark); color: var(--mark-ink); }
+.sb-chip__x {
+  flex: none;
+  width: 24px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-3);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sb-chip__x:hover { color: var(--danger); }
+.sb-chip__x:disabled, .sb-chip__name:disabled { cursor: default; }
+
+/* "+ Add shift" in an empty slot — quiet until hovered */
+.sb-add {
+  flex: 1 1 auto;
+  min-height: 40px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-4);
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: var(--r-ctrl);
+  cursor: pointer;
+}
+.sb-cell:hover .sb-add, .sb-add:focus-visible { color: var(--text-2); border-color: var(--rule-2); }
+.sb-add:disabled { cursor: default; }
+
+/* The name that follows the pointer while dragging */
+.sb-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  pointer-events: none;
+  padding: var(--s-1) var(--s-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mark-ink);
+  background: var(--mark);
+  border-radius: 999px;
+  box-shadow: var(--shadow-2);
+  white-space: nowrap;
+}
+.sb-ghost[hidden] { display: none; }
+.sb[data-dragging], .sb[data-dragging] * { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+
+/* Day switcher (phones): Mon 26 · Tue 27 … */
+.sb-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 0 0 var(--s-2); }
+.sb-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 48px;
+  padding: var(--s-1) 0;
+  font: inherit;
+  color: var(--text-2);
+  background: var(--paper-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-ctrl);
+  cursor: pointer;
+}
+.sb-day__wd { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.sb-day__n { font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
+.sb-day[data-today] .sb-day__wd { color: var(--mark-deep); font-weight: 700; }
+.sb-day[aria-pressed='true'] { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
+.sb-day[aria-pressed='true'] .sb-day__wd { color: var(--mark-ink); }
+.sb-day__dot { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+
+@media (max-width: 1100px) {
+  .sb-layout { grid-template-columns: 170px minmax(0, 1fr); gap: var(--s-3); }
+  .sb-grid:not([data-narrow]) { grid-template-columns: 58px repeat(var(--sb-cols, 7), minmax(0, 1fr)); gap: 4px; }
+}
+
+/* Phone: tray on top as a strip of names that scrolls sideways (inside
+   itself — never the page), then the day switcher, then three slots. */
+@media (max-width: 720px) {
+  .sb-layout { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+  .sb-tray { position: static; max-height: none; padding: var(--s-2); }
+  .sb-tray__find { flex-direction: row; }
+  .sb-tray__find .sb-search { flex: 1 1 auto; min-width: 0; }
+  .sb-tray__find .sb-role { flex: 0 0 auto; width: auto; max-width: 48%; }
+  .sb-people { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; overscroll-behavior-x: contain; }
+  .sb-people > li { flex: none; }
+  .sb-person { width: auto; min-height: 44px; max-width: 70vw; }
+  .sb-cell { min-height: 72px; }
+  .sb-shift__title { font-size: 15px; }
+  .sb-shift__meta { font-size: 12px; }
+  .sb-chip__name { font-size: 14px; padding: 6px 6px 6px 12px; }
+  .sb-chip__x { width: 36px; font-size: 18px; }
+  .sb-add { min-height: 48px; font-size: 14px; }
+  .sb-new__fields { grid-template-columns: minmax(0, 1fr); }
+  .sb-hand { top: var(--s-1); }
+  .sb-hand > span { flex-basis: 100%; }
+}
+
+/* A toast with no Undo keeps even padding */
+.toast.ops-toast.sb-toast[data-plain] { padding-right: var(--s-4); }

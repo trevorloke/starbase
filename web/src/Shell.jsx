@@ -1,8 +1,8 @@
 // App chrome. The nav is the handful of things each role actually does:
-//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Money · Signs · Outreach
+//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Money · Signs · Outreach · Website
 //   volunteer:                        Today · Map · Calls · Shifts
-// Top bar on desktop, a big-label tab bar on phones (field mode lives on /map):
-// every label whole at 390px, never cut off ("OUTREACH", not "OUTRE…").
+// A navy sidebar on desktop, a top bar plus a big-label tab bar on phones
+// (field mode lives on /map): every label whole at 360px, never cut off.
 // One account menu (the avatar) holds the name, the campaign, Team (managers)
 // and Sign out. Keyboard: 'n' anywhere → log a gift (desk roles).
 // Calls carries a small count of new replies to your texts (volunteers; the
@@ -44,6 +44,7 @@ const ICONS = {
   money: <><circle cx="12" cy="12" r="8.5" /><path d="M14.8 9.2c-.5-.9-1.5-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2s1.2 1.6 2.8 1.9 2.8.8 2.8 2.1-1.2 2.1-2.8 2.1c-1.3 0-2.4-.5-2.9-1.5M12 6v12" /></>,
   signs: <><rect x="4" y="4" width="16" height="10" rx="1" /><path d="M12 14v7M9 21h6" /></>,
   outreach: <><path d="M4 10v4h3l7 4.5v-13L7 10H4z" /><path d="M17 9.5a3.5 3.5 0 0 1 0 5M19.2 7a7 7 0 0 1 0 10" /></>,
+  website: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z" /></>,
 };
 const Icon = ({ name }) => (
   <svg className="tab-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
@@ -60,6 +61,7 @@ const NAV_DESK = [
   { to: '/money',    label: 'Money',    icon: 'money' },
   { to: '/signs',    label: 'Signs',    icon: 'signs' },
   { to: '/outreach', label: 'Outreach', icon: 'outreach' },
+  { to: '/website',  label: 'Website',  icon: 'website' },
 ];
 // Volunteers request signs at the door card, so Signs isn't a tab for them.
 const NAV_VOLUNTEER = [
@@ -212,6 +214,11 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
       <button type="button" ref={btnRef} className="acct-btn" aria-expanded={open} aria-controls={panelId}
         aria-label={`Account — ${me.user.name}`} onClick={() => (open ? close(false) : setOpen(true))}>
         <span className="avatar" aria-hidden="true">{initials(me.user.name)}</span>
+        {/* Name and role beside the avatar in the desktop sidebar (hidden on phones). */}
+        <span className="acct-btn__who" aria-hidden="true">
+          <span className="acct-btn__name">{me.user.name}</span>
+          <span className="acct-btn__role">{me.role}</span>
+        </span>
       </button>
       <div className="acct-panel" id={panelId} hidden={!open}>
         <div className="acct-who">
@@ -418,9 +425,15 @@ function SignedInShell({ me }) {
     <>
       <header className="nav" ref={headerRef}>
         <div className="nav-inner">
-          <NavLink to="/" className="brand">Starbase</NavLink>
+          <NavLink to="/" className="brand" aria-label={`Starbase — ${me.workspace.name}`}>
+            <img className="brand-mark" src="/icon.svg" alt="" width="32" height="32" />
+            <span className="brand-text">
+              <span className="brand-name">Starbase</span>
+              <span className="brand-org">{me.workspace.name}</span>
+            </span>
+          </NavLink>
           <nav className="links" aria-label="Main">
-            {nav.map((n) => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}{badge(n)}</NavLink>)}
+            {nav.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{badge(n)}</NavLink>)}
           </nav>
           <span className="spacer" />
           <AccountMenu me={me} signingOut={signingOut} confirmLeft={confirmLeft}

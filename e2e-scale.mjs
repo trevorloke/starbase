@@ -12,7 +12,7 @@
 // (volunteer); volunteers never see the screen or its link; sign-out
 // forgets the phone's copy; the books verify.
 //
-//   STARBASE_DATA=memory PORT=4212 node server/index.js &
+//   STARBASE_OPEN_SIGNUP=1 STARBASE_DATA=memory PORT=4212 node server/index.js &
 //   BASE=http://127.0.0.1:4212 SHOTS=/tmp/scale node e2e-scale.mjs
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -99,7 +99,6 @@ await D.go('/signup');
 await page.fill('#su-name', 'Riley Manager');
 await page.fill('#su-email', `riley+${tag}@scale.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey');
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 

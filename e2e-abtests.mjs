@@ -72,7 +72,7 @@ createServer(async (req, res) => {
   res.end('ok');
 }).listen(${CONTROL}, '127.0.0.1');
 `);
-const env = { ...process.env, STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS_EVERY_MS: '500' };
+const env = { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS_EVERY_MS: '500' };
 delete env.RESEND_API_KEY;
 delete env.STARBASE_PUBLIC_URL;
 const server = spawn(process.execPath, ['--import', pathToFileURL(STUB).href, 'server/index.js'], {
@@ -136,7 +136,6 @@ await go(page, '/signup');
 await page.fill('#su-name', 'Avery Desk');
 await page.fill('#su-email', 'avery@abtests.example');
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey');
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 for (let i = 0; i < 60; i += 1) await act('subscription.add', { email: `reader${i}@example.org`, name: `Reader ${i}` });

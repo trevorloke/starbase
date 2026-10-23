@@ -1,8 +1,9 @@
-// Sign in: email, password, one button.
+// Sign in: email, password, one button. The first-run setup link shows only
+// until Imagine Surrey is set up (after that, people join by invite).
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { apiPost } from '../api.js';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost } from '../api.js';
 
 // Big, thumb-sized controls (auth pages load before any page stylesheet).
 const AUTH_INPUT = { minHeight: 48, fontSize: 16 };
@@ -11,6 +12,7 @@ const AUTH_BUTTON = { width: '100%', minHeight: 52, fontSize: 13, marginTop: 'va
 export default function Login() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const setup = useQuery({ queryKey: ['auth-setup'], queryFn: () => apiGet('/auth/setup'), retry: false });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -34,6 +36,7 @@ export default function Login() {
   return (
     <div className="auth-page">
       <span className="brand">Starbase</span>
+      <span className="brand-org">Imagine Surrey</span>
       <h1>Sign in</h1>
       <form onSubmit={submit}>
         <div className="field">
@@ -51,8 +54,12 @@ export default function Login() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <hr className="hairline" />
-      <p className="muted"><Link to="/signup">Start a new campaign</Link></p>
+      {setup.data?.open && (
+        <>
+          <hr className="hairline" />
+          <p className="muted"><Link to="/signup">Set up Starbase for Imagine Surrey</Link></p>
+        </>
+      )}
     </div>
   );
 }

@@ -50,7 +50,7 @@ export default function Join() {
       <div className="auth-page">
         <span className="brand">Starbase</span>
         <h1>{inv.error.status === 404 ? 'Invite not found' : 'Can’t open this invite'}</h1>
-        <p className="muted">{inv.error.status === 404 ? 'Ask your campaign for a new link.' : inv.error.message}</p>
+        <p className="muted">{inv.error.status === 404 ? 'Ask an Imagine Surrey manager for a new link.' : inv.error.message}</p>
       </div>
     );
   }

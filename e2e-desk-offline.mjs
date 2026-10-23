@@ -43,7 +43,7 @@ let server = null;
 let BASE = process.env.BASE;
 if (!BASE) {
   server = spawn(process.execPath, ['server/index.js'], {
-    env: { ...process.env, STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' },
+    env: { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise((resolve, reject) => {
@@ -133,7 +133,6 @@ const signupAs = async (page, D, name, email) => {
   await page.fill('#su-name', name);
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
-  await page.fill('#su-workspace', 'Imagine Surrey');
   await page.click('button[type="submit"]');
   await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 };

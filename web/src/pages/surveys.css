@@ -2,8 +2,8 @@
    segmented rows from shifts.css; only what's new lives here. */
 .sv-label {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-3);
 }

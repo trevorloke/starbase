@@ -32,6 +32,10 @@
 // the signal is back; until then the screen says "Not sent yet", never
 // "You're on", with "Take back" on a "Count me in" still waiting.
 //
+// Desk: "Week · List" under the title. Week (the default) is the slot board
+// (ShiftsBoard.jsx) — drag people into each day's morning, afternoon or
+// evening. The choice is remembered on this device.
+//
 // Also exports two small building blocks:
 //   <PersonPicker onPick={(person) => …} />   type-ahead over /api/persons?q= (Signs uses it)
 //   <FillBar filled={n} capacity={m} />       filled / capacity meter
@@ -43,7 +47,13 @@ import { apiGet, action } from '../api.js';
 import { queueAction, undoQueued, useOutbox } from '../offline.js';
 import { phoneCopy, showingCopy, useKeepCopy } from '../components/OfflineCache.js';
 import { NeedsSignal, NeedsSignalLine, useOnline } from '../components/NoSignal.jsx';
+import ShiftsBoard from './ShiftsBoard.jsx';
 import './shifts.css';
+
+// The desk's last choice of List or Week, on this device only.
+const VIEW_KEY = 'starbase:shifts-view';
+const savedView = () => { try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'week'; } catch { return 'week'; } };
+const saveView = (v) => { try { localStorage.setItem(VIEW_KEY, v); } catch { /* private window */ } };
 
 // This phone's own "Count me in" / "Can't make it" still waiting to send, by shift.
 const waitingSelf = (items, shiftId) => [...items].reverse().find((i) => i.state === 'pending'
@@ -573,12 +583,23 @@ function ShiftRow({ s, now, past = false, mine = false, waiting = false }) {
 function ShiftList({ canDesk, me }) {
   const [params, setParams] = useSearchParams();
   const showNew = canDesk && params.get('new') === '1';
+  // A link with ?week= opens the week board.
+  const [view, setView] = useState(() => (!canDesk ? 'list' : params.get('week') ? 'week' : savedView()));
+  // The board needs signal (it's live, not kept on the phone): with none,
+  // the list and its offline copy show instead, and the board comes back
+  // with the signal. The saved choice stays as it was.
+  const online = useOnline();
+  const week = canDesk && !showNew && online && view === 'week';
+  const pickView = (v) => {
+    setView(v);
+    saveView(v);
+    if (v === 'list' && params.get('week')) setParams({}, { replace: true });
+  };
   const [showPast, setShowPast] = useState(false);
   const shifts = useQuery({ queryKey: ['shifts'], queryFn: () => apiGet('/shifts'), ...phoneCopy(me, 'shifts') });
   useKeepCopy(me, 'shifts', shifts);
   const listCopy = showingCopy(shifts);
   const outbox = useOutbox();
-  const online = useOnline();
   const all = shifts.data?.shifts ?? [];
   // s.mine is the answer; the email lookup runs only for a server without it.
   const legacy = !canDesk && shifts.isSuccess && all.some((s) => typeof s.mine !== 'boolean');
@@ -605,6 +626,16 @@ function ShiftList({ canDesk, me }) {
       {canDesk && !showNew && !online && <NeedsSignalLine>New shifts need signal</NeedsSignalLine>}
 
       {showNew && <ShiftForm onClose={() => setParams({})} />}
+
+      {canDesk && !showNew && (
+        <div className="ops-seg ops-filter sb-views" role="group" aria-label="Show">
+          <button type="button" aria-pressed={week} onClick={() => pickView('week')} disabled={!online}
+            title={online ? undefined : 'The week board needs signal'}>Week</button>
+          <button type="button" aria-pressed={!week} onClick={() => pickView('list')}>List</button>
+        </div>
+      )}
+      {week ? <ShiftsBoard me={me} /> : (
+      <>
 
       {listCopy && <p className="ops-copy"><span className="chip obx-copy">Offline copy</span></p>}
       {shifts.isPending && <p className="muted">{shifts.fetchStatus === 'paused' ? 'Offline — loads with signal' : 'Loading…'}</p>}
@@ -634,6 +665,8 @@ function ShiftList({ canDesk, me }) {
             </ul>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -70,6 +70,30 @@ test('tags, socials, and address fields round-trip; tag filter works', async () 
   assert.equal(bogus.status, 400, 'unknown platform rejected');
 });
 
+test('social handles: Instagram, X, TikTok and Reddit; search by handle; has=<platform>', async () => {
+  const p = await c.createPerson('Handle Holder', {
+    socials: { instagram: '@surrey.walks', x: 'surreywalks', tiktok: '@walks_surrey', reddit: 'u/SurreyWalker' },
+  });
+  const plain = await c.createPerson('Handle None');
+  const prof = await c.get(`/api/persons/${p.id}`);
+  assert.equal(prof.json.person.socials.reddit, 'u/SurreyWalker');
+  // Found by handle, with or without the @ or u/, any case.
+  for (const q of ['surrey.walks', '@surrey.walks', 'walks_surrey', 'SurreyWalker', 'u/surreywalker', '@surreywalker']) {
+    const r = await c.get(`/api/persons?q=${encodeURIComponent(q)}`);
+    assert.ok(r.json.persons.some((x) => x.id === p.id), `search ${q}`);
+    assert.ok(!r.json.persons.some((x) => x.id === plain.id), `search ${q} skips people without it`);
+  }
+  for (const platform of ['instagram', 'x', 'tiktok', 'reddit']) {
+    const r = await c.get(`/api/persons?has=${platform}`);
+    assert.ok(r.json.persons.some((x) => x.id === p.id), `has=${platform}`);
+    assert.ok(!r.json.persons.some((x) => x.id === plain.id), `has=${platform} skips the rest`);
+  }
+  // A cleared handle no longer counts.
+  await c.action('person.update', { id: p.id, socials: { instagram: '', x: 'surreywalks' } });
+  const ig = await c.get('/api/persons?has=instagram');
+  assert.ok(!ig.json.persons.some((x) => x.id === p.id), 'blank handle is not "has"');
+});
+
 test('rating filter: one code, a band (comma list), and unrated', async () => {
   const rate = async (name, code) => {
     const p = await c.createPerson(name);

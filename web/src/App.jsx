@@ -38,6 +38,7 @@ const RatingScale = lazy(() => import('./pages/RatingScale.jsx'));
 const Fields = lazy(() => import('./pages/Fields.jsx'));
 const MyPeople = lazy(() => import('./pages/MyPeople.jsx'));
 const PeopleConnected = lazy(() => import('./pages/PeopleConnected.jsx'));
+const Website = lazy(() => import('./pages/Website.jsx'));
 import Join from './pages/Join.jsx';
 
 // No answer from the server (wifi with no internet, a restart) is not a
@@ -108,6 +109,10 @@ export default function App() {
           <Route path="/surveys/:id" element={<SurveysEdit />} />
           <Route path="/surveys/:id/results" element={<SurveysResults />} />
           <Route path="/rating-scale" element={<RatingScale />} />
+          {/* The public website and store (managers, staff; treasurers see Orders). */}
+          <Route path="/website" element={<Website />} />
+          <Route path="/website/:tab" element={<Website />} />
+          <Route path="/website/:tab/:id" element={<Website />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -37,7 +37,7 @@
 .offline-strip__text {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   font-weight: 500;
 }

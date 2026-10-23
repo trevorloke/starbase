@@ -19,7 +19,7 @@
 // profile). The books still verify. New screens are measured (visible words,
 // yellow buttons, sideways scroll, 48px targets).
 //
-//   STARBASE_DATA=memory PORT=4103 STARBASE_JOBS_EVERY_MS=1000 node server/index.js &
+//   STARBASE_OPEN_SIGNUP=1 STARBASE_DATA=memory PORT=4103 STARBASE_JOBS_EVERY_MS=1000 node server/index.js &
 //   BASE=http://127.0.0.1:4103 SHOTS=/tmp/ladders node e2e-ladders.mjs
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -121,7 +121,6 @@ await D.go('/signup');
 await page.fill('#su-name', 'Ladder Organizer');
 await page.fill('#su-email', `organizer.${tag}@example.org`);
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey Ladders');
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 const me = (await D.api('/auth/me')).json;

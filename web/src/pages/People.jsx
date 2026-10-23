@@ -333,7 +333,7 @@ export function MoreMenu({ items, label = 'More' }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Filters: read from / write to the URL
 // ─────────────────────────────────────────────────────────────────────────────
-const HAS_LABEL = { phone: 'Has phone', email: 'Has email', location: 'On map' };
+const HAS_LABEL = { phone: 'Has phone', email: 'Has email', location: 'On map', instagram: 'Has Instagram', x: 'Has X', tiktok: 'Has TikTok', reddit: 'Has Reddit' };
 const FILTER_KEYS = ['q', 'tag', 'rating', 'role', 'field']; // field: <field id>:<value> (profile fields)
 
 // Rating filter: three bands + Unrated on the first look; who an opposed
@@ -497,6 +497,10 @@ function FilterSheet({ f, update, tagOptions, onClose, phone }) {
               {chip('has', 'phone', 'Phone')}
               {chip('has', 'email', 'Email')}
               {chip('has', 'location', 'Map pin')}
+              {chip('has', 'instagram', 'Instagram')}
+              {chip('has', 'x', 'X')}
+              {chip('has', 'tiktok', 'TikTok')}
+              {chip('has', 'reddit', 'Reddit')}
             </div>
           </fieldset>
           {tagOptions.length > 0 && (

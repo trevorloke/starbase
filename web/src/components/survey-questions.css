@@ -6,9 +6,9 @@
 .sv-field__label { min-width: 0; }
 .sv-field__chip {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--warn);
@@ -22,8 +22,8 @@
 .sv-field__survey {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-3);
 }

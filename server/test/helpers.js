@@ -3,6 +3,11 @@
 import { _resetDbForTest, getDb } from '../db/client.js';
 import { app } from '../index.js';
 
+// Sign-up is one-time setup in the product (Imagine Surrey only); tests make
+// many workspaces to check they stay apart, so keep it open here.
+// setup.test.js turns it off to test the real thing.
+process.env.STARBASE_OPEN_SIGNUP = '1';
+
 export const freshDb = async () => {
   _resetDbForTest();
   return getDb();

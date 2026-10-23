@@ -39,6 +39,8 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET   # from the Stripe webhook pointing at /api/public/stripe/webhook
         sync: false
+      - key: STARBASE_SITE_HOSTS     # the public website's domains, e.g. imaginesurrey.ca,www.imaginesurrey.ca
+        sync: false
 
 databases:
   - name: starbase-db

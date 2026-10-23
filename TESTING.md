@@ -18,8 +18,11 @@ npm run build
 npm start                 # → http://localhost:3200
 ```
 
-1. Open **http://localhost:3200/signup**, create the *Imagine Surrey*
-   workspace (jurisdiction defaults to **BC — Municipal**).
+1. Open **http://localhost:3200/signup** and set up Starbase for Imagine
+   Surrey: your name, email and password. You become its manager (the
+   workspace is *Imagine Surrey*, **BC — Municipal**). Setup works once:
+   after that `/signup` says it's already set up, and everyone else joins
+   by invite from **Team**. (To start over, delete `data/`.)
 2. On **Today**, press **Load sample data**: 52 Surrey voters across Newton,
    Whalley, Guildford, Fleetwood, Cloverdale, and South Surrey — with ratings,
    signs, donors, a shift, an event, a petition, and a Newton turf.
@@ -51,9 +54,13 @@ Postgres database (backups included).
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | SMS shift alerts; texting and calling from the app through the campaign's number | optional — without it, Calls opens the phone's own Messages and dialer |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | card donations | optional — without it the donate page takes **pledges** |
 
+| `STARBASE_SITE_HOSTS` | the public website's own domain(s), e.g. `imaginesurrey.ca,www.imaginesurrey.ca` — those hosts get the site at `/` | optional — without it the site is at `/site/` |
+
 For Stripe, add a webhook in the Stripe dashboard pointing at
 `https://<your address>/api/public/stripe/webhook` with events
-`checkout.session.completed` and `invoice.paid`. Use **test mode** keys
+`checkout.session.completed`, `invoice.paid` (donations) and
+`checkout.session.expired` (the store: abandoned checkouts). The store uses
+the same key and webhook as donations. Use **test mode** keys
 (`sk_test_…`) and card `4242 4242 4242 4242` while testing.
 
 For Twilio, set the number's incoming messages webhook to
@@ -63,6 +70,33 @@ and turns calling off.
 
 Any Docker host works too: `docker build -t starbase .` then run with
 either `DATABASE_URL=postgres://…` or a volume at `/data`.
+
+### The public website (imaginesurrey.ca)
+
+Starbase serves the campaign's whole public site from the same service.
+
+1. Render → `starbase` service → **Settings → Custom Domains** → add
+   `imaginesurrey.ca` and `www.imaginesurrey.ca` (keep
+   `starbase.imaginesurrey.ca` for the staff app). At the domain registrar,
+   add the DNS records Render shows (an `A`/`ALIAS` record for the bare
+   domain, a `CNAME` for `www`). Render issues the certificates.
+2. Set `STARBASE_SITE_HOSTS=imaginesurrey.ca,www.imaginesurrey.ca`. Those
+   hosts now show the site at `/`; the staff app stays on its own host.
+   `/api`, `/e`, `/d`, `/n`, `/v`, `/p`, `/u` and the app's own screens
+   keep working on every host. Before DNS is ready, the site is at
+   `https://starbase.imaginesurrey.ca/site/`.
+3. Edit everything in the staff app → **Website** (managers and staff):
+   Pages · News · Events · Team · Store · Orders · Settings. Fill
+   **Settings → Authorized by** before the site goes public.
+
+What to try: publish a page (drafts never show), post news with a cover
+picture, add an event with a picture (it's the same event list as
+Outreach → Events), add a team member, add a product with sizes and stock,
+then open the site on a phone. Without Stripe keys the store shows its
+items and the cart says *Online store opens soon*; with test keys, check
+out with card `4242 4242 4242 4242` and watch the order arrive under
+Website → Orders as *Paid*, its stock go down, and the buyer appear in
+People tagged `store`.
 
 ---
 

@@ -64,10 +64,17 @@ export const importRows = async (db, ctx, extras) => {
   // nothing to fill: its cells are passed over, the row still comes in.
   const offIds = new Set(all.filter((f) => f.retired_at).map((f) => f.id));
   const offNames = new Set(all.filter((f) => f.retired_at).map((f) => nameKey(f.name)));
-  // Blanks only: what is already filled in, person|field.
-  const filled = new Set((await db.query(
-    'select person_id, field_id from person_field_values where workspace_id = $1', [ws],
-  )).rows.map((r) => `${r.person_id}|${r.field_id}`));
+  // Blanks only: what is already filled in, person|field — read a person at a
+  // time, when a row first brings them a value (never the whole workspace).
+  const filled = new Set();
+  const read = new Set();
+  const readFilled = async (tx, personId) => {
+    if (read.has(personId)) return;
+    read.add(personId);
+    for (const r of (await tx.query(
+      'select field_id from person_field_values where workspace_id = $1 and person_id = $2', [ws, personId],
+    )).rows) filled.add(`${personId}|${r.field_id}`);
+  };
   extras.push({
     // → { value: [{ f, value }] } | { error } (the row is refused).
     check(raw) {
@@ -91,6 +98,7 @@ export const importRows = async (db, ctx, extras) => {
     // → the names of the fields it filled (or would, in the dry run).
     async apply(tx, personId, values, { write }, emit) {
       const names = [];
+      if (values?.length) await readFilled(tx, personId);
       for (const { f, value } of values || []) {
         const key = `${personId}|${f.id}`;
         if (filled.has(key)) continue;

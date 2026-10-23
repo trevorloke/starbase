@@ -1249,7 +1249,9 @@ export default function MapPage() {
     // left the sheet and map a fraction of a pixel under the tab bar.
     const h = (sel) => Math.ceil(document.querySelector(sel)?.getBoundingClientRect().height || 0);
     const measure = () => {
-      el.style.setProperty('--nav-h', `${h('.nav')}px`);
+      // On desktop the nav is the sidebar beside the map, not above it.
+      const side = window.matchMedia('(min-width: 721px)').matches;
+      el.style.setProperty('--nav-h', `${side ? 0 : h('.nav')}px`);
       el.style.setProperty('--tabbar-h', `${h('.tabbar')}px`);
       mapRef.current?.invalidateSize();
     };
@@ -1346,8 +1348,8 @@ export default function MapPage() {
     layer.clearLayers();
     if (mode !== 'draw') return;
     const pts = draft.points;
-    const line = { pane: 'turfDraft', color: '#0c0c0c', weight: 2.5, dashArray: '6 6', interactive: false };
-    if (pts.length >= 3) L.polygon(pts, { ...line, fillColor: '#0c0c0c', fillOpacity: 0.1 }).addTo(layer);
+    const line = { pane: 'turfDraft', color: '#161a2e', weight: 2.5, dashArray: '6 6', interactive: false };
+    if (pts.length >= 3) L.polygon(pts, { ...line, fillColor: '#161a2e', fillOpacity: 0.1 }).addTo(layer);
     else if (pts.length === 2) L.polyline(pts, line).addTo(layer);
     pts.forEach((p, i) => {
       if (i === 0) {
@@ -1361,7 +1363,7 @@ export default function MapPage() {
         }).on('click', () => onDraftStartRef.current?.()).addTo(layer);
       } else {
         L.circleMarker(p, {
-          pane: 'turfDraft', radius: 5, color: '#0c0c0c', weight: 2, fillColor: '#faf8f1', fillOpacity: 1, interactive: false,
+          pane: 'turfDraft', radius: 5, color: '#161a2e', weight: 2, fillColor: '#ffffff', fillOpacity: 1, interactive: false,
         }).addTo(layer);
       }
     });

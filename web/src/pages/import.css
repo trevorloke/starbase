@@ -88,7 +88,7 @@
   clip: rect(0 0 0 0);
 }
 .imp-drop__btn { pointer-events: none; }
-.imp-drop__or { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.imp-drop__or { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); }
 /* Phones and tablets can't drag a file in: just the button. (Phone width
    too, for browsers that don't report a coarse pointer.) */
 @media (pointer: coarse), (max-width: 560px) { .imp-drop__or { display: none; } }
@@ -204,7 +204,7 @@
   align-items: center;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-2);
 }

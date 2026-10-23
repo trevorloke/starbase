@@ -6,7 +6,8 @@
 //   GET/POST /e/:ws/:event      event page + RSVP
 //   GET/POST /d/:ws             donate (BC eligibility attestations; Stripe
 //                               Checkout when configured, else a pledge)
-//   POST     /api/public/stripe/webhook   payment confirmations → gifts
+//   POST     /api/public/stripe/webhook   payment confirmations → gifts, and
+//                                        the website store's paid orders
 //   POST     /api/public/:ws/signup   CORS-open JSON for the campaign website's
 //                                     own forms (kind: newsletter | volunteer | petition | rsvp)
 // Server-rendered HTML keeps these dead simple to link from the website;
@@ -24,6 +25,7 @@
 //   public.pledge     donate page pledge (/d)         pledge create
 //   stripe.checkout   card checkout opened for a pledge  pledge update
 //   stripe.payment    Stripe webhook                  pledge update, gift create
+//   store.payment / store.expire  Stripe webhook for website store orders
 import { Hono } from 'hono';
 import { getDb } from '../db/client.js';
 import { runAction, newId } from '../lib/events.js';
@@ -31,6 +33,13 @@ import { VOLUNTEER_ROLES, VOLUNTEER_ROLE_CODES } from '@starbase/shared/canvass'
 import { capFor, donorYearTotal } from '../lib/cap.js';
 import { logGift, campaignDay } from '../lib/gifts.js';
 import { stripeConfigured, createCheckoutSession, verifyStripeSignature } from '../lib/stripe.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { renderMarkdown } from '@starbase/shared/markdown';
+// The website's look and its store's webhook half (ext/website).
+import { loadChrome, layout, assetUrl, img, dateTile } from '../ext/website/layout.js';
+import { siteWorkspace } from '../ext/website/content.js';
+import { onSiteHost, originOf } from '../ext/website/hosts.js';
+import { applyStorePayment, expireStoreOrder } from '../ext/website/store.js';
 
 const app = new Hono();
 
@@ -48,68 +57,40 @@ const ipOf = (c) => c.req.header('x-forwarded-for')?.split(',')[0].trim() || c.r
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const settingsOf = (ws) => (typeof ws.settings === 'string' ? JSON.parse(ws.settings) : (ws.settings || {}));
 
-// One plain page for every public form: the campaign name big at the top,
-// one column, thumb-sized inputs and one big button. ws may be null (a link
-// that names no campaign): the page then carries no campaign name.
-const page = (ws, title, inner) => {
-  const site = ws ? settingsOf(ws).website : null;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>
-<style>
-  :root{--paper:#f8f6ef;--card:#fffdf7;--ink:#171410;--ink2:#5d5749;--rule:#d6d0bf;--mark:#f2c40f;--bad:#a83a2c}
-  @media(prefers-color-scheme:dark){:root{--paper:#15120c;--card:#1d1a13;--ink:#ece7da;--ink2:#a59e8c;--rule:#3a362a;--mark:#d9b60e;--bad:#e08a8a}}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.5 Georgia,'Times New Roman',serif}
-  main{max-width:520px;margin:0 auto;padding:28px 16px 56px}
-  .camp{font-size:30px;font-weight:700;line-height:1.1;margin:0 0 24px;padding-bottom:12px;border-bottom:4px solid var(--mark);overflow-wrap:anywhere}
-  h1{font-size:26px;line-height:1.2;margin:0 0 12px}
-  p{color:var(--ink2);margin:0 0 14px}
-  .big{font-size:20px;font-weight:700;color:var(--ink)}
-  .when{font-size:19px;font-weight:700;color:var(--ink);margin:0 0 4px}
-  form{margin-top:8px}
-  label,legend{display:block;font-size:16px;font-weight:700;color:var(--ink);margin:18px 0 6px;padding:0}
-  fieldset{border:0;margin:18px 0 0;padding:0;min-width:0}
-  legend{margin:0 0 6px}
-  input,textarea,select{display:block;width:100%;min-height:52px;font:inherit;font-size:18px;padding:12px 14px;border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:4px}
-  textarea{min-height:100px}
-  input:focus,textarea:focus,select:focus{outline:3px solid var(--mark);outline-offset:1px;border-color:var(--ink)}
-  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .amounts{grid-template-columns:1fr 1fr 1fr}
-  @media(max-width:360px){.checks{grid-template-columns:1fr}.amounts{grid-template-columns:1fr 1fr}}
-  .check{display:flex;gap:12px;align-items:center;min-height:52px;margin:8px 0;padding:10px 14px;border:1px solid var(--rule);border-radius:4px;background:var(--card);font-size:17px;font-weight:400;line-height:1.3;cursor:pointer}
-  .checks .check{margin:0}
-  .check input{width:24px;height:24px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--ink)}
-  .check:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-  .amounts .check{font-size:19px;font-weight:700}
-  .attest{align-items:flex-start}
-  .attest input{margin-top:1px}
-  .roles{display:grid;gap:8px}
-  .role .check{margin:0}
-  .gl{display:block;font-size:14px;color:var(--ink2)}
-  .rd{display:none;margin:6px 0 4px 38px}
-  .rd label{margin:0 0 4px;font-size:15px}
-  .role:has(input[name=roles]:checked) .rd{display:block}
-  @supports not selector(:has(a)){.rd{display:block}}
-  details{margin-top:8px}
-  summary{display:flex;align-items:center;min-height:52px;padding:10px 14px;border:1px dashed var(--rule);border-radius:4px;font-size:17px;font-weight:700;cursor:pointer;list-style:none}
-  summary::-webkit-details-marker{display:none}
-  summary::before{content:'+';font:700 20px/1 ui-monospace,Menlo,monospace;margin-right:12px}
-  details[open] summary::before{content:'−'}
-  details[open] summary{margin-bottom:8px}
-  summary:focus-visible{outline:3px solid var(--mark);outline-offset:1px}
-  button{display:block;width:100%;min-height:56px;margin-top:24px;font:700 15px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;background:var(--mark);color:#171410;border:0;padding:16px 22px;border-radius:4px;cursor:pointer}
-  button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-  .done{border:1px solid var(--rule);border-left:4px solid var(--mark);background:var(--card);padding:18px;margin-top:16px}
-  .err{border-left-color:var(--bad);margin:0 0 8px}
-  .note{font-size:15px;margin:16px 0 0}
-  footer{margin-top:40px;border-top:1px solid var(--rule);padding-top:12px;font:13px/1.6 ui-monospace,Menlo,monospace;color:var(--ink2)}
-  a{color:inherit}
-</style></head><body><main>
-${ws ? `<div class="camp">${esc(ws.name)}</div>` : ''}
+// Every public form sits inside the campaign's website (ext/website): its
+// header, footer and look, so RSVP, donate and signup feel like one site.
+// The form itself is one column in a white card, thumb-sized inputs and one
+// big button. ws may be null (a link that names no campaign): the page then
+// wears the site's own campaign. Async: c.html() takes the promise.
+// The request's host decides the site links' base (/ on the site's own
+// domain, /site elsewhere): a middleware below keeps it for page().
+const reqInfo = new AsyncLocalStorage();
+const page = async (ws, title, inner, { wide = false } = {}) => {
+  const db = await getDb();
+  const info = reqInfo.getStore() || { base: '/site', origin: '' };
+  const owner = ws?.id ? ws : await siteWorkspace(db);
+  const chrome = owner
+    ? await loadChrome(db, { ...owner, settings: settingsOf(owner) }, { base: info.base, origin: info.origin, canon: info.origin })
+    : null;
+  const main = `<div class="wrap ${wide ? 'narrow' : 'form-wrap'}" style="padding-top:clamp(28px,5vw,64px)"><div class="sheet form-card">
 ${inner}
-<footer>${site ? `<a href="${esc(site)}">← ${esc(site.replace(/^https?:\/\//, ''))}</a> · ` : ''}Powered by Starbase</footer>
-</main></body></html>`;
+</div></div>`;
+  if (!chrome) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title><link rel="stylesheet" href="${assetUrl('site.css')}"></head><body>${main}
+<footer class="sf"><div class="wrap sf-legal"><p>Powered by Starbase</p></div></footer></body></html>`;
+  }
+  // The tab says the page and the campaign, as it always has.
+  return layout(chrome, { title, path: info.path || '/', main, noindex: /^\/u\//.test(info.path || ''), backlink: settingsOf(owner).website })
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>`);
 };
+
+// Public form paths remember their request's base and origin for page().
+for (const path of ['/p/*', '/n/*', '/v/*', '/u/*', '/e/*', '/d/*']) {
+  app.use(path, (c, next) => reqInfo.run({
+    base: onSiteHost(c) ? '' : '/site', origin: originOf(c), path: c.req.path,
+  }, next));
+}
 
 const loadWs = async (db, slug) => {
   const ws = (await db.query(
@@ -126,31 +107,33 @@ const publicAction = async (db, ws, action, handler) =>
 
 // Create or reuse a person from a public submission (matched by email, else by
 // name+phone), tag them, and record the source. Runs as a system action.
-const upsertPersonFromPublic = async (db, ws, { name, email, phone, address }, tags) => {
+// upsertPersonTx is the same inside a caller's action (the store's paid
+// webhook matches its buyer this way, in the payment's own transaction).
+const upsertPersonTx = async (tx, emit, ws, { name, email, phone, address }, tags) => {
   const em = email ? email.toLowerCase() : null;
-  return publicAction(db, ws, 'public.signup', async (tx, emit) => {
-    let person = em
-      ? (await tx.query('select id, tags from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1', [ws.id, em])).rows[0]
-      : null;
-    if (!person && phone) {
-      person = (await tx.query('select id, tags from persons where workspace_id = $1 and phone = $2 and lower(name) = lower($3) and deleted_at is null limit 1', [ws.id, phone, name])).rows[0];
-    }
-    if (person) {
-      const existing = typeof person.tags === 'string' ? JSON.parse(person.tags) : (person.tags || []);
-      const merged = Array.from(new Set([...existing, ...tags]));
-      await tx.query('update persons set tags = $3, updated_at = now() where id = $1 and workspace_id = $2', [person.id, ws.id, JSON.stringify(merged)]);
-      emit('person', person.id, 'update', { tags: merged, source: 'public' });
-      return { id: person.id, created: false };
-    }
-    const id = newId();
-    await tx.query(
-      `insert into persons (id, workspace_id, name, email, phone, address, tags) values ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, ws.id, name, em, phone || null, address || null, JSON.stringify(tags)],
-    );
-    emit('person', id, 'create', { name, email: em, phone, address, tags, source: 'public' });
-    return { id, created: true };
-  });
+  let person = em
+    ? (await tx.query('select id, tags from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1', [ws.id, em])).rows[0]
+    : null;
+  if (!person && phone) {
+    person = (await tx.query('select id, tags from persons where workspace_id = $1 and phone = $2 and lower(name) = lower($3) and deleted_at is null limit 1', [ws.id, phone, name])).rows[0];
+  }
+  if (person) {
+    const existing = typeof person.tags === 'string' ? JSON.parse(person.tags) : (person.tags || []);
+    const merged = Array.from(new Set([...existing, ...tags]));
+    await tx.query('update persons set tags = $3, updated_at = now() where id = $1 and workspace_id = $2', [person.id, ws.id, JSON.stringify(merged)]);
+    emit('person', person.id, 'update', { tags: merged, source: 'public' });
+    return { id: person.id, created: false };
+  }
+  const id = newId();
+  await tx.query(
+    `insert into persons (id, workspace_id, name, email, phone, address, tags) values ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, ws.id, name, em, phone || null, address || null, JSON.stringify(tags)],
+  );
+  emit('person', id, 'create', { name, email: em, phone, address, tags, source: 'public' });
+  return { id, created: true };
 };
+const upsertPersonFromPublic = (db, ws, fields, tags) =>
+  publicAction(db, ws, 'public.signup', (tx, emit) => upsertPersonTx(tx, emit, ws, fields, tags));
 
 // Put an email on the newsletter list inside the caller's action. A new
 // address is a create; a returning one is re-subscribed (and takes the newly
@@ -505,11 +488,16 @@ app.get('/e/:ws/:slug', async (c) => {
   const tz = ws.settings.tz || 'America/Vancouver';
   const full = ev.capacity && ev.going >= ev.capacity;
   const past = new Date(ev.starts_at) < new Date();
+  // The picture the website gives this event (Website → Events), if any.
+  const pic = (await db.query('select image from site_event_extras where event_id = $1', [ev.id])).rows[0]?.image;
   return c.html(page(ws, ev.title, `
+${pic ? `<div class="ev-img">${img(pic, '', { eager: true })}</div>` : ''}
+<div class="ev" style="padding:0;margin-bottom:8px">${dateTile(ev.starts_at, tz)}<div>
 <h1>${esc(ev.title)}</h1>
 <p class="when">${esc(fmtWhen(ev.starts_at, tz))}</p>
 ${ev.location ? `<p>${esc(ev.location)}</p>` : ''}
-${ev.description ? `<p>${esc(ev.description).replace(/\n/g, '<br>')}</p>` : ''}
+</div></div>
+${ev.description ? `<div class="prose">${renderMarkdown(ev.description)}</div>` : ''}
 ${past ? '<div class="done">This event has already happened.</div>'
   : full ? '<div class="done">This event is full.</div>'
   : `<form method="post">
@@ -686,6 +674,7 @@ app.post('/api/public/stripe/webhook', async (c) => {
   }
   const evt = JSON.parse(raw);
   const obj = evt.data?.object || {};
+  if (obj.metadata?.store_order) return storeWebhook(c, evt, obj);
   const meta = obj.metadata?.pledge_id ? obj.metadata
     : obj.subscription_details?.metadata?.pledge_id ? obj.subscription_details.metadata
     : obj.parent?.subscription_details?.metadata?.pledge_id ? obj.parent.subscription_details.metadata
@@ -747,6 +736,28 @@ app.post('/api/public/stripe/webhook', async (c) => {
   });
   return c.json({ ok: true, ...result });
 });
+
+// The website's store (ext/website/store.js): a finished checkout pays its
+// order — once, however often Stripe retries (stripe_events, then the
+// order's own status) — takes the items out of stock and puts the buyer in
+// People (tag 'store'). An abandoned checkout cancels its unpaid order.
+//   store.payment   checkout.session.completed   store_order update, person create/update
+//   store.expire    checkout.session.expired     store_order update
+const storeWebhook = async (c, evt, obj) => {
+  const paid = evt.type === 'checkout.session.completed' || evt.type === 'checkout.session.async_payment_succeeded';
+  const expired = evt.type === 'checkout.session.expired';
+  if (!paid && !expired) return c.json({ ok: true, ignored: evt.type });
+  const db = await getDb();
+  const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [obj.metadata.workspace_id])).rows[0];
+  if (!ws) return c.json({ ok: true, ignored: 'unknown workspace' });
+  const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: paid ? 'store.payment' : 'store.expire' }, async (tx, emit) => {
+    const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
+      [evt.id, ws.id, evt.type]);
+    if (fresh.affectedRows === 0) return { duplicate: true };
+    return paid ? applyStorePayment(tx, emit, ws, obj, { upsertPersonTx }) : expireStoreOrder(tx, emit, ws, obj);
+  });
+  return c.json({ ok: true, ...result });
+};
 
 // ── Website bridge: JSON endpoint for the campaign site's own forms ──
 app.options('/api/public/:ws/signup', (c) => {

@@ -18,7 +18,7 @@
 // each new screen is measured (visible words, yellow buttons, sideways
 // scroll, 48px targets).
 //
-//   STARBASE_DATA=memory PORT=4213 node server/index.js &
+//   STARBASE_OPEN_SIGNUP=1 STARBASE_DATA=memory PORT=4213 node server/index.js &
 //   BASE=http://127.0.0.1:4213 SHOTS=/tmp/fields node e2e-fields.mjs
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -103,7 +103,6 @@ await D.go('/signup');
 await page.fill('#su-name', 'Riley Manager');
 await page.fill('#su-email', `riley+${tag}@fields.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
-await page.fill('#su-workspace', 'Imagine Surrey');
 await page.click('button[type="submit"]');
 await page.waitForURL(`${BASE}/`, { timeout: 15000 });
 const P = {};

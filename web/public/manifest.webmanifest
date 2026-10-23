@@ -1,13 +1,13 @@
 {
   "id": "/",
-  "name": "Starbase",
+  "name": "Starbase — Imagine Surrey",
   "short_name": "Starbase",
   "description": "Walk lists, door knocks and signs for the campaign — keeps working when you lose signal.",
   "start_url": "/map",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f1e8",
-  "theme_color": "#faf8f1",
+  "background_color": "#0f1733",
+  "theme_color": "#0f1733",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

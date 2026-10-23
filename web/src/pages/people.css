@@ -15,7 +15,7 @@
   padding: 0 16px;
   font-size: 12px;
 }
-.btn-sm { padding: 4px 9px; font-size: 10px; }
+.btn-sm { padding: 4px 9px; font-size: 11.5px; }
 
 /* ── Filters ── */
 .filters { display: flex; flex-direction: column; gap: var(--s-2); margin: var(--s-3) 0 var(--s-4); }
@@ -23,8 +23,8 @@
 .filter-group > .eyebrow { min-width: 52px; }
 .chip-btn {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   border: var(--border-2);
   border-radius: 999px;
@@ -91,7 +91,7 @@
   flex-wrap: wrap;
 }
 .contact-lines li:last-child { border-bottom: 0; }
-.contact-lines .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); min-width: 64px; }
+.contact-lines .k { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); min-width: 64px; }
 .contact-lines .v { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .contact-lines .v a { text-decoration: none; border-bottom: 1px dotted var(--rule-2); }
 .contact-lines .v a:hover { border-bottom-color: var(--ink); }
@@ -114,7 +114,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.03em;
   padding: 0 12px;
   cursor: pointer;
 }
@@ -190,13 +190,13 @@
   position: absolute; right: 0; top: calc(100% + 4px); z-index: 940;
   min-width: 200px;
   background: var(--paper-0); border: var(--border-ink); border-radius: var(--r-card);
-  box-shadow: 3px 3px 0 rgba(12, 12, 12, 0.15);
+  box-shadow: var(--shadow-2);
   padding: var(--s-1) 0;
 }
 .pp-menu__item {
   display: flex; align-items: center; gap: var(--s-3);
   min-height: 48px; padding: 0 var(--s-4);
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase;
   color: var(--text-1); text-decoration: none;
 }
 .pp-menu__item + .pp-menu__item { border-top: 1px solid var(--rule); }
@@ -223,12 +223,12 @@
   min-height: 48px; padding: 0 12px 0 16px;
   font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em;
   color: var(--paper-0); background: var(--ink);
-  border: 1px solid var(--ink); border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rule-2); border-radius: 999px; cursor: pointer;
 }
 /* A band dot on the rating filter chips (same colours as the rating chip). */
 .pp-dot { flex: none; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; border: 1px solid transparent; vertical-align: -1px; }
 .pp-dot[data-band='support']   { background: var(--ok);     border-color: var(--ok); }
-.pp-dot[data-band='undecided'] { background: #e0990b;       border-color: #a87000; }
+.pp-dot[data-band='undecided'] { background: #f5a524;       border-color: #b87400; }
 .pp-dot[data-band='opposed']   { background: var(--danger); border-color: var(--danger); }
 .pp-dot[data-band='none']      { background: transparent;   border: 1px dashed currentColor; }
 .pp-fchip .pp-dot { box-shadow: 0 0 0 1.5px var(--paper-0); margin-right: 2px; }
@@ -251,13 +251,13 @@
 .chip-btn.pp-pick { min-height: 48px; padding: 0 14px; font-size: 11px; }
 .pp-morefilters { align-self: flex-start; }
 .pp-sheet__more { display: flex; flex-direction: column; gap: var(--s-3); }
-.pp-scrim { position: fixed; inset: 0; z-index: 945; background: rgba(12, 12, 12, 0.35); }
+.pp-scrim { position: fixed; inset: 0; z-index: 945; background: rgba(15, 23, 51, 0.35); }
 .pp-sheet.is-phone {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; margin: 0;
   max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
   border-radius: 10px 10px 0 0; border-bottom: 0;
   padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom));
-  box-shadow: 0 -6px 24px rgba(12, 12, 12, 0.18);
+  box-shadow: 0 -6px 24px rgba(15, 23, 51, 0.18);
 }
 .pp-sheet.is-phone .pp-sheet__head { position: sticky; top: calc(-1 * var(--s-3)); background: var(--paper-0); padding: var(--s-3) 0 var(--s-2); margin-top: calc(-1 * var(--s-3)); z-index: 1; }
 
@@ -299,10 +299,10 @@
 .cl-toggle button {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 48px; padding: 0 16px;
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase;
   color: var(--text-2); background: var(--paper-0); border: 0; cursor: pointer;
 }
-.cl-toggle button + button { border-left: 1px solid var(--ink); }
+.cl-toggle button + button { border-left: 1px solid var(--rule-2); }
 .cl-toggle button[aria-pressed='true'] { background: var(--ink); color: var(--paper-0); }
 .cl-toggle button:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -3px; }
 
@@ -327,7 +327,7 @@
 .btn.cl-call {
   display: flex; align-items: center; justify-content: center; gap: var(--s-2);
   width: 100%; min-height: 56px; margin-bottom: var(--s-4);
-  font-size: 14px; letter-spacing: 0.08em;
+  font-size: 14px; letter-spacing: 0.03em;
   border: 2px solid var(--ink); background: var(--paper-0);
 }
 @media (hover: hover) { .btn.cl-call:hover { background: var(--paper-1); border-color: var(--ink); } }
@@ -345,7 +345,7 @@
 @media (hover: hover) { .cl-out:hover { color: var(--text-1); border-color: var(--ink); background: var(--paper-1); } }
 .cl-out:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
 .cl-out:disabled { opacity: 0.5; cursor: default; }
-.cl-skip { border-color: transparent; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cl-skip { border-color: transparent; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; }
 
 /* "Up next" is the shared .disclose row (app.css); its label lines up with the names. */
 .cl-next { margin-top: var(--s-2); --disclose-x: var(--s-1); }
@@ -382,7 +382,7 @@ button.pf-back:focus-visible { outline: 2px solid var(--mark-deep); outline-offs
 .btn.pf-act {
   display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-width: 72px; min-height: 60px; padding: 6px 12px;
-  font-size: 10px; letter-spacing: 0.1em;
+  font-size: 11.5px; letter-spacing: 0.03em;
 }
 .btn.pf-act .pp-icon { width: 22px; height: 22px; }
 
@@ -394,7 +394,7 @@ button.pf-back:focus-visible { outline: 2px solid var(--mark-deep); outline-offs
 .pf-rate__foot .pf-note { flex: 1 1 100%; margin: 0; }
 .btn.pf-note-btn { margin-left: calc(-1 * var(--s-3)); }
 .channel-toggle.pf-channel { border: 1px solid var(--rule-2); margin-left: auto; }
-.channel-toggle.pf-channel button { min-width: 56px; padding: 0 10px; font-size: 10px; color: var(--text-3); }
+.channel-toggle.pf-channel button { min-width: 56px; padding: 0 10px; font-size: 11.5px; color: var(--text-3); }
 .channel-toggle.pf-channel button[aria-pressed='true'] { background: var(--paper-2); color: var(--text-1); font-weight: 700; }
 .pf-page { max-width: 680px; }
 .pf-status { font-family: var(--font-mono); font-size: 12px; color: var(--ok); min-height: 1.4em; margin: var(--s-2) 0 0; }

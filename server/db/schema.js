@@ -81,6 +81,18 @@ create table if not exists persons (
 create index if not exists persons_ws_name_idx on persons (workspace_id, lower(name)) where deleted_at is null;
 create index if not exists persons_ws_email_idx on persons (workspace_id, lower(email)) where deleted_at is null;
 create index if not exists persons_ws_addr_idx on persons (workspace_id, lower(address)) where deleted_at is null;
+-- The import's candidate lookups (routes/data.js), one per way a row matches:
+-- name + phone digits, name + street, and a name with nothing else on file.
+-- Names and streets with case, spaces and punctuation stripped — looser than
+-- the import's matching, so a lookup never misses a match.
+create index if not exists persons_ws_namephone_idx on persons (workspace_id,
+  (regexp_replace(lower(name), '[^[:alnum:]]+', '', 'g') || '|' || regexp_replace(phone, '[^0-9]+', '', 'g')))
+  where deleted_at is null;
+create index if not exists persons_ws_nameaddr_idx on persons (workspace_id,
+  (regexp_replace(lower(name), '[^[:alnum:]]+', '', 'g') || '|' || regexp_replace(lower(address), '[^[:alnum:]]+', '', 'g')))
+  where deleted_at is null;
+create index if not exists persons_ws_nameonly_idx on persons (workspace_id, (regexp_replace(lower(name), '[^[:alnum:]]+', '', 'g')))
+  where deleted_at is null and coalesce(email, '') = '' and coalesce(phone, '') = '' and coalesce(address, '') = '';
 
 -- Every door/phone/text touch, with the campaign's rating scale.
 create table if not exists contacts (

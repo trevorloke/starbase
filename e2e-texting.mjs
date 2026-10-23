@@ -77,7 +77,7 @@ const PROVIDER_ENV = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM', 
   'TWILIO_WORKSPACE', 'STARBASE_PUBLIC_URL', 'RESEND_API_KEY', 'MAIL_FROM', 'STRIPE_SECRET_KEY', 'DATABASE_URL'];
 const serverLog = [];
 const startServer = async (extra) => {
-  const env = { ...process.env, STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' };
+  const env = { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' };
   for (const k of PROVIDER_ENV) delete env[k];
   Object.assign(env, extra);
   const child = spawn(process.execPath, ['server/index.js'], { cwd: HERE, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -198,7 +198,6 @@ const signup = async (page, D, name, email) => {
   await page.fill('#su-name', name);
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
-  await page.fill('#su-workspace', CAMPAIGN);
   await page.click('button[type="submit"]');
   await page.waitForURL(`${BASE}/`, { timeout: 15000 });
   return (await D.api('/auth/me')).json;

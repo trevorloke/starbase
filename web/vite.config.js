@@ -10,6 +10,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3200',
       '^/(p|n|v|u|e|d)/': 'http://localhost:3200',
+      // The public website and its pictures (server/ext/website).
+      '^/(site|site-assets|media)(/|$)': 'http://localhost:3200',
     },
   },
 });

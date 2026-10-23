@@ -37,7 +37,7 @@
   min-height: 60px;
   padding: 6px 2px 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11.5px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -54,7 +54,7 @@
 .ot-tab.active .ot-tab-svg { stroke-width: 2.2; }
 .ot-tab-label { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (min-width: 721px) {
-  .ot-tab { flex-direction: row; gap: 12px; min-height: 52px; font-size: 11px; letter-spacing: 0.1em; }
+  .ot-tab { flex-direction: row; gap: 12px; min-height: 52px; font-size: 11px; letter-spacing: 0.03em; }
 }
 
 /* ── Buttons ── */
@@ -200,7 +200,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -278,7 +278,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 /* "Connect" after "Email not connected": a quiet link, thumb-sized */
 .ot-connect {
   display: inline-flex; align-items: center; min-height: 44px;
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase;
   color: var(--text-1); text-decoration: underline; text-underline-offset: 4px;
 }
 .ot-connect:hover { text-decoration-thickness: 2px; }
@@ -299,7 +299,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .ot-meter { display: flex; flex-direction: column; gap: 4px; max-width: 320px; }
 .ot-meter-n { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .ot-meter-n strong { font-size: 22px; }
-.ot-meter-n .lbl { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10.5px; }
+.ot-meter-n .lbl { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.03em; font-size: 10.5px; }
 .ot-meter-bar { height: 6px; background: var(--paper-1); border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
 .ot-meter-bar span { display: block; height: 100%; background: var(--ink); }
 .ot-meter[data-full='true'] .ot-meter-bar span { background: var(--danger); }
@@ -335,7 +335,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
   font-family: var(--font-mono);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   padding: 0 8px;
   cursor: pointer;
 }
@@ -416,7 +416,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .pl-history { margin-top: var(--s-3); border-top: 1px solid var(--rule); padding-top: var(--s-2); }
 .pl-history > summary {
   cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: var(--s-2);
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3);
 }
 .pl-history > summary:hover { color: var(--text-1); }
 .pl-history > summary:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 1px; }

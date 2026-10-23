@@ -34,7 +34,7 @@
 // void notice?", and Yes sends it. What the screen says matches what the
 // stand-in provider got.
 //
-//   STARBASE_DATA=memory PORT=4106 node server/index.js &
+//   STARBASE_OPEN_SIGNUP=1 STARBASE_DATA=memory PORT=4106 node server/index.js &
 //   BASE=http://127.0.0.1:4106 SHOTS=/tmp/receipts node e2e-receipts.mjs
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
@@ -125,7 +125,6 @@ const signup = async (page, base, { name, email, campaign }) => {
   await page.fill('#su-name', name);
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
-  await page.fill('#su-workspace', campaign);
   await page.click('button[type="submit"]');
   await page.waitForURL(`${base}/`, { timeout: 15000 });
 };
@@ -474,7 +473,7 @@ globalThis.fetch = async (url, init) => {
 };`;
 const outbox = [];
 const child = spawn(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(STUB)}`, fileURLToPath(new URL('./server/index.js', import.meta.url))], {
-  env: { ...process.env, STARBASE_DATA: 'memory', PORT: String(MAIL_PORT), RESEND_API_KEY: 'e2e-stand-in', MAIL_FROM: 'receipts@example.org', STARBASE_JOBS_EVERY_MS: '1000', STARBASE_RECEIPT_DELAY_S: '4', STARBASE_PUBLIC_URL: '' },
+  env: { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(MAIL_PORT), RESEND_API_KEY: 'e2e-stand-in', MAIL_FROM: 'receipts@example.org', STARBASE_JOBS_EVERY_MS: '1000', STARBASE_RECEIPT_DELAY_S: '4', STARBASE_PUBLIC_URL: '' },
   stdio: ['ignore', 'pipe', 'inherit'],
 });
 let buf = '';
