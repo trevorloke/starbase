@@ -30,11 +30,18 @@ test('parts of the day: morning, afternoon, evening in Vancouver time, DST-safe'
   assert.deepEqual(partRange('2026-10-27', 'evening'), {
     starts_at: '2026-10-27T17:00:00-07:00', ends_at: '2026-10-27T21:00:00-07:00',
   });
-  // Clocks fall back on Nov 1, 2026: the Monday after is -08:00.
-  assert.equal(zonedISO('2026-11-02', 9), '2026-11-02T09:00:00-08:00');
+  // DST: a zone whose clocks fall back on Nov 1, 2026 gets each side's
+  // offset. (Los Angeles, not Vancouver: B.C. stays on UTC-7 year-round from
+  // March 2026, and only newer time-zone data knows that — so which offset
+  // Vancouver gets after Nov 1 depends on the runtime, not on this code.)
+  const LA = 'America/Los_Angeles';
+  assert.equal(zonedISO('2026-10-30', 9, LA), '2026-10-30T09:00:00-07:00');
+  assert.equal(zonedISO('2026-11-02', 9, LA), '2026-11-02T09:00:00-08:00');
+  assert.deepEqual(weekBounds('2026-10-26', LA), { from: '2026-10-26T00:00:00-07:00', to: '2026-11-02T00:00:00-08:00' });
+  assert.equal(partOf('2026-11-02T17:30:00Z', LA), 'morning', '9:30am the Monday after the change');
   assert.equal(weekStart('2026-10-23'), '2026-10-19', 'weeks start on Monday');
   assert.equal(weekStart('2026-10-19'), '2026-10-19');
-  assert.deepEqual(weekBounds('2026-10-26'), { from: '2026-10-26T00:00:00-07:00', to: '2026-11-02T00:00:00-08:00' });
+  assert.deepEqual(weekBounds('2026-10-19'), { from: '2026-10-19T00:00:00-07:00', to: '2026-10-26T00:00:00-07:00' });
   assert.equal(partOf('2026-10-27T10:00:00Z', 'Not/AZone'), 'morning', 'unknown zone → Vancouver (3am → morning)');
 });
 
