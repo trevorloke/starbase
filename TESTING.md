@@ -11,15 +11,12 @@ team on it.
 Needs [Node.js 22](https://nodejs.org).
 
 ```sh
-git clone --branch claude/affectionate-cerf-3dlzuh https://github.com/trevorloke/mandate.git
-cd mandate/starbase
+git clone https://github.com/trevorloke/starbase.git
+cd starbase
 npm install
 npm run build
 npm start                 # → http://localhost:3200
 ```
-
-Starbase is on the `claude/affectionate-cerf-3dlzuh` branch until pull request
-#7 is merged; after that a plain `git clone` has it.
 
 1. Open **http://localhost:3200/signup**, create the *Imagine Surrey*
    workspace (jurisdiction defaults to **BC — Municipal**).
@@ -42,8 +39,7 @@ time. Delete the folder to start over.
 The repo's `render.yaml` includes a **starbase** service with a managed
 Postgres database (backups included).
 
-1. Render → **New → Blueprint** → pick this repo and the
-   `claude/affectionate-cerf-3dlzuh` branch (until pull request #7 is merged)
+1. Render → **New → Blueprint** → pick this repo (`main` branch)
    → it creates `starbase` + `starbase-db` (both on paid plans — check
    Render’s current pricing).
 2. In the `starbase` service → **Environment**, set:
