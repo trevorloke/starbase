@@ -1,8 +1,12 @@
-// GeocodeButton — place everyone with an address on the map, a batch at a time.
+// GeocodeButton — place everyone with an address on the map.
 // Contract: <GeocodeButton onDone={(summary) => …} compact? />
-//   Loops POST /api/data/geocode {limit: 25} until nothing is left (or a batch
-//   does nothing, or the lookup fails twice running), with live progress and a
-//   Stop button. Desk roles only: renders nothing for volunteers.
+//   Starts a background run on the server (POST /api/geocode/start —
+//   ext/geocoding) and shows its progress (GET /api/geocode/status every few
+//   seconds), with Stop. The run carries on with the page closed, and coming
+//   back picks its progress up again. Where the server runs no background
+//   jobs (STARBASE_JOBS=off), the page looks up batches itself instead:
+//   POST /api/data/geocode {limit: 25} until nothing is left (or the lookup
+//   fails twice running). Desk roles only: renders nothing for volunteers.
 //   summary = { located, missed, errored, remaining, unmatched, stopped, error }
 // compact: one pill-sized button ("Look up addresses") + a short status line,
 // beside "Drop pins by hand" in the map's "Not on map" pill. Full: one
@@ -11,13 +15,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiPost } from '../api.js';
+import { apiGet, apiPost } from '../api.js';
 import '../pages/import.css';
 
 const DESK = ['manager', 'treasurer', 'staff'];
 const BATCH = 25;
 const LIVE_REFRESH_MS = 5000; // let the map's pins appear while it runs
 const RETRY_WAIT_MS = 3000;
+const POLL_MS = 2000;
 const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 const fmtN = (n) => Number(n || 0).toLocaleString('en-CA');
@@ -33,12 +38,37 @@ export default function GeocodeButton(props) {
   return <Geocoder {...props} />;
 }
 
-function liveText({ located, missed, remaining }, compact) {
+// "about 3 h 20 min" from people left and people placed per second.
+const etaText = (left, perSec) => {
+  if (!left || !perSec) return null;
+  const mins = Math.max(1, Math.round(left / perSec / 60));
+  if (mins < 60) return `about ${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round((mins % 60) / 10) * 10;
+  return `about ${h} h${m ? ` ${m} min` : ''}`;
+};
+
+function liveText({ located, missed, remaining, eta }, compact) {
   const parts = [`Placed ${fmtN(located)}`];
   if (missed) parts.push(compact ? `${fmtN(missed)} no match` : `${fmtN(missed)} couldn’t be matched`);
   if (remaining != null) parts.push(`${fmtN(remaining)} left`);
+  if (eta && !compact) parts.push(eta);
   return parts.join(' · ');
 }
+
+// The server's run → the summary this button shows when it isn't running.
+const summaryOf = (st, startedWith) => ({
+  located: st.located + st.copied,
+  missed: st.missed,
+  errored: st.errors,
+  remaining: st.remaining,
+  unmatched: st.unmatched,
+  stopped: st.state === 'stopped',
+  nothingToDo: startedWith === 0,
+  error: st.state === 'paused'
+    ? `Address lookup isn’t answering${st.lastError ? ` (${st.lastError})` : ''}. Nothing is lost — carry on later.`
+    : null,
+});
 
 function Geocoder({ onDone, compact = false }) {
   const queryClient = useQueryClient();
@@ -47,13 +77,88 @@ function Geocoder({ onDone, compact = false }) {
   const [progress, setProgress] = useState(null); // { located, missed, errored, remaining, unmatched }
   const [summary, setSummary] = useState(null);
   const stopRef = useRef(false);
+  // Background run on the server: polled while it runs.
+  const [bg, setBg] = useState(false);
+  const startedWith = useRef(null);
+  const samples = useRef([]); // [{ t, placed }] for the time-left estimate
 
-  // Leaving the screen stops the loop (the next batch picks up where it left off).
+  // Leaving the screen stops an in-page loop (the next batch picks up where it
+  // left off); a background run carries on without the page.
   useEffect(() => () => { stopRef.current = true; }, []);
+
+  // A run already going (started earlier, or by someone else): show it.
+  useEffect(() => {
+    let live = true;
+    apiGet('/geocode/status').then((st) => {
+      if (!live || st.state !== 'running') return;
+      startedWith.current = st.remaining;
+      setPhase('running');
+      setBg(true);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!bg) return undefined;
+    let live = true;
+    let lastRefresh = Date.now();
+    const tick = async () => {
+      let st;
+      try { st = await apiGet('/geocode/status'); } catch { return; } // no signal: try again next tick
+      if (!live) return;
+      const placed = st.located + st.copied + st.missed;
+      const now = Date.now();
+      samples.current = [...samples.current.filter((x) => now - x.t < 60_000), { t: now, placed }];
+      const first = samples.current[0];
+      const perSec = now - first.t > 5000 ? (placed - first.placed) / ((now - first.t) / 1000) : 0;
+      setProgress({ located: st.located + st.copied, missed: st.missed, errored: st.errors, remaining: st.remaining,
+        unmatched: st.unmatched, eta: etaText(st.remaining, perSec) });
+      if (now - lastRefresh > LIVE_REFRESH_MS) { lastRefresh = now; refresh([['doors']]); }
+      if (st.state !== 'running') {
+        const result = summaryOf(st, startedWith.current);
+        setBg(false);
+        setSummary(result);
+        setPhase('done');
+        setStopping(false);
+        refresh(KEYS);
+        onDone?.(result);
+      }
+    };
+    tick();
+    const t = setInterval(tick, POLL_MS);
+    return () => { live = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bg]);
 
   const refresh = (keys) => { for (const queryKey of keys) queryClient.invalidateQueries({ queryKey }); };
 
+  // Start (or carry on) the background run; the page loop where there is none.
   const run = async () => {
+    setSummary(null);
+    setStopping(false);
+    let st;
+    try {
+      st = await apiPost('/geocode/start', {});
+    } catch (e) {
+      if (e.status === 409 && /turned off/i.test(e.message)) {
+        const result = { located: 0, missed: 0, errored: 0, remaining: 0, unmatched: 0, error: 'Address lookup is turned off. Drop pins by hand on the map.' };
+        setSummary(result); setPhase('done'); onDone?.(result);
+        return;
+      }
+      if (e.status === 409) { runHere(); return; } // no background jobs on this server
+      const result = { located: 0, missed: 0, errored: 0, remaining: 0, unmatched: 0,
+        error: e.status === 403 ? 'Only campaign staff can place people on the map.' : e.status ? `Starbase said: ${e.message}.` : 'Couldn’t reach Starbase — check your connection and try again.' };
+      setSummary(result); setPhase('done'); onDone?.(result);
+      return;
+    }
+    startedWith.current = st.remaining;
+    samples.current = [];
+    setProgress({ located: st.located + st.copied, missed: st.missed, errored: st.errors, remaining: st.remaining, unmatched: st.unmatched });
+    setPhase('running');
+    setBg(true);
+  };
+
+  const runHere = async () => {
     stopRef.current = false;
     setStopping(false);
     setSummary(null);
@@ -131,7 +236,11 @@ function Geocoder({ onDone, compact = false }) {
     onDone?.(result);
   };
 
-  const stop = () => { stopRef.current = true; setStopping(true); };
+  const stop = () => {
+    setStopping(true);
+    if (bg) { apiPost('/geocode/stop', {}).catch(() => setStopping(false)); return; } // the poll sees it stop
+    stopRef.current = true;
+  };
 
   const running = phase === 'running';
   const s = summary;
@@ -139,7 +248,7 @@ function Geocoder({ onDone, compact = false }) {
   // never run) — and never while the server has lookup turned off.
   const off = Boolean(s?.error?.startsWith('Address lookup is turned off'));
   const canRun = !running && !off && (!s || s.remaining > 0 || s.error);
-  const runLabel = compact ? 'Look up addresses' : s?.error ? 'Try again' : s?.stopped ? 'Carry on' : 'Place on map';
+  const runLabel = compact ? 'Look up addresses' : (s?.stopped || (s?.error && s.remaining > 0)) ? 'Carry on' : s?.error ? 'Try again' : 'Place on map';
 
   // ── Compact: fits inside the map's "Not on map" pill ──
   if (compact) {
@@ -194,6 +303,7 @@ function Geocoder({ onDone, compact = false }) {
         </div>
       )}
       <p className="geo-live geo-live--full" role="status" aria-live="polite">{text}</p>
+      {running && bg && <p className="geo-summary__note">This runs on the server — you can close this page and it keeps going.</p>}
 
       {s && !running && (
         <div className={`geo-summary${s.error ? ' is-error' : s.stopped ? ' is-paused' : ''}`}>

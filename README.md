@@ -156,6 +156,21 @@ the staff app (managers and staff; treasurers see Orders):
 Code: `server/ext/website/` (site.js pages and host routing, store.js,
 actions.js, api.js), admin screens `web/src/pages/Website*.jsx`.
 
+## Placing people on the map (geocoding)
+
+Addresses are looked up with the BC Address Geocoder (`server/lib/geocode.js`;
+`GEOCODER=nominatim|off`, `BC_GEOCODER_KEY`, `GEOCODE_MIN_SCORE`). **Place on
+map** starts a background run (`server/ext/geocoding`, a job like ladder
+emails): rounds of 120 people, one lookup per address (a household shares
+it), pins already on file at the same address copied, `GEOCODE_CONCURRENCY`
+lookups at once (default 6). A lookup that fails while others work is tried
+3 times, then set aside for a pin by hand; a round where every lookup fails
+counts as an outage (nobody's tries are spent), backs off
+(`GEOCODE_BACKOFF_MS`, default 30 s × rounds in a row) and after 5 such
+rounds pauses the run with the reason. `GET /api/geocode/status` reports
+progress; the page shows it and works out the time left. With
+`STARBASE_JOBS=off` the page falls back to looking up batches itself.
+
 ## Sending email and text
 
 Set `STARBASE_PUBLIC_URL` (e.g. `https://starbase.imaginesurrey.ca`) so links

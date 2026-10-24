@@ -333,7 +333,16 @@ Ratings import as codes, words or candidate names in any case (*definitely*,
 *1 2 3* for a Number) is refused by row number. A field taken off before you
 tap Import is skipped; the row still comes in.
 Then **Place on map** looks the addresses up with the BC Address
-Geocoder (needs internet).
+Geocoder (needs internet). It runs on the server: you can close the page and
+it keeps going (come back to Import or the map to see how far it's got, or
+**Stop** it). Everyone at one address is one lookup, and an address already
+on the map is copied without a lookup. If the geocoder stops answering, the
+run pauses with the reason; **Carry on** resumes it. Addresses it can't find
+end up under **Not on map** for a pin by hand.
+
+A full voter list (hundreds of thousands of people) takes a few hours. Set
+`BC_GEOCODER_KEY` (a free key from the BC government's API gateway) for
+higher limits, and `GEOCODE_CONCURRENCY` (default 6) to ask more at once.
 
 For your real voters list: map its columns on the second step; re-importing
 the same file never creates duplicates.
