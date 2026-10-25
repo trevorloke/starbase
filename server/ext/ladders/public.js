@@ -22,18 +22,18 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', 
 const page = (campaign, title, inner) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}${campaign ? ` · ${esc(campaign)}` : ''}</title>
 <style>
-  :root{--paper:#f8f6ef;--card:#fffdf7;--ink:#171410;--ink2:#5d5749;--rule:#d6d0bf;--mark:#f2c40f}
-  @media(prefers-color-scheme:dark){:root{--paper:#15120c;--card:#1d1a13;--ink:#ece7da;--ink2:#a59e8c;--rule:#3a362a;--mark:#d9b60e}}
+  :root{--paper:#f4f5fa;--card:#ffffff;--ink:#161a2e;--ink2:#5d6481;--rule:#dde0ec;--mark:#6d4aff}
+  @media(prefers-color-scheme:dark){:root{--paper:#0d1226;--card:#161c35;--ink:#e8eaf6;--ink2:#9aa1c2;--rule:#2a3254;--mark:#7d5fff}}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.5 Georgia,'Times New Roman',serif}
+  body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
   main{max-width:520px;margin:0 auto;padding:28px 16px 56px}
-  .camp{font-size:30px;font-weight:700;line-height:1.1;margin:0 0 24px;padding-bottom:12px;border-bottom:4px solid var(--mark);overflow-wrap:anywhere}
+  .camp{font-size:28px;font-weight:800;letter-spacing:-.01em;line-height:1.1;margin:0 0 24px;padding-bottom:12px;border-bottom:4px solid var(--mark);overflow-wrap:anywhere}
   h1{font-size:26px;line-height:1.2;margin:0 0 12px}
-  .done{border:1px solid var(--rule);border-left:4px solid var(--mark);background:var(--card);padding:18px;margin-top:16px}
+  .done{border:1px solid var(--rule);border-left:4px solid var(--mark);border-radius:12px;background:var(--card);padding:18px;margin-top:16px}
   form{margin-top:8px}
-  button{display:block;width:100%;min-height:56px;margin-top:24px;font:700 15px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;background:var(--mark);color:#171410;border:0;padding:16px 22px;border-radius:4px;cursor:pointer}
-  button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-  footer{margin-top:40px;border-top:1px solid var(--rule);padding-top:12px;font:13px/1.6 ui-monospace,Menlo,monospace;color:var(--ink2)}
+  button{display:block;width:100%;min-height:56px;margin-top:24px;font:600 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--mark);color:#fff;border:0;padding:16px 22px;border-radius:12px;cursor:pointer}
+  button:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+  footer{margin-top:40px;border-top:1px solid var(--rule);padding-top:12px;font:13px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink2)}
 </style></head><body><main>
 ${campaign ? `<div class="camp">${esc(campaign)}</div>` : ''}
 ${inner}

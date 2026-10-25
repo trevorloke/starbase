@@ -89,7 +89,7 @@ publicRoutes.get('/o/:file', async (c) => {
 });
 
 const notFound = (c) => c.html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link not found</title>
-<style>body{margin:0;background:#f8f6ef;color:#171410;font:18px/1.5 Georgia,serif}main{max-width:520px;margin:0 auto;padding:28px 16px}h1{font-size:26px;margin:0}@media(prefers-color-scheme:dark){body{background:#15120c;color:#ece7da}}</style>
+<style>body{margin:0;background:#f4f5fa;color:#161a2e;font:17px/1.55 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}main{max-width:520px;margin:0 auto;padding:28px 16px}h1{font-size:26px;font-weight:800;margin:0}@media(prefers-color-scheme:dark){body{background:#0d1226;color:#e8eaf6}}</style>
 </head><body><main><h1>Link not found.</h1></main></body></html>`, 404, { 'Cache-Control': NO_STORE });
 
 publicRoutes.get('/c/:token/:n', async (c) => {

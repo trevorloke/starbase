@@ -183,7 +183,7 @@ export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
       const n = links.indexOf(u) + 1;
       out += esc(line.slice(last, m.index));
       out += n > 0
-        ? `<a href="${esc(`${base}/c/${token}/${n}`)}" style="color:#171410">${esc(u)}</a>`
+        ? `<a href="${esc(`${base}/c/${token}/${n}`)}" style="color:#6d4aff">${esc(u)}</a>`
         : esc(u);
       last = m.index + u.length;
     }
@@ -194,13 +194,13 @@ export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
     .join('');
   // This part is the tracked one, so it says so.
   const foot = kind === 'newsletter'
-    ? `Sent by ${esc(ctx.workspace.name)}. We count opens and clicks.<br><a href="${esc(`${base}/u/${subscriptionId}`)}" style="color:#5d5749">Unsubscribe</a>`
+    ? `Sent by ${esc(ctx.workspace.name)}. We count opens and clicks.<br><a href="${esc(`${base}/u/${subscriptionId}`)}" style="color:#5d6481">Unsubscribe</a>`
     : `${esc(ctx.workspace.name)}. We count opens and clicks.`;
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
-    + '<body style="margin:0;padding:0;background:#f8f6ef">'
-    + '<div style="max-width:600px;margin:0 auto;padding:24px 16px;font:17px/1.55 Georgia,\'Times New Roman\',serif;color:#171410">'
+    + '<body style="margin:0;padding:0;background:#f4f5fa">'
+    + '<div style="max-width:600px;margin:0 auto;padding:24px 16px;font:17px/1.55 system-ui,-apple-system,\'Segoe UI\',Roboto,Arial,sans-serif;color:#161a2e">'
     + paras
-    + `<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #d6d0bf;font-size:14px;color:#5d5749">${foot}</p>`
+    + `<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #dde0ec;font-size:14px;color:#5d6481">${foot}</p>`
     + `<img src="${esc(`${base}/o/${token}.gif`)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0">`
     + '</div></body></html>';
 };
