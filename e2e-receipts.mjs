@@ -150,7 +150,7 @@ const desk = await browser.newContext({ viewport: { width: 1360, height: 900 }, 
 await tiles(desk);
 const page = await desk.newPage();
 const D = helpers(page, 'desk');
-await signup(page, BASE, { name: 'Rae Treasurer', email: `treasurer.${tag}@example.org`, campaign: 'Imagine Surrey Receipts' });
+await signup(page, BASE, { name: 'Rae Treasurer', email: `treasurer.${tag}@example.org`, campaign: 'Imagine Surrey' });
 const me = (await D.api('/auth/me')).json;
 const slug = me.workspace.slug;
 check('desk signed up', !!slug, slug);
@@ -235,7 +235,7 @@ await sleep(800);
 const one = (await D.api(`/receipts/${rA.id}`)).json;
 t = await D.text();
 const wantDoc = [
-  'Imagine Surrey Receipts', 'Contribution receipt', rA.number, 'Ana Souza', '12345 72 Ave, Surrey, V3W 2M1', '$150.00',
+  'Imagine Surrey', 'Contribution receipt', rA.number, 'Ana Souza', '12345 72 Ave, Surrey, V3W 2M1', '$150.00',
   longDate(one.doc.received_on), 'E-transfer', `Financial agent: Jordan Agent · agent.${tag}@example.org · 604-555-0142`, NOTICE,
   'Thank you for building a better Surrey.',
 ];
@@ -446,7 +446,7 @@ check('volunteer’s profile JSON: no receipt, no money, no email', vprof.status
   && vprof.json.gifts.length === 0 && vprof.json.donor === null && vprof.json.person.email === null, vprof.raw.slice(0, 160));
 await V.go('/');
 const vOver = await vol.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-const vToday = (await V.text()).replaceAll('Imagine Surrey Receipts', ''); // the campaign's own name
+const vToday = (await V.text()).replaceAll('Imagine Surrey', ''); // the campaign's own name
 check('volunteer Today: no receipts, no money, no sideways scroll', !/receipt|\$/i.test(vToday) && vOver <= 0, `${vOver} ${vToday.slice(0, 200)}`);
 await V.shot('12-volunteer-today');
 await vctx.close();
@@ -492,7 +492,7 @@ try {
   await tiles(desk2);
   const p2 = await desk2.newPage();
   const M = helpers(p2, 'desk-mail', MAIL_BASE);
-  await signup(p2, MAIL_BASE, { name: 'Mo Manager', email: `manager.${tag}@example.org`, campaign: 'Imagine Surrey Mail' });
+  await signup(p2, MAIL_BASE, { name: 'Mo Manager', email: `manager.${tag}@example.org`, campaign: 'Imagine Surrey' });
   await M.api('/actions/receipt.settings', { agent_name: 'Jordan Agent', agent_contact: `agent.${tag}@example.org` });
   const erin = (await M.api('/actions/person.create', { name: 'Erin Email', email: `erin.${tag}@example.org`, address: '5 Mail Rd', city: 'Surrey' })).json.person;
   await logGiftOnScreen(p2, M, { donor: 'Erin Email', amount: 120 });
@@ -508,7 +508,7 @@ try {
     return r.status.word === 'Sent' ? r : null;
   });
   check('it was sent once by itself, to the donor, with the receipt in it', sentE && outbox.length === 1 && outbox[0].to[0] === `erin.${tag}@example.org`
-    && outbox[0].subject === `Your receipt ${sentE.number} from Imagine Surrey Mail` && outbox[0].text.includes(NOTICE) && outbox[0].text.includes('Amount: $120.00')
+    && outbox[0].subject === `Your receipt ${sentE.number} from Imagine Surrey` && outbox[0].text.includes(NOTICE) && outbox[0].text.includes('Amount: $120.00')
     && outbox[0].key === `receipt-${sentE.id}-1`,
   JSON.stringify(outbox[0] || {}).slice(0, 200));
   await M.go('/money/receipts');
@@ -599,7 +599,7 @@ try {
   const vn = outbox[before];
   const vr = (await M.api(`/receipts/${sentE.id}`)).json.receipt;
   check('Yes → the donor got "Receipt … is void"; the receipt says so', outbox.length === before + 1 && vn?.to[0] === `erin.${tag}@example.org`
-    && vn.subject === `Receipt ${sentE.number} from Imagine Surrey Mail is void` && /was voided/.test(vn.text)
+    && vn.subject === `Receipt ${sentE.number} from Imagine Surrey is void` && /was voided/.test(vn.text)
     && /^Void — void notice sent /.test(vr.status.line) && /✓ Void notice sent to Erin Email/.test(await p2.innerText('body')), `${outbox.length} ${vr.status.line}`);
   v = (await M.api('/audit/verify')).json;
   ev = (await M.api('/events?since=0&limit=1000')).json.events;

@@ -421,13 +421,13 @@ await vctx.close();
 await vp.goto(`${BASE}/lu/${run.id}`, { waitUntil: 'domcontentloaded' });
 let ut = await vp.innerText('body');
 const stillOn = (await D.api('/subscriptions')).json.subscriptions.find((s) => s.email === `ana.${tag}@example.org`);
-check('opening the link only asks: one Unsubscribe button, still subscribed', /Unsubscribe from Imagine Surrey Ladders\?/.test(ut)
+check('opening the link only asks: one Unsubscribe button, still subscribed', /Unsubscribe from Imagine Surrey\?/.test(ut)
   && (await vp.locator('button', { hasText: /^Unsubscribe$/i }).count()) === 1 && stillOn?.status === 'subscribed', ut.slice(0, 120));
 await vp.screenshot({ path: `${SHOTS}/12a-unsubscribe-ask.png` });
 await vp.locator('button', { hasText: /^Unsubscribe$/i }).click();
 await vp.waitForSelector('text=/Unsubscribed\./', { timeout: 8000 }).catch(() => {});
 ut = await vp.innerText('body');
-check('one tap: Unsubscribed, names the campaign', /Unsubscribed\./.test(ut) && /Imagine Surrey Ladders/.test(ut), ut.slice(0, 120));
+check('one tap: Unsubscribed, names the campaign', /Unsubscribed\./.test(ut) && /Imagine Surrey/.test(ut), ut.slice(0, 120));
 await vp.screenshot({ path: `${SHOTS}/12-unsubscribed.png` });
 const subs = (await D.api('/subscriptions')).json.subscriptions.filter((s) => s.email === `ana.${tag}@example.org`);
 check('on the newsletter list as unsubscribed', subs.length === 1 && subs[0].status === 'unsubscribed', JSON.stringify(subs));
