@@ -32,9 +32,33 @@ export const leftOf = (p, variant) => {
   return Math.max(0, Number(p.stock) || 0);
 };
 
+// A checkout holds its items while the buyer is on Stripe's page: open
+// (pending) orders from the last HOLD_MINUTES count against what's left.
+// Stripe sessions expire after CHECKOUT_MINUTES (the webhook then cancels the
+// order); the hold ends a little later even if that webhook never comes.
+export const CHECKOUT_MINUTES = 30;
+const HOLD_MINUTES = CHECKOUT_MINUTES + 5;
+
+// { 'productId|variant': qty } held by open checkouts.
+export const heldQty = async (db, ws) => {
+  const held = {};
+  const { rows } = await db.query(
+    `select items from store_orders where workspace_id = $1 and status = 'pending'
+       and created_at > now() - ($2 || ' minutes')::interval`,
+    [ws.id, String(HOLD_MINUTES)],
+  );
+  for (const r of rows) {
+    for (const l of parseJ(r.items, [])) {
+      const k = `${l.product_id}|${l.variant || ''}`;
+      held[k] = (held[k] || 0) + (Number(l.qty) || 0);
+    }
+  }
+  return held;
+};
+
 // items: [{ product_id, variant, qty }] → { lines, subtotal_cents, problems }.
 // Same product and size twice is one line. Never trusts a price or a count
-// from the browser.
+// from the browser. What's left is after other buyers' open checkouts.
 export const priceCart = async (db, ws, items) => {
   const merged = new Map();
   for (const it of (Array.isArray(items) ? items : []).slice(0, CART_MAX_LINES)) {
@@ -54,6 +78,7 @@ export const priceCart = async (db, ws, items) => {
   )).rows.map((p) => [p.id, productRow(p)]) : []);
   const lines = [];
   const problems = [];
+  const held = merged.size ? await heldQty(db, ws) : {};
   for (const m of merged.values()) {
     const p = products.get(m.product_id);
     if (!p || !p.active) { problems.push({ product_id: m.product_id, variant: m.variant, error: 'no longer for sale' }); continue; }
@@ -62,7 +87,8 @@ export const priceCart = async (db, ws, items) => {
       continue;
     }
     const variant = p.variants.length ? m.variant : '';
-    const left = leftOf(p, variant);
+    const stockLeft = leftOf(p, variant);
+    const left = stockLeft === null ? null : Math.max(0, stockLeft - (held[`${p.id}|${variant}`] || 0));
     const line = {
       product_id: p.id, slug: p.slug, name: p.name, variant, qty: m.qty,
       unit_cents: p.price_cents, line_cents: p.price_cents * m.qty, image: p.images[0] || null, left,
@@ -82,6 +108,8 @@ export const checkoutParams = ({ order, ws, settings, successUrl, cancelUrl, ima
   const metadata = { store_order: order.id, workspace_id: ws.id };
   return {
     mode: 'payment',
+    // Ends the hold on its items: an unpaid session expires and is cancelled.
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60,
     success_url: successUrl,
     cancel_url: cancelUrl,
     client_reference_id: order.id,

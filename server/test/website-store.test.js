@@ -10,7 +10,7 @@ import { app } from '../index.js';
 
 const tag = Math.random().toString(36).slice(2, 8);
 const mail = (who) => `${who}.store.${tag}@example.org`;
-let mgr, vol, treas, wsId, tee, mug;
+let mgr, vol, treas, wsId, tee, mug, db;
 
 let ipN = 0;
 const pub = async (method, path, body, headers = {}) => {
@@ -42,9 +42,16 @@ const product = async (id) => (await mgr.get(`/api/store/products/${id}`)).json.
 
 // Stripe, mocked: every Checkout Session request is kept for the asserts.
 const sent = [];
+const expired = [];
+let stripeDown = false;
 const realFetch = globalThis.fetch;
 const mockStripe = () => {
   globalThis.fetch = async (url, init) => {
+    const m = String(url).match(/^https:\/\/api\.stripe\.com\/v1\/checkout\/sessions\/([^/]+)\/expire$/);
+    if (m) { expired.push(decodeURIComponent(m[1])); return new Response(JSON.stringify({ id: m[1], status: 'expired' }), { status: 200 }); }
+    if (String(url) === 'https://api.stripe.com/v1/checkout/sessions' && stripeDown) {
+      return new Response(JSON.stringify({ error: { message: 'Stripe is down' } }), { status: 500 });
+    }
     if (String(url) === 'https://api.stripe.com/v1/checkout/sessions') {
       sent.push(new URLSearchParams(String(init.body)));
       return new Response(JSON.stringify({ id: `cs_store_${tag}_${sent.length}`, url: `https://checkout.stripe.test/s/${sent.length}` }), { status: 200 });
@@ -54,7 +61,7 @@ const mockStripe = () => {
 };
 
 before(async () => {
-  await freshDb();
+  db = await freshDb();
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.STRIPE_WEBHOOK_SECRET;
   mgr = new Client();
@@ -153,7 +160,9 @@ test('checkout: refuses sold-out lines, then opens Stripe Checkout with server p
   assert.equal(f.get('metadata[workspace_id]'), wsId);
   assert.equal(f.get('payment_intent_data[metadata][store_order]'), co.json.order_id);
   assert.equal(f.get('success_url'), `http://localhost/site/store/thanks?order=${co.json.order_id}`);
-  assert.equal(f.get('cancel_url'), 'http://localhost/site/cart');
+  assert.equal(f.get('cancel_url'), `http://localhost/site/cart?cancel=${co.json.order_id}`);
+  const expiresIn = Number(f.get('expires_at')) - Date.now() / 1000;
+  assert.ok(expiresIn > 29 * 60 && expiresIn <= 30 * 60, 'the payment page expires in 30 minutes, ending the hold');
 
   const pickup = await pub('POST', '/site/store/checkout', { items: [{ product_id: tee.id, variant: 'L', qty: 1 }], fulfilment: 'pickup' });
   assert.equal(pickup.status, 200);
@@ -235,6 +244,45 @@ test('orders: the desk moves them along; a refund can put items back; treasurers
   assert.equal((await mgr.action('store.order.update', { id: order.id, status: 'shipped' })).status, 409, 'a refunded order stays refunded');
   const unpaid = (await mgr.get('/api/store/orders?status=unpaid')).json.orders[0];
   assert.equal((await mgr.action('store.order.update', { id: unpaid.id, status: 'shipped' })).status, 409);
+});
+
+test('holds: an open checkout holds its items; backing out of Stripe frees them; an old hold runs out; Stripe down frees at once', async () => {
+  const pin = (await mgr.action('store.product.save', { name: 'Enamel pin', price_cents: 800, track_stock: true, stock: 1 })).json.product;
+  const buy = () => pub('POST', '/site/store/checkout', { items: [{ product_id: pin.id, qty: 1 }], fulfilment: 'pickup' });
+  const first = await buy();
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  // A second buyer: the last pin is held by the first checkout.
+  const second = await buy();
+  assert.equal(second.status, 409);
+  assert.match(second.json.error, /Enamel pin: sold out/);
+  const quote = await pub('POST', '/site/store/quote', { items: [{ product_id: pin.id, qty: 1 }] });
+  assert.equal(quote.json.problems[0].error, 'sold out', 'the cart says so too');
+  assert.equal((await product(pin.id)).stock, 1, 'nothing has left stock yet');
+
+  // The first buyer backs out of Stripe's page: the session is closed, the order cancelled, the pin free.
+  const back = await pub('GET', `/site/cart?cancel=${first.json.order_id}`);
+  assert.equal(back.status, 200);
+  assert.ok(expired.at(-1)?.startsWith('cs_store_'), 'the Stripe session was expired first');
+  const o1 = (await db.query('select status from store_orders where id = $1', [first.json.order_id])).rows[0];
+  assert.equal(o1.status, 'cancelled');
+  const again = await buy();
+  assert.equal(again.status, 200, 'the pin can be bought again');
+
+  // A hold older than the checkout window no longer counts (the webhook never came).
+  await db.query(`update store_orders set created_at = now() - interval '40 minutes' where id = $1`, [again.json.order_id]);
+  const later = await buy();
+  assert.equal(later.status, 200, 'an old hold has run out');
+
+  // Stripe can't open a payment page: the order is cancelled and holds nothing.
+  await db.query(`update store_orders set status = 'cancelled' where id = $1`, [later.json.order_id]);
+  stripeDown = true;
+  const down = await buy();
+  assert.equal(down.status, 502);
+  stripeDown = false;
+  const open = (await db.query(`select count(*)::int as n from store_orders where workspace_id = $1 and status = 'pending'
+    and items @> $2::jsonb and created_at > now() - interval '35 minutes'`, [wsId, JSON.stringify([{ product_id: pin.id }])])).rows[0].n;
+  assert.equal(open, 0, 'a failed checkout holds nothing');
+  assert.equal((await buy()).status, 200);
 });
 
 test('the store’s writes are on the chain under the system actor and the chain verifies', async () => {

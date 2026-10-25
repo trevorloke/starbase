@@ -322,10 +322,36 @@ siteApp.get('/store/:slug', async (c) => {
   }));
 });
 
+// Back from Stripe without paying (its cancel link): close that payment page
+// first — so it can't be paid later for an order that's gone — then let the
+// order's hold on its items go, so the buyer can try again straight away.
+// The order id is the key (random, only in that link); only an open order of
+// this store is touched, and if Stripe can't be reached the hold simply runs
+// out with the session.
+const releaseCheckout = async (s, orderId) => {
+  if (!/^[0-9a-f-]{36}$/i.test(orderId || '') || !stripeConfigured()) return;
+  const o = (await s.db.query(
+    `select id, stripe_session_id from store_orders where id = $1 and workspace_id = $2 and status = 'pending'`,
+    [orderId, s.ws.id],
+  )).rows[0];
+  if (!o?.stripe_session_id) return;
+  try {
+    await stripePost(`checkout/sessions/${encodeURIComponent(o.stripe_session_id)}/expire`, {});
+  } catch {
+    return; // already paid or expired, or no answer: the webhook decides
+  }
+  await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.expire' }, async (tx, emit) => {
+    const r = await tx.query(`update store_orders set status = 'cancelled', updated_at = now()
+      where id = $1 and workspace_id = $2 and status = 'pending' returning id`, [o.id, s.ws.id]);
+    if (r.rows[0]) emit('store_order', o.id, 'update', { status: 'cancelled', reason: 'left the payment page' });
+  });
+};
+
 siteApp.get('/cart', async (c) => {
   const s = await site(c);
   if (!s) return noSite(c);
   c.header('Cache-Control', 'no-store');
+  await releaseCheckout(s, c.req.query('cancel'));
   const main = `<section class="band"><div class="wrap narrow"><h1>Your cart</h1></div></section>
 <div class="wrap narrow lift"><div class="sheet">
   <div id="cart" data-open="${stripeConfigured() ? '1' : '0'}"><p class="meta">Loading your cart…</p></div>
@@ -373,42 +399,61 @@ siteApp.post('/store/checkout', async (c) => {
   const st = s.ch.settings;
   const way = waysOf(st).find((w) => w.code === b.fulfilment);
   if (!way) return c.json({ error: 'Choose shipping or pick-up.' }, 400);
-  const q = await priceCart(s.db, s.ws, b.items);
-  if (!q.lines.length) return c.json({ error: 'Your cart is empty.' }, 400);
-  if (q.problems.length) {
-    const p = q.problems[0];
-    return c.json({ error: `${p.name || 'An item'}${p.variant ? ` (${p.variant})` : ''}: ${p.error}.`, problems: q.problems }, 409);
-  }
-  const order = {
-    id: newId(),
-    fulfilment: way.code,
-    items: q.lines.map(({ product_id, slug, name, variant, qty, unit_cents, line_cents, image }) => ({ product_id, slug, name, variant, qty, unit_cents, line_cents, image })),
-    subtotal_cents: q.subtotal_cents,
-    shipping_cents: way.cents,
-    total_cents: q.subtotal_cents + way.cents,
-  };
+  // Check what's left and hold it in one step: the order is saved as pending
+  // (holding its items) before the buyer goes to Stripe. Actions take the
+  // campaign's row lock, so two buyers of the last shirt can't both get it.
+  const orderId = newId();
+  let order;
+  let refused = null;
+  await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
+    const q = await priceCart(tx, s.ws, b.items);
+    if (!q.lines.length) { refused = [400, { error: 'Your cart is empty.' }]; return; }
+    if (q.problems.length) {
+      const p = q.problems[0];
+      refused = [409, { error: `${p.name || 'An item'}${p.variant ? ` (${p.variant})` : ''}: ${p.error}.`, problems: q.problems }];
+      return;
+    }
+    order = {
+      id: orderId,
+      fulfilment: way.code,
+      items: q.lines.map(({ product_id, slug, name, variant, qty, unit_cents, line_cents, image }) => ({ product_id, slug, name, variant, qty, unit_cents, line_cents, image })),
+      subtotal_cents: q.subtotal_cents,
+      shipping_cents: way.cents,
+      total_cents: q.subtotal_cents + way.cents,
+    };
+    await tx.query(
+      `insert into store_orders (id, workspace_id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents)
+       values ($1, $2, 'pending', $3, $4, $5, $6, $7)`,
+      [order.id, s.ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents],
+    );
+    emit('store_order', order.id, 'create', {
+      status: 'pending', fulfilment: order.fulfilment, total_cents: order.total_cents,
+      items: order.items.map((l) => ({ product_id: l.product_id, variant: l.variant, qty: l.qty, unit_cents: l.unit_cents })),
+    });
+  });
+  if (refused) return c.json(refused[1], refused[0]);
   const back = `${originOf(c)}${s.base}`;
   let session;
   try {
     session = await stripePost('checkout/sessions', checkoutParams({
       order, ws: s.ws, settings: st,
       successUrl: `${back}/store/thanks?order=${order.id}`,
-      cancelUrl: `${back}/cart`,
+      cancelUrl: `${back}/cart?cancel=${order.id}`,
       imageUrl: /^https:/.test(back) ? (id) => `${back.replace(/\/site$/, '')}/media/${id}` : null,
     }));
   } catch (e) {
+    // No payment page: let the hold go at once.
+    await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.expire' }, async (tx, emit) => {
+      const r = await tx.query(`update store_orders set status = 'cancelled', updated_at = now()
+        where id = $1 and workspace_id = $2 and status = 'pending' returning id`, [order.id, s.ws.id]);
+      if (r.rows[0]) emit('store_order', order.id, 'update', { status: 'cancelled', reason: 'checkout could not open' });
+    });
     return c.json({ error: `Card payment isn’t available right now (${String(e.message).slice(0, 120)}). Please try again shortly.` }, 502);
   }
   await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
-    await tx.query(
-      `insert into store_orders (id, workspace_id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents, stripe_session_id)
-       values ($1, $2, 'pending', $3, $4, $5, $6, $7, $8)`,
-      [order.id, s.ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, session.id],
-    );
-    emit('store_order', order.id, 'create', {
-      status: 'pending', fulfilment: order.fulfilment, stripe_session_id: session.id, total_cents: order.total_cents,
-      items: order.items.map((l) => ({ product_id: l.product_id, variant: l.variant, qty: l.qty, unit_cents: l.unit_cents })),
-    });
+    await tx.query('update store_orders set stripe_session_id = $3, updated_at = now() where id = $1 and workspace_id = $2',
+      [order.id, s.ws.id, session.id]);
+    emit('store_order', order.id, 'update', { stripe_session_id: session.id });
   });
   return c.json({ url: session.url, order_id: order.id });
 });
