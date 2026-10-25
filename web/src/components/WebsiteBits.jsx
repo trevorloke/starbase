@@ -311,3 +311,15 @@ export function StripeNote({ stripe }) {
     </p>
   );
 }
+
+// The saved page or post on the site: "View on site" once published, else a
+// draft preview only signed-in staff can open (the site's ?preview).
+export function SiteLink({ path, published }) {
+  const href = `/site${path === '/' ? '/' : path}${published ? '' : '?preview'}`;
+  return (
+    <a className="btn btn-quiet ops-tap ws-sitelink" href={href} target="_blank" rel="noopener noreferrer"
+      title={published ? undefined : 'Shows the last saved version'}>
+      {published ? 'View on site ↗' : 'Preview draft ↗'}
+    </a>
+  );
+}

@@ -118,6 +118,9 @@ tagged by source, and is appended to the event log under a system actor.
 Starbase hosts the campaign's public website, edited from **Website** in
 the staff app (managers and staff; treasurers see Orders):
 **Pages · News · Events · Team · Store · Orders · Settings** and *View site*.
+A saved page or post shows **View on site**, or **Preview draft** while unpublished:
+the site's `?preview` shows a draft (marked, never cached or indexed) only to
+managers and staff signed in on the staff host.
 
 - **Where it answers.** `/site/…` on every host, and `/` on the hosts in
   `STARBASE_SITE_HOSTS` (e.g. `imaginesurrey.ca,www.imaginesurrey.ca`). On

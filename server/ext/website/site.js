@@ -24,6 +24,8 @@ import { siteWorkspace, parseJ, dateOnly, money } from './content.js';
 import { loadChrome, layout, img, fmtDay, fmtWhen, fmtTime, dateTile, socialLinks, icon } from './layout.js';
 import { priceCart, checkoutParams, productRow, leftOf } from './store.js';
 import { onSiteHost, originOf, siteHosts } from './hosts.js';
+import { getCookie } from 'hono/cookie';
+import { loadContext, SESSION_COOKIE } from '../../lib/auth.js';
 
 export const siteApp = new Hono();
 siteApp.use('*', etag());
@@ -48,6 +50,23 @@ const send = (c, html, status = 200) => {
   return c.html(html, status);
 };
 const noSite = (c) => c.text('This website is not set up yet.', 404);
+
+// Draft preview: ?preview on a page or post shows it unpublished — only to
+// the campaign's own desk staff, signed in on this host (the staff app's
+// /site; the site's own domain has no staff sign-in). Never cached or indexed.
+const EDITORS = ['manager', 'staff'];
+const canPreview = async (c, s) => {
+  if (c.req.query('preview') === undefined) return false;
+  const ctx = await loadContext(s.db, getCookie(c, SESSION_COOKIE)).catch(() => null);
+  return Boolean(ctx && ctx.workspaceId === s.ws.id && EDITORS.includes(ctx.role));
+};
+const draftNote = (editUrl) => `<div class="wrap narrow" style="padding-top:16px"><p class="notice" role="status">
+  <strong>Draft preview</strong> — only signed-in staff can see this. <a href="${esc(editUrl)}">Back to editing</a></p></div>`;
+const sendDraft = (c, html) => {
+  c.header('Cache-Control', 'no-store');
+  c.header('X-Robots-Tag', 'noindex');
+  return c.html(html);
+};
 
 const notFound = (c, s) => send(c, layout(s.ch, {
   title: 'Page not found', noindex: true, path: c.req.path.replace(/^\/site/, ''),
@@ -207,10 +226,13 @@ siteApp.get('/news', async (c) => {
 siteApp.get('/news/:slug', async (c) => {
   const s = await site(c);
   if (!s) return noSite(c);
-  const p = (await s.db.query('select * from site_posts where workspace_id = $1 and slug = $2 and published', [s.ws.id, c.req.param('slug')])).rows[0];
+  const preview = await canPreview(c, s);
+  const p = (await s.db.query(`select * from site_posts where workspace_id = $1 and slug = $2${preview ? '' : ' and published'}`,
+    [s.ws.id, c.req.param('slug')])).rows[0];
   if (!p) return notFound(c, s);
+  const draft = preview && !p.published;
   const day = dateOnly(p.date);
-  const main = `<section class="band"><div class="wrap narrow">
+  const main = `${draft ? draftNote(`/website/news/${p.id}`) : ''}<section class="band"><div class="wrap narrow">
   <span class="meta">${esc(fmtDay(`${day}T12:00:00Z`, 'UTC'))}</span>
   <h1>${esc(p.title)}</h1>
   ${p.summary ? `<p>${esc(p.summary)}</p>` : ''}
@@ -220,9 +242,9 @@ siteApp.get('/news/:slug', async (c) => {
   <div class="prose">${renderMarkdown(p.body)}</div>
   <a class="back" href="${esc(`${s.base}/news`)}">All news</a>
 </article></div>`;
-  return send(c, layout(s.ch, {
+  return (draft ? sendDraft : send)(c, layout(s.ch, {
     title: p.title, description: p.summary || markdownText(p.body, 180), image: p.cover_image ? `/media/${p.cover_image}` : null,
-    path: `/news/${p.slug}`, type: 'article', main, current: `${s.base}/news`,
+    path: `/news/${p.slug}`, type: 'article', main, current: `${s.base}/news`, noindex: draft,
   }));
 });
 
@@ -495,18 +517,21 @@ siteApp.get('/:slug', async (c) => {
   if (!s) return noSite(c);
   const slug = c.req.param('slug');
   if (slug === 'home') return c.redirect(`${s.base}/`, 301);
-  const p = (await s.db.query('select * from site_pages where workspace_id = $1 and slug = $2 and published', [s.ws.id, slug])).rows[0];
+  const preview = await canPreview(c, s);
+  const p = (await s.db.query(`select * from site_pages where workspace_id = $1 and slug = $2${preview ? '' : ' and published'}`,
+    [s.ws.id, slug])).rows[0];
   if (!p) return notFound(c, s);
+  const draft = preview && !p.published;
   const involved = slug === 'get-involved';
-  const main = `<section class="band${p.hero_image ? ' with-img' : ''}"><div class="wrap narrow"><h1>${esc(p.title)}</h1></div></section>
+  const main = `${draft ? draftNote(`/website/pages/${p.id}`) : ''}<section class="band${p.hero_image ? ' with-img' : ''}"><div class="wrap narrow"><h1>${esc(p.title)}</h1></div></section>
 <div class="wrap narrow lift"><article class="sheet">
   ${p.hero_image ? `<div class="cover">${img(p.hero_image, '', { eager: true })}</div>` : ''}
   <div class="prose">${renderMarkdown(p.body)}</div>
   ${involved ? `<div class="ctas" style="margin-top:28px"><a class="btn btn-accent" href="${esc(`/v/${s.ws.slug}`)}">Volunteer</a><a class="btn btn-line" href="${esc(s.ch.donate)}">${esc(s.ch.settings.donate_label)}</a></div>` : ''}
 </article></div>`;
-  return send(c, layout(s.ch, {
+  return (draft ? sendDraft : send)(c, layout(s.ch, {
     title: p.title, description: markdownText(p.body, 180), image: p.hero_image ? `/media/${p.hero_image}` : null,
-    path: `/${p.slug}`, main, current: `${s.base}/${p.slug}`,
+    path: `/${p.slug}`, main, current: `${s.base}/${p.slug}`, noindex: draft,
   }));
 });
 

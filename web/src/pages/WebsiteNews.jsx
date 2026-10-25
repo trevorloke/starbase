@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet, todayISO } from '../api.js';
 import { NoSignal, noSignal } from '../components/NoSignal.jsx';
-import { ConfirmDelete, ImageField, MarkdownField, Switch, slugify, useSave } from '../components/WebsiteBits.jsx';
+import { ConfirmDelete, ImageField, MarkdownField, SiteLink, Switch, slugify, useSave } from '../components/WebsiteBits.jsx';
 
 const day = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
@@ -113,6 +113,7 @@ function PostEditor({ id }) {
       <div className="ws-save-row">
         <button type="submit" className="btn btn-primary ops-tap" disabled={save.busy || !f.title.trim()}>{save.busy ? 'Saving…' : 'Save'}</button>
         {save.saved && <span className="ops-done" role="status">Saved</span>}
+        {!isNew && q.data?.post && <SiteLink path={`/news/${q.data.post.slug}`} published={q.data.post.published} />}
         <span className="spacer" />
         {!isNew && <ConfirmDelete what="this post" onYes={del} busy={save.busy} />}
       </div>

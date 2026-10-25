@@ -320,6 +320,30 @@ test('host routing: on a site host / is the website; the staff app, its API and 
   }
 });
 
+test('draft preview: only signed-in desk staff see a draft, marked, never cached or indexed', async () => {
+  const page = (await mgr.action('site.page.save', { title: 'Platform draft', slug: 'platform-draft', body: 'Not ready yet.', published: false })).json.page;
+  const post = (await mgr.action('site.post.save', { title: 'Draft news', slug: 'draft-news', date: '2026-10-20', body: 'Embargoed.', published: false })).json.post;
+  for (const path of ['/site/platform-draft', '/site/news/draft-news']) {
+    assert.equal((await get(path)).status, 404, `${path}: the public can't see a draft`);
+    assert.equal((await get(`${path}?preview`)).status, 404, `${path}: ?preview alone isn't enough`);
+    const r = await get(`${path}?preview`, { cookie: mgr.cookie });
+    assert.equal(r.status, 200, path);
+    assert.match(r.text, /Draft preview/);
+    assert.equal(r.headers.get('cache-control'), 'no-store');
+    assert.equal(r.headers.get('x-robots-tag'), 'noindex');
+    assert.equal((await get(`${path}?preview`, { cookie: staff.cookie })).status, 200, 'staff can preview');
+    assert.equal((await get(`${path}?preview`, { cookie: vol.cookie })).status, 404, 'a volunteer can’t');
+    assert.equal((await get(`${path}?preview`, { cookie: treas.cookie })).status, 404, 'a treasurer can’t');
+  }
+  assert.match((await get('/site/platform-draft?preview', { cookie: mgr.cookie })).text, new RegExp(`/website/pages/${page.id}`), 'links back to its editor');
+  assert.match((await get('/site/news/draft-news?preview', { cookie: mgr.cookie })).text, new RegExp(`/website/news/${post.id}`));
+  // Published: ?preview changes nothing.
+  await mgr.action('site.page.save', { id: page.id, title: 'Platform draft', body: 'Ready.', published: true });
+  const live = await get('/site/platform-draft?preview', { cookie: mgr.cookie });
+  assert.equal(live.status, 200);
+  assert.doesNotMatch(live.text, /Draft preview/);
+});
+
 test('every website write is on the chain and the chain verifies', async () => {
   const all = (await mgr.get('/api/events?since=0&limit=2000')).json.events;
   const names = new Set(all.map((e) => e.action));
