@@ -382,3 +382,4 @@ h2.today-h {
 .today-mine.is-small { margin: var(--s-2) 0; font-size: 14px; }
 .today-mine.is-small .today-mine__n { font-size: 22px; }
 .today-morebox__body > .today-mine.is-small:first-child { margin-top: var(--s-3); }
+.today-warning { display: block; margin: 0 0 var(--s-3); border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 8%, var(--paper-0)); color: var(--text-1); }

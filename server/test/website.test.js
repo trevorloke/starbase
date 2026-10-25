@@ -296,7 +296,9 @@ test('host routing: on a site host / is the website; the staff app, its API and 
     assert.equal((await on('/not-a-page')).status, 404, 'an unknown page is the site’s own 404');
     // The app and the forms keep working on the site's domain.
     const health = await app.request('http://imaginesurrey.test/api/health', { headers: { host: 'imaginesurrey.test' } });
-    assert.deepEqual(await health.json(), { ok: true, service: 'starbase' });
+    const h = await health.json();
+    assert.equal(h.ok, true);
+    assert.equal(h.service, 'starbase');
     const donate = await on(`/d/${slug}`);
     assert.equal(donate.status, 200);
     assert.match(donate.text, /Donate/);

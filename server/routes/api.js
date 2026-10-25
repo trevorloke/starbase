@@ -12,6 +12,7 @@ import { tierFor } from '../lib/tiers.js';
 import { emailConfigured, textConfigured } from '../lib/notify.js';
 import { RECORD_TYPES } from '@starbase/shared/registry';
 import { SOCIAL_PLATFORMS } from '@starbase/shared/canvass';
+import { staleTimeZoneData } from '../lib/tzcheck.js';
 import dataRoutes from './data.js';
 import { pointInPolygon, groupDoors, walkOrder } from '../lib/geo.js';
 import { checkCap } from '../lib/cap.js';
@@ -797,6 +798,9 @@ app.get('/brief', async (c) => {
   };
   // Features correct the counts they own (texts sent through the app).
   await runHooks('brief', db, ctx, body);
+  // Managers hear about a server problem only they can get fixed.
+  const tz = ctx.role === 'manager' ? staleTimeZoneData() : null;
+  if (tz) body.serverWarnings = [tz];
   return c.json(body);
 });
 

@@ -390,6 +390,7 @@ function NeedsYou({ b, me }) {
   return (
     <section className="today-section" aria-labelledby="today-needs-h">
       <h2 className="today-h" id="today-needs-h">Needs you</h2>
+      {(b.serverWarnings ?? []).map((w) => <p key={w} className="banner today-warning" role="alert">{w}</p>)}
       {empty ? (
         // Don't say "All caught up" before the volunteer count is in.
         prospects.isPending || followups.pending ? <p className="today-empty" aria-hidden="true">&nbsp;</p> : <p className="today-empty">All caught up.</p>

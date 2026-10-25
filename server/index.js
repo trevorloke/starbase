@@ -11,6 +11,7 @@ import publicRoutes from './routes/public.js';
 import { getDb } from './db/client.js';
 import { EXTENSIONS } from './ext.js';
 import { startJobRunner, stopJobRunner } from './lib/jobs.js';
+import { staleTimeZoneData } from './lib/tzcheck.js';
 import { siteApp, siteOnItsOwnHost } from './ext/website/site.js';
 
 export const app = new Hono();
@@ -23,7 +24,7 @@ export const app = new Hono();
 app.use('*', siteOnItsOwnHost);
 app.route('/site', siteApp);
 
-app.get('/api/health', (c) => c.json({ ok: true, service: 'starbase' }));
+app.get('/api/health', (c) => c.json({ ok: true, service: 'starbase', tzdataCurrent: !staleTimeZoneData() }));
 app.route('/api/auth', authRoutes);
 app.route('/', publicRoutes); // /p, /n, /v, /u, /api/public — no auth
 for (const e of EXTENSIONS) if (e.publicRoutes) app.route('/', e.publicRoutes);
@@ -41,6 +42,8 @@ if (isMain) {
   const server = serve({ fetch: app.fetch, port }, () => {
     console.log(`starbase on :${port}`);
   });
+  const tz = staleTimeZoneData();
+  if (tz) console.warn(`starbase: ${tz}`);
   // Background jobs (ladder steps, A/B winners). STARBASE_JOBS=off disables.
   if (process.env.STARBASE_JOBS !== 'off') {
     getDb().then((db) => startJobRunner(db, { everyMs: Number(process.env.STARBASE_JOBS_EVERY_MS) || 30_000 }));

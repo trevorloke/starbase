@@ -349,6 +349,16 @@ the same file never creates duplicates.
 
 ---
 
+**Time-zone rules.** B.C. stays on UTC-7 all year from March 2026. Starbase
+needs a Node 22 new enough to know that, or every time after Nov 1, 2026
+shows an hour off. It checks at startup: an out-of-date server logs a
+warning, shows a banner on the manager's Today, and reports
+`"tzdataCurrent": false` on `/api/health`. Fix it by redeploying with a
+newer Node 22 image (the Dockerfile uses `node:22-alpine`, which pulls the
+latest).
+
+---
+
 ## 4 · Known limits in this build
 
 - Map tiles come from OpenStreetMap; very large teams should switch to a paid
