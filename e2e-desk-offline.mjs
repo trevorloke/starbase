@@ -307,9 +307,9 @@ check('Rating scale with no signal: "No signal — this loads…", and the strip
   /No signal — this loads when you’re back online/.test(t) && !(await D.kept()), `${await D.kept()} · ${t.slice(0, 120)}`);
 await D.go('/team');
 t = await D.main();
-check('Team with no signal: "No signal", never "Members 0"; Get invite link off — "Inviting and changing roles need signal"',
+check('Team with no signal: "No signal", never "Members 0"; Get invite link off — "Inviting, changing roles and removing need signal"',
   /No signal — this loads when you’re back online/.test(t) && !/Members 0/.test(t) && !(await D.kept())
-    && await page.locator('.ot-invite button[type="submit"]').isDisabled().catch(() => false) && /Inviting and changing roles need signal/.test(t), `${await D.kept()} · ${t.slice(0, 200)}`);
+    && await page.locator('.ot-invite button[type="submit"]').isDisabled().catch(() => false) && /Inviting, changing roles and removing need signal/.test(t), `${await D.kept()} · ${t.slice(0, 200)}`);
 await simple(D, 'Team, no signal (1360)');
 await D.go('/filings');
 t = await D.main();
