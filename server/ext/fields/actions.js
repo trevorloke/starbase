@@ -85,6 +85,8 @@ const valuesOf = async (tx, ctx, fieldId) => (await tx.query(
   [ctx.workspaceId, fieldId],
 )).rows.map((r) => ({ ...r, value: r.value ?? null }));
 
+import { addStandardFields } from './people.js';
+
 export const actions = {
   'field.create': {
     roles: MANAGERS,
@@ -232,6 +234,14 @@ export const actions = {
       emit('person_field', f.id, 'update', { retired: false });
       return { field: fieldOut({ ...f, retired_at: null, position: top + 1 }) };
     },
+  },
+
+  // Imagine Surrey's standard fields (people.js), for a campaign set up
+  // before they existed. Already there: nothing changes.
+  'field.standard': {
+    roles: MANAGERS,
+    input: z.object({}),
+    handler: async (tx, ctx, input, emit) => ({ added: await addStandardFields(tx, ctx, emit) }),
   },
 
   'field.values.set': {

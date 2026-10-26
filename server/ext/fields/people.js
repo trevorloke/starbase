@@ -147,6 +147,53 @@ export const SAMPLE_FIELDS = [
   },
 ];
 
+// Imagine Surrey's standard fields: one for every column of the campaign's
+// list that the core person record has no home for. Named exactly as the
+// list's columns, so the import maps them by name with no thought. Made
+// when the campaign is set up (workspaceCreated) and by field.standard
+// (Profile fields → Add the standard fields) for a campaign set up before
+// they existed; a field of the same name already there is left as it is.
+export const STANDARD_FIELDS = [
+  { name: 'Home phone', kind: 'text', volunteers: true },
+  { name: 'Province', kind: 'text', volunteers: false },
+  { name: 'House notes', kind: 'text', volunteers: true },
+  { name: 'Building notes', kind: 'text', volunteers: true },
+  { name: 'Access type', kind: 'text', volunteers: true },
+  { name: 'Dwelling type', kind: 'text', volunteers: true },
+  { name: 'Interaction status', kind: 'text', volunteers: false },
+  { name: 'Interaction date', kind: 'date', volunteers: false },
+  { name: 'Organizer', kind: 'text', volunteers: false },
+  { name: 'Email opt-in', kind: 'yesno', volunteers: false },
+  { name: 'SMS opt-in', kind: 'yesno', volunteers: false },
+  { name: 'Sign', kind: 'yesno', volunteers: true },
+  { name: 'Support', kind: 'number', volunteers: false },
+  { name: 'Voted', kind: 'yesno', volunteers: false },
+];
+
+// → the fields added ({ id, name, kind }); none when every one is there.
+export const addStandardFields = async (tx, ctx, emit) => {
+  const ws = ctx.workspaceId;
+  const live = (await tx.query('select * from person_fields where workspace_id = $1 and retired_at is null', [ws])).rows;
+  let top = live.reduce((m, f) => Math.max(m, f.position), -1);
+  let count = live.length;
+  const added = [];
+  for (const s of STANDARD_FIELDS) {
+    if (live.some((x) => nameKey(x.name) === nameKey(s.name))) continue;
+    if (count >= FIELDS_MAX) break;
+    top += 1; count += 1;
+    const f = { id: newId(), name: s.name, kind: s.kind, choices: [], volunteers: s.volunteers, position: top };
+    await tx.query(
+      `insert into person_fields (id, workspace_id, name, kind, choices, volunteers, position, created_by)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [f.id, ws, f.name, f.kind, '[]', f.volunteers, f.position, ctx.user?.id || null],
+    );
+    emit('person_field', f.id, 'create', { ...f, standard: true });
+    added.push({ id: f.id, name: f.name, kind: f.kind });
+  }
+  return added;
+};
+export const workspaceCreated = (tx, ctx, { emit }) => addStandardFields(tx, ctx, emit);
+
 export const sampleLoaded = async (tx, ctx, { people, emit }) => {
   const ws = ctx.workspaceId;
   const live = (await tx.query(

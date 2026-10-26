@@ -5,6 +5,7 @@
 // import fills them by column name with row-numbered errors, the export
 // carries both tables, and the sample campaign brings three. test:pg-safe:
 // unique emails and names per run, every query scoped to this workspace.
+import { STANDARD_FIELDS } from '../ext/fields/people.js';
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -38,6 +39,9 @@ before(async () => {
   mgr = new Client();
   const r = await mgr.signup({ workspaceName: `Fields WS ${tag}`, email: `fd-mgr+${tag}@example.org`, jurisdiction: 'bc-municipal' });
   ws = r.json.workspace.id;
+  // This file defines fields from nothing: the standard ones a campaign
+  // starts with (import.test.js covers them) are cleared first.
+  await (await getDb()).query('delete from person_fields where workspace_id = $1', [ws]);
   staff = await join('staff', 'staff');
   vol = await join('volunteer', 'vol');
   other = new Client();
@@ -105,7 +109,7 @@ test('the desk fills them in: each kind checked, cleared, a no-change save logs 
     [{ strata: 'maybe' }, /Strata council member.*isn’t yes or no/],
     [{ household: 'three' }, /Household size.*isn’t a number/],
     [{ moved: '2026-02-30' }, /Moved in.*isn’t a date like 2026-10-22/],
-    [{ moved: '22/10/2026' }, /isn’t a date/],
+    [{ moved: '22/22/2026' }, /isn’t a date/],
     [{ union: 'x'.repeat(501) }, /Union local” is too long/],
     [{ union: 'Fine', household: 'lots' }, /Household size/],
   ];
@@ -299,14 +303,14 @@ test('import: a column fills a field by its name (any case), checked with row-nu
     { name: 'Ana Example', email: 'ana@example.org', fields: { 'language at home': 'English', 'MOVED IN': '2023-01-15' } },
     { name: 'Fay Example', phone: '604-555-0135', fields: { 'Language at home': 'mandarin', 'Strata council member': 'y', 'Household size': '4' } },
     { name: 'Gus Example', fields: { 'Language at home': 'Klingon' } },
-    { name: 'Hal Example', fields: { 'Moved in': '15/01/2023' } },
+    { name: 'Hal Example', fields: { 'Moved in': 'last spring' } },
     { name: 'Ida Example', fields: { 'Shoe size': '9' } },
     { name: 'Jo Example', fields: { [F.union.id]: 'Local 1' } },
   ];
   const dry = ok(await staff.post('/api/data/import', { rows, dryRun: true }));
   assert.deepEqual(dry.invalid, [
     'row 3: “Language at home”: “Klingon” isn’t one of the choices (Punjabi, English, Mandarin, Hindi)',
-    'row 4: “Moved in”: “15/01/2023” isn’t a date like 2026-10-22',
+    'row 4: “Moved in”: “last spring” isn’t a date like 2026-10-22',
     'row 5: there’s no field called “Shoe size”',
   ]);
   assert.deepEqual([dry.created, dry.merged, dry.unchanged], [2, 1, 0]);
@@ -353,7 +357,9 @@ test('sample campaign: three fields with values; clearing removes them, and keep
   const s = new Client();
   await s.signup({ workspaceName: `Sample Fields ${tag}`, email: `fd-sample+${tag}@example.org`, jurisdiction: 'bc-municipal' });
   ok(await s.post('/api/data/sample', {}));
-  const list = ok(await s.get('/api/fields')).fields;
+  // Besides the standard fields every campaign starts with.
+  const standard = new Set(STANDARD_FIELDS.map((f) => f.name));
+  const list = ok(await s.get('/api/fields')).fields.filter((f) => !standard.has(f.name));
   assert.deepEqual(list.map((f) => [f.name, f.kind, f.volunteers]), [
     ['Language at home', 'choice', true], ['Strata council member', 'yesno', false], ['Union local', 'text', false],
   ]);
@@ -376,7 +382,7 @@ test('sample campaign: three fields with values; clearing removes them, and keep
   const clear = ok(await s.req('DELETE', '/api/data/sample'));
   assert.match(clear.message, /Kept 2 sample people with your own records on them \(2 profile details\); they’re no longer marked sample\./);
   assert.match(clear.message, /Kept the field “Language at home”: you filled it in for 2 people\. Kept the field “Strata council member”: you filled it in for 1 person\.$/);
-  const left = ok(await s.get('/api/fields')).fields;
+  const left = ok(await s.get('/api/fields')).fields.filter((f) => !standard.has(f.name));
   assert.deepEqual(left.map((f) => [f.name, f.filled]), [['Language at home', 2], ['Strata council member', 1]], 'the other sample field is gone');
   assert.equal(await valueOf(s, mine.id, lang.id), 'Hindi');
   assert.equal(await valueOf(s, simran.id, lang.id), 'English', 'kept with the person');
@@ -397,8 +403,8 @@ test('sample campaign: three fields with values; clearing removes them, and keep
 
   // A second load reuses your same-named field rather than making a twin.
   ok(await s.post('/api/data/sample', {}));
-  assert.deepEqual(ok(await s.get('/api/fields')).fields.map((f) => f.name), ['Language at home', 'Strata council member', 'Union local']);
+  assert.deepEqual(ok(await s.get('/api/fields')).fields.filter((f) => !standard.has(f.name)).map((f) => f.name), ['Language at home', 'Strata council member', 'Union local']);
   const c2 = ok(await s.req('DELETE', '/api/data/sample'));
   assert.doesNotMatch(c2.message, /Kept the field/, 'your fields were never sample: nothing to say');
-  assert.deepEqual(ok(await s.get('/api/fields')).fields.map((f) => [f.name, f.filled]), [['Language at home', 2], ['Strata council member', 1]]);
+  assert.deepEqual(ok(await s.get('/api/fields')).fields.filter((f) => !standard.has(f.name)).map((f) => [f.name, f.filled]), [['Language at home', 2], ['Strata council member', 1]]);
 });

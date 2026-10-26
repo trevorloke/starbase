@@ -40,7 +40,10 @@ const registry = { events: [], contactLogged: [], brief: [], textOut: [] };
 //                                   before its people go (void what it
 //                                   made while they are still here);
 //                                   said: sentences for the clear message.
-Object.assign(registry, { personsWhere: [], importRows: [], sampleLoaded: [], sampleCleared: [] });
+//   workspaceCreated(tx, ctx, { emit })   the campaign was just set up
+//                                   (routes/auth.js): a feature may make
+//                                   what every campaign starts with.
+Object.assign(registry, { personsWhere: [], importRows: [], sampleLoaded: [], sampleCleared: [], workspaceCreated: [] });
 
 export const onHook = (name, fn) => {
   if (!registry[name]) throw new Error(`unknown hook ${name}`);

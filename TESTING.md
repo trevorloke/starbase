@@ -336,7 +336,12 @@ Ratings import as codes, words or candidate names in any case (*definitely*,
 *Locke*, *4b*). A column named like a profile field (any case, any script —
 *语言*, *ਭਾਸ਼ਾ*) fills it; a bad cell (e.g. *Klingon* for *Language at home*, or
 *1 2 3* for a Number) is refused by row number. A field taken off before you
-tap Import is skipped; the row still comes in.
+tap Import is skipped; the row still comes in. The campaign's own list maps
+by itself: House Number + Street Name become one address, Latitude and
+Longitude a pin, Volunteer and Donor (1/0) the tags, Home Phone, Province,
+House/Building Notes, Access Type, Dwelling Type, Interaction Status/Date,
+Organizer, Email/SMS Opt-In, Sign, Support (1–5) and Voted the standard
+profile fields of the same names.
 Then **Place on map** looks the addresses up with the BC Address
 Geocoder (needs internet). It runs on the server: you can close the page and
 it keeps going (come back to Import or the map to see how far it's got, or

@@ -76,7 +76,18 @@ than a week after they came off is refused. Contacts are door, phone, text or
   Date (*Language at home*, *Strata council member*, …) — set up by a manager,
   filled in by the desk under *More details* (read-only with no signal),
   filtered, imported (column names in any script) and exported; volunteers
-  see only the ones marked for them, read-only.
+  see only the ones marked for them, read-only. Every campaign starts with
+  Imagine Surrey's **standard fields**, named for the list's own columns so
+  an import maps them by itself: Home phone, Province, House notes,
+  Building notes, Access type, Dwelling type (those four shown to
+  canvassers), Interaction status, Interaction date, Organizer, Email
+  opt-in, SMS opt-in, Sign, Support (the list's 1–5, kept apart from the
+  rating scale) and Voted. *Profile fields → Add the standard fields* puts
+  them on a campaign set up before they existed. The import also takes a
+  **House number** column (joined to the street: 13450 + 104 Ave), **Latitude
+  / Longitude** (a pin, only where there is none), and **Volunteer / Donor**
+  1/0 columns (the tags); yes/no fields read 1 and 0, and dates come in as
+  spreadsheets write them (10/21/2026, 21 Oct 2026).
 - **Relationships**: who knows whom (Family · Friend · Neighbour · Work ·
   Community · Other), *brought in by*, and each volunteer's **My people** —
   add someone you know, call, text, or rate a talk in person. A profile's

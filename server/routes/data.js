@@ -45,6 +45,14 @@ const rowSchema = z.object({
   postal: z.string().max(20).nullish(),
   tags: z.union([z.string().max(2000), z.array(z.string().max(40)).max(50)]).nullish(),
   rating: z.string().max(80).nullish(), // a code or the scale's words: "4B", "Locke", "Strong yes"
+  // A list with the number and the street in two columns: "13450" + "104 Ave".
+  house_number: z.union([z.string().max(20), z.number()]).nullish(),
+  // A pin already known (a list that was geocoded before).
+  lat: z.union([z.string().max(40), z.number()]).nullish(),
+  lng: z.union([z.string().max(40), z.number()]).nullish(),
+  // 1/0 (yes/no) columns that become the volunteer and donor tags.
+  volunteer: z.union([z.string().max(20), z.number(), z.boolean()]).nullish(),
+  donor: z.union([z.string().max(20), z.number(), z.boolean()]).nullish(),
   // Social handles, one column each (a handle or a profile link).
   instagram: z.string().max(300).nullish(),
   x: z.string().max(300).nullish(),
@@ -57,6 +65,15 @@ const importInput = z.object({
   tag: z.string().trim().max(40).nullish(),   // applied to every imported row
   dryRun: z.boolean().default(false),
 });
+
+// A 1/0 column: 1, yes, y, true, x (any case) say yes.
+const yes = (v) => v === true || v === 1 || /^(1|yes|y|true|x)$/i.test(norm(v == null ? '' : String(v)));
+// A coordinate in range, or null (blank, words, a 0 that means "none").
+const coord = (v, max) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(String(v).trim());
+  return Number.isFinite(n) && Math.abs(n) <= max ? n : null;
+};
 
 // scale: the campaign's (ext/scale). A rating is a code or its words, any
 // case; a new rating must be on the list (one taken off it is refused).
@@ -73,14 +90,24 @@ const cleanRow = (raw, i, scale) => {
   if (said && !hit) return { error: `row ${i + 1}: rating “${v.rating}” is not on the scale` };
   if (hit?.off) return { error: `row ${i + 1}: rating “${v.rating}” is off the list` };
   const rating = hit?.code || null;
-  const tags = Array.isArray(v.tags) ? v.tags : norm(v.tags).split(/[;,|]/);
+  const tags = Array.isArray(v.tags) ? [...v.tags] : norm(v.tags).split(/[;,|]/);
+  if (yes(v.volunteer)) tags.push('volunteer');
+  if (yes(v.donor)) tags.push('donor');
   const socials = {};
   for (const k of IMPORT_SOCIALS) if (norm(v[k])) socials[k] = norm(v[k]);
+  // "13450" + "104 Ave" → "13450 104 Ave" (Surrey's streets are numbers
+  // themselves, so only a street that already begins with this very number
+  // keeps it as it is).
+  let address = norm(v.address) || null;
+  const house = norm(v.house_number == null ? '' : String(v.house_number)).replace(/\.0$/, '');
+  if (house && address && !address.toLowerCase().startsWith(`${house.toLowerCase()} `)) address = `${house} ${address}`;
+  const lat = coord(v.lat, 90); const lng = coord(v.lng, 180);
+  const pin = lat != null && lng != null && !(lat === 0 && lng === 0) ? { lat, lng } : null;
   return {
     row: {
-      name, email, rating, socials,
+      name, email, rating, socials, pin,
       phone: norm(v.phone) || null,
-      address: norm(v.address) || null,
+      address,
       unit: norm(v.unit) || null,
       city: norm(v.city) || null,
       postal: norm(v.postal).toUpperCase() || null,
@@ -131,7 +158,7 @@ const candidates = async (tx, workspaceId, clean) => {
   if (!ids.size) return [];
   return (await tx.query(
     `select p.* from unnest($2::uuid[]) as k(id) cross join lateral (
-       select id, name, email, phone, address, unit, city, postal, tags, socials, rating, created_at from persons
+       select id, name, email, phone, address, unit, city, postal, tags, socials, rating, lat, lng, created_at from persons
        where id = k.id and workspace_id = $1 offset 0) as p
      order by p.created_at, p.id`, [workspaceId, [...ids]],
   )).rows.map(({ created_at: _, ...p }) => ({ ...p, tags: parseJson(p.tags, []), socials: parseJson(p.socials, {}) }));
@@ -208,6 +235,8 @@ app.post('/import', async (c) => {
         const tags = [...new Set([...(match.tags || []), ...r.tags])].slice(0, 50);
         if (tags.length !== (match.tags || []).length) patch.tags = tags;
         if (!match.rating && r.rating) patch.rating = r.rating;
+        // A pin from the list goes on only where there is none.
+        if (r.pin && match.lat == null) { patch.lat = r.pin.lat; patch.lng = r.pin.lng; }
         // Handles fill only the platforms with none on file.
         const newHandles = Object.entries(r.socials).filter(([k]) => !String(match.socials?.[k] || '').trim());
         if (newHandles.length) patch.socials = { ...(match.socials || {}), ...Object.fromEntries(newHandles) };
@@ -219,9 +248,10 @@ app.post('/import', async (c) => {
           const next = { ...match, ...patch };
           await tx.query(
             `update persons set email = $3, phone = $4, address = $5, unit = $6, city = $7, postal = $8, tags = $9,
-               rating = $10, socials = $11, updated_at = now() where id = $1 and workspace_id = $2`,
+               rating = $10, socials = $11, lat = $12, lng = $13, updated_at = now() where id = $1 and workspace_id = $2`,
             [match.id, ctx.workspaceId, next.email, next.phone, next.address, next.unit, next.city, next.postal,
-             JSON.stringify(next.tags || []), next.rating || null, JSON.stringify(next.socials || {})],
+             JSON.stringify(next.tags || []), next.rating || null, JSON.stringify(next.socials || {}),
+             next.lat ?? null, next.lng ?? null],
           );
           emit('person', match.id, 'update', { ...patch, source: 'import' });
           Object.assign(match, patch);
@@ -232,13 +262,14 @@ app.post('/import', async (c) => {
         const id = newId();
         decisions.push({ row: r.index + 1, name: r.name, action: 'created', id });
         const p = { id, name: r.name, email: r.email, phone: r.phone, address: r.address, unit: r.unit,
-          city: r.city, postal: r.postal, tags: r.tags, socials: r.socials, rating: r.rating };
+          city: r.city, postal: r.postal, tags: r.tags, socials: r.socials, rating: r.rating,
+          lat: r.pin?.lat ?? null, lng: r.pin?.lng ?? null };
         if (write) {
           await tx.query(
-            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, socials, rating)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, socials, rating, lat, lng)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
             [id, ctx.workspaceId, p.name, p.email, p.phone, p.address, p.unit, p.city, p.postal,
-             JSON.stringify(p.tags), JSON.stringify(p.socials), p.rating],
+             JSON.stringify(p.tags), JSON.stringify(p.socials), p.rating, p.lat, p.lng],
           );
           emit('person', id, 'create', { ...p, source: 'import' });
         }

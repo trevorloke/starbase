@@ -204,12 +204,17 @@ const FIELDS = [
   { key: 'last', label: 'Last name' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
+  { key: 'house_number', label: 'House number' },
   { key: 'address', label: 'Street address' },
   { key: 'unit', label: 'Unit / apt' },
   { key: 'city', label: 'City' },
   { key: 'postal', label: 'Postal code' },
   { key: 'tags', label: 'Tags' },
-  { key: 'rating', label: 'Rating (1–4)' },
+  { key: 'rating', label: 'Rating (the scale)' },
+  { key: 'lat', label: 'Latitude' },
+  { key: 'lng', label: 'Longitude' },
+  { key: 'volunteer', label: 'Volunteer (1/0 → tag)' },
+  { key: 'donor', label: 'Donor (1/0 → tag)' },
   { key: 'instagram', label: 'Instagram' },
   { key: 'x', label: 'X (Twitter)' },
   { key: 'tiktok', label: 'TikTok' },
@@ -217,7 +222,7 @@ const FIELDS = [
 ];
 const SKIP = '';
 const fieldLabel = (key) => FIELDS.find((f) => f.key === key)?.label || key;
-const FIELD_WORD = { socials: 'social handles', email: 'email', phone: 'phone', address: 'address', unit: 'unit', city: 'city', postal: 'postal code', tags: 'tags', rating: 'rating', instagram: 'Instagram', x: 'X', tiktok: 'TikTok', reddit: 'Reddit' };
+const FIELD_WORD = { socials: 'social handles', email: 'email', phone: 'phone', address: 'address', house_number: 'house number', unit: 'unit', city: 'city', postal: 'postal code', tags: 'tags', rating: 'rating', lat: 'latitude', lng: 'longitude', volunteer: 'volunteer tag', donor: 'donor tag', instagram: 'Instagram', x: 'X', tiktok: 'TikTok', reddit: 'Reddit' };
 const MULTI = new Set(['tags']); // several columns can feed tags; every other field takes one column
 
 const normHeader = (h) =>
@@ -234,13 +239,18 @@ const EXACT = [
   ['first', /^(first|firstname|fname|given|givenname|forename|firstnames)$/],
   ['last', /^(last|lastname|lname|surname|familyname)$/],
   ['name', /^(name|fullname|contactname|displayname|votername|membername|donorname|person|contact|names)$/],
-  ['phone', /^(phone|phonenumber|phoneno|tel|telephone|mobile|mobilephone|mobilenumber|cell|cellphone|cellnumber|homephone|primaryphone|phone\d)$/],
+  ['phone', /^(phone|phonenumber|phoneno|tel|telephone|mobile|mobilephone|mobilenumber|cell|cellphone|cellnumber|primaryphone|phone\d)$/],
+  ['house_number', /^(housenumber|houseno|housenum|hsenum|civicnumber|civicno|streetnumber|streetno|stnum|number|no)$/],
+  ['lat', /^(lat|latitude|ylat|y)$/],
+  ['lng', /^(lng|lon|long|longitude|xlong|x)$/],
+  ['volunteer', /^(volunteer|isvolunteer|volunteerflag|vol)$/],
+  ['donor', /^(donor|isdonor|donorflag)$/],
   ['unit', /^(unit|unitnumber|unitno|apt|aptno|aptnumber|apartment|suite|suiteno|address2|addressline2|street2)$/],
-  ['address', /^(address|streetaddress|streetaddress1|address1|addressline1|street|street1|civicaddress|homeaddress|residentialaddress|mailingaddress|addr)$/],
+  ['address', /^(address|streetaddress|streetaddress1|address1|addressline1|street|street1|streetname|civicaddress|homeaddress|residentialaddress|mailingaddress|addr)$/],
   ['city', /^(city|town|municipality|locality|cityname)$/],
   ['postal', /^(postal|postalcode|postcode|zip|zipcode|pc)$/],
   ['tags', /^(tags?|groups?|labels?|lists?|segments?|categories|category)$/],
-  ['rating', /^(rating|support|supportlevel|supportid|id|idlevel|supportscore|canvassid|canvassrating|doorrating)$/],
+  ['rating', /^(rating|supportlevel|supportid|id|idlevel|supportscore|canvassid|canvassrating|doorrating)$/],
   ['instagram', /^(instagram|insta|ig|instagramhandle|instagramusername)$/],
   ['x', /^(twitter|xhandle|twitterhandle|twitterusername|xtwitter|twitterx)$/],
   ['tiktok', /^(tiktok|tiktokhandle|tiktokusername)$/],
@@ -250,7 +260,10 @@ const CONTAINS = [
   ['email', /e?mail/],
   ['first', /firstname|givenname|forename/],
   ['last', /lastname|surname|familyname/],
-  ['phone', /phone|mobile|cellular|^cell|^tel/],
+  ['phone', /^(?!home).*(phone|mobile|cellular)|^cell|^tel/],
+  ['house_number', /housenumber|civicnumber|streetnumber/],
+  ['lat', /latitude/],
+  ['lng', /longitude/],
   ['postal', /postal|postcode|zip/],
   ['unit', /^(unit|apt|suite)/],
   ['address', /address|street/],
@@ -278,7 +291,8 @@ const looksLikeRatings = (scale, values, share = 1) =>
   values.length > 0 && values.filter((v) => matchRating(scale, v)).length / values.length >= share;
 const mostly = (values, re, share = 0.8) => values.length > 0 && values.filter((v) => re.test(v)).length / values.length >= share;
 // Loose header guesses must also look right ("Email opt-in" holding yes/no is not an email column).
-const VALUE_CHECK = { email: EMAIL_RE, phone: PHONE_RE, postal: POSTAL_RE };
+const COORD_RE = /^-?\d{1,3}(\.\d+)?$/;
+const VALUE_CHECK = { email: EMAIL_RE, phone: PHONE_RE, postal: POSTAL_RE, lat: COORD_RE, lng: COORD_RE };
 
 const columnValues = (records, i, limit = 200) => {
   const out = [];

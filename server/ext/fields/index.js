@@ -14,13 +14,14 @@
 //   kinds.js    the five kinds: checking, storing and showing a value
 //   actions.js  field.* (managers) and field.values.set (desk)
 //   api.js      GET /fields (desk) · GET /fields/:id and /persons/:id/fields (any role, filtered)
-//   people.js   the People filter, the import, the sample campaign (lib/hooks.js)
+//   people.js   the People filter, the import, the sample campaign, and the
+//               standard fields a new campaign starts with (lib/hooks.js)
 export { sql } from './sql.js';
 export { actions } from './actions.js';
 export { api } from './api.js';
-import { personsWhere, importRows, sampleLoaded, sampleCleared } from './people.js';
+import { personsWhere, importRows, sampleLoaded, sampleCleared, workspaceCreated } from './people.js';
 
-export const hooks = { personsWhere, importRows, sampleLoaded, sampleCleared };
+export const hooks = { personsWhere, importRows, sampleLoaded, sampleCleared, workspaceCreated };
 
 // In the full export: every field (taken off too) and every value.
 export const exportTables = ['person_fields', 'person_field_values'];

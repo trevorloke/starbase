@@ -285,10 +285,21 @@ export default function Fields() {
       <div className="ops-head">
         <h1>Profile fields</h1>
         {!adding && (
-          <button type="button" className="btn btn-primary ops-tap" disabled={!online}
-            onClick={() => { setOpenId(null); setSaid(null); setParams({ add: '1' }); }}>
-            Add a field
-          </button>
+          <div className="ops-actions">
+            <button type="button" className="btn ops-tap" disabled={!online || locked}
+              onClick={async () => {
+                const r = await run('field.standard', {}, null);
+                if (r.error) { setError(r.error); return; }
+                const added = r.res?.added || [];
+                setSaid(added.length ? `✓ Added ${added.length} standard ${added.length === 1 ? 'field' : 'fields'}: ${added.map((f) => f.name).join(', ')}` : 'The standard fields are all here already.');
+              }}>
+              Add the standard fields
+            </button>
+            <button type="button" className="btn btn-primary ops-tap" disabled={!online}
+              onClick={() => { setOpenId(null); setSaid(null); setParams({ add: '1' }); }}>
+              Add a field
+            </button>
+          </div>
         )}
       </div>
       {!online && <NeedsSignalLine>Changing fields needs signal</NeedsSignalLine>}

@@ -97,8 +97,10 @@ In the app → **Website**:
 
 1. **People → Import**: a CSV or spreadsheet, up to 300 MB in the browser.
    Map the columns, run a dry run first (it reports matches, new people and
-   anything it couldn't read), then import. Social handles (Instagram, X,
-   TikTok, Reddit) fill blank ones only.
+   anything it couldn't read), then import. The list's own columns map by
+   themselves (house number and street, latitude and longitude, the 1/0
+   flags, and the standard fields named after them); social handles
+   (Instagram, X, TikTok, Reddit) fill blank ones only.
 2. **Place on map** starts a background run; the import page and the map
    show progress and the time left, and it carries on with the page closed.
    Addresses the geocoder can't place are set aside for a pin by hand (drag

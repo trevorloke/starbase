@@ -431,3 +431,49 @@ test('import: social handle columns — set on new people, fill blanks on matche
   const third = await imp([{ name: 'Social Importee', email: 'social.importee@example.org', x: 'importee_x' }]);
   assert.equal(third.json.unchanged, 1);
 });
+
+test('import: the campaign’s list — house number + street, latitude/longitude, 1/0 flags, and the standard fields by name', async () => {
+  const fields = (await mgr.get('/api/fields')).json.fields;
+  for (const n of ['Home phone', 'Province', 'House notes', 'Building notes', 'Access type', 'Dwelling type', 'Interaction status',
+    'Interaction date', 'Organizer', 'Email opt-in', 'SMS opt-in', 'Sign', 'Support', 'Voted']) {
+    assert.ok(fields.some((f) => f.name === n), `a new campaign starts with the field “${n}”`);
+  }
+  const byName = Object.fromEntries(fields.map((f) => [f.name, f.id]));
+  const rows = [
+    { first: 'Dara', last: 'Import', house_number: '13450', address: '104 Ave', city: 'Surrey', lat: '49.19', lng: '-122.85',
+      volunteer: '1', donor: '0', phone: '604-555-0199',
+      fields: { 'Home phone': '604-555-0100', Support: '5', 'Interaction date': '10/21/2026', 'Email opt-in': '1', Voted: '0', 'Access type': 'Buzzer', Province: 'BC' } },
+    { name: 'Eli Import', house_number: 12, address: '12 72 Ave', lat: 'n/a', lng: '', donor: 'yes', fields: { 'Interaction date': '21 Oct 2026', 'SMS opt-in': 'Y' } },
+  ];
+  const r = await mgr.post('/api/data/import', { rows });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.deepEqual(r.json.invalid, []);
+  assert.equal(r.json.created, 2);
+  const dara = (await mgr.get('/api/persons?q=Dara%20Import')).json.persons[0];
+  assert.equal(dara.address, '13450 104 Ave', 'the number and the street become one address');
+  assert.equal(dara.lat, 49.19); assert.equal(dara.lng, -122.85);
+  assert.ok(dara.tags.includes('volunteer') && !dara.tags.includes('donor'), '1/0 flags become tags');
+  const vals = Object.fromEntries((await mgr.get(`/api/persons/${dara.id}/fields`)).json.fields.map((f) => [f.id, f.value]));
+  assert.equal(vals[byName['Home phone']], '604-555-0100');
+  assert.equal(vals[byName.Support], 5, 'support 1–5 is its own number, not the rating');
+  assert.equal(vals[byName['Interaction date']], '2026-10-21', 'a date as the spreadsheet wrote it');
+  assert.equal(vals[byName['Email opt-in']], true);
+  assert.equal(vals[byName.Voted], false);
+  assert.equal(vals[byName['Access type']], 'Buzzer');
+  assert.equal(dara.rating, null);
+  const eli = (await mgr.get('/api/persons?q=Eli%20Import')).json.persons[0];
+  assert.equal(eli.address, '12 72 Ave', 'a street that has its number keeps it');
+  assert.equal(eli.lat, null, 'words are not a pin');
+  assert.ok(eli.tags.includes('donor'));
+  const ev = Object.fromEntries((await mgr.get(`/api/persons/${eli.id}/fields`)).json.fields.map((f) => [f.id, f.value]));
+  assert.equal(ev[byName['Interaction date']], '2026-10-21');
+  assert.equal(ev[byName['SMS opt-in']], true);
+  // A pin from a later list goes on only where there is none.
+  const again = await mgr.post('/api/data/import', { rows: [{ name: 'Eli Import', address: '12 72 Ave', lat: 49.1, lng: -122.8 },
+    { name: 'Dara Import', phone: '604-555-0199', lat: '0', lng: '0' }] });
+  assert.equal(again.json.merged, 1, JSON.stringify(again.json));
+  assert.equal((await mgr.get('/api/persons?q=Eli%20Import')).json.persons[0].lat, 49.1);
+  assert.equal((await mgr.get('/api/persons?q=Dara%20Import')).json.persons[0].lat, 49.19, 'a pin on file stays');
+  // Adding the standard fields again changes nothing.
+  assert.deepEqual((await mgr.action('field.standard', {})).json.added, []);
+});

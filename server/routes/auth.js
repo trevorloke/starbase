@@ -2,6 +2,7 @@
 // manager membership in one transaction; after that, sign-up is closed and
 // everyone else joins by invite (/join). Login binds the session to the
 // user's workspace membership.
+import { runHooks } from '../lib/hooks.js';
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
@@ -122,6 +123,8 @@ app.post('/signup', async (c) => {
   await runAction(db, { workspaceId, actorId: userId, action: 'workspace.create' }, async (tx, emit) => {
     emit('workspace', workspaceId, 'create', { name: input.workspaceName, jurisdiction: input.jurisdiction });
     emit('membership', userId, 'create', { email, role: 'manager' });
+    // What every campaign starts with (ext/fields: the standard fields).
+    await runHooks('workspaceCreated', tx, { workspaceId, user: { id: userId } }, { emit });
   });
   const token = await createSession(db, userId, workspaceId);
   setCookie(c, SESSION_COOKIE, token, cookieOpts);

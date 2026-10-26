@@ -8,8 +8,8 @@
 //
 // One parser for every way a value arrives — the profile's Save, a CSV
 // import cell, a filter in the address bar — so they can never disagree.
-// Yes/no reads yes · no · y · n · true · false (any case) as well as a real
-// true/false; a choice matches its words in any case and stores them as the
+// Yes/no reads yes · no · y · n · true · false · 1 · 0 (any case) as well as
+// a real true/false; a choice matches its words in any case and stores them as the
 // field spells them; a number may carry thousands commas or spaces ("1,200",
 // "1 200"); a date
 // is YYYY-MM-DD and must be a real day. Empty (null, "", spaces) means
@@ -30,14 +30,34 @@ export const choicesOf = (f) => { const c = parseJ(f?.choices, []); return Array
 export const nameKey = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 export const cleanName = (s) => String(s ?? '').trim().replace(/\s+/g, ' ');
 
-const YES = new Set(['yes', 'y', 'true']);
-const NO = new Set(['no', 'n', 'false']);
+const YES = new Set(['yes', 'y', 'true', '1', 'x', '✓']);
+const NO = new Set(['no', 'n', 'false', '0']);
 const NUMBER_RE = /^[-+]?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$|^[-+]?\.\d+$/;
 const SPACED_RE = /^[-+]?\d{1,3}(\s\d{3})+(\.\d+)?$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const quote = (v) => `“${String(v).length > 40 ? `${String(v).slice(0, 40)}…` : String(v)}”`;
 const listChoices = (choices) => (choices.length > 6 ? `${choices.slice(0, 6).join(', ')}, …` : choices.join(', '));
+
+// A date as a spreadsheet writes it → YYYY-MM-DD, or null: 2026-10-22,
+// 2026/10/22, 10/22/2026 (month first, as North American files are; a first
+// part over 12 is a day), 22-10-2026, 22 Oct 2026, Oct 22, 2026, 2026-10-22T…
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+const pad = (n) => String(n).padStart(2, '0');
+export const dateFrom = (raw) => {
+  const s = String(raw).trim();
+  let y, m, d, x;
+  if ((x = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T ].*)?$/.exec(s))) [y, m, d] = [x[1], x[2], x[3]];
+  else if ((x = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(s))) {
+    const a = Number(x[1]); const b = Number(x[2]);
+    [m, d, y] = a > 12 && b <= 12 ? [b, a, x[3]] : [a, b, x[3]];
+  } else if ((x = /^(\d{1,2})\s+([a-z]{3,9})\.?,?\s+(\d{4})$/i.exec(s))) [d, m, y] = [x[1], MONTHS[x[2].slice(0, 4).toLowerCase()] || MONTHS[x[2].slice(0, 3).toLowerCase()], x[3]];
+  else if ((x = /^([a-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/i.exec(s))) [m, d, y] = [MONTHS[x[1].slice(0, 4).toLowerCase()] || MONTHS[x[1].slice(0, 3).toLowerCase()], x[2], x[3]];
+  else return null;
+  if (!m) return null;
+  const iso = `${y}-${pad(Number(m))}-${pad(Number(d))}`;
+  return realDate(iso) ? iso : null;
+};
 
 export const realDate = (s) => {
   const m = DATE_RE.exec(s);
@@ -83,8 +103,10 @@ export const parseValue = (field, raw) => {
       const n = Number(t.replace(/,/g, ''));
       return Number.isFinite(n) && Math.abs(n) < NUMBER_MAX ? { value: n } : { error: `${quote(s)} is too big` };
     }
-    case 'date':
-      return typeof s === 'string' && realDate(s) ? { value: s } : { error: `${quote(s)} isn’t a date like 2026-10-22` };
+    case 'date': {
+      const d = typeof s === 'string' ? dateFrom(s) : null;
+      return d ? { value: d } : { error: `${quote(s)} isn’t a date like 2026-10-22` };
+    }
     default:
       return { error: 'isn’t a value' };
   }
