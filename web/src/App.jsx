@@ -5,10 +5,10 @@
 // Desk-only screens sit under one role guard: a volunteer who types one of
 // those URLs lands back on Today (the server refuses their data anyway).
 import { lazy } from 'react';
-import { Routes, Route, Navigate, Outlet, useOutletContext } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useOutletContext, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet, noAnswer } from './api.js';
-import Shell, { isDesk } from './Shell.jsx';
+import Shell, { isDesk, hasArea } from './Shell.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 import Today from './pages/Today.jsx';
@@ -23,7 +23,7 @@ const Money = lazy(() => import('./pages/Money.jsx'));
 const Signs = lazy(() => import('./pages/Signs.jsx'));
 const Outreach = lazy(() => import('./pages/Outreach.jsx'));
 const Filings = lazy(() => import('./pages/Filings.jsx'));
-const Team = lazy(() => import('./pages/Team.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
 const ImportPeople = lazy(() => import('./pages/ImportPeople.jsx'));
 const Turfs = lazy(() => import('./pages/Turfs.jsx'));
 const Receipts = lazy(() => import('./pages/Receipts.jsx'));
@@ -61,9 +61,19 @@ function RequireAuth() {
 
 // Staff, treasurers and managers only. The Shell's outlet context is passed
 // straight through, so pages keep reading { me } from useOutletContext().
+// Desk screens: a desk role, or anyone given the screen's area (Admin →
+// Permissions); a desk role denied the area is sent home too.
+const ROUTE_AREA = [
+  [/^\/people\/(import|connected)/, 'people'], [/^\/people\/fields/, 'admin'],
+  [/^\/money|^\/filings/, 'money'], [/^\/outreach|^\/ladders|^\/follow-ups|^\/surveys|^\/inbox\/settings/, 'outreach'],
+  [/^\/website/, 'website'], [/^\/team|^\/admin|^\/rating-scale/, 'admin'],
+];
 function DeskOnly() {
   const ctx = useOutletContext();
-  if (!isDesk(ctx?.me)) return <Navigate to="/" replace />;
+  const { pathname } = useLocation();
+  const area = ROUTE_AREA.find(([re]) => re.test(pathname))?.[1];
+  const ok = area ? hasArea(ctx?.me, area) && (area !== 'admin' || ctx?.me?.role === 'manager') : isDesk(ctx?.me);
+  if (!ok) return <Navigate to="/" replace />;
   return <Outlet context={ctx} />;
 }
 
@@ -101,7 +111,9 @@ export default function App() {
           <Route path="/outreach" element={<Outreach />} />
           <Route path="/outreach/:tab" element={<Outreach />} />
           <Route path="/filings" element={<Filings />} />
-          <Route path="/team" element={<Team />} />
+          <Route path="/team" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/:tab" element={<Admin />} />
           <Route path="/ladders" element={<Ladders />} />
           <Route path="/ladders/:id" element={<LaddersEdit />} />
           <Route path="/follow-ups" element={<LaddersFollowups />} />

@@ -514,8 +514,11 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
   const [whoOpen, setWhoOpen] = useState(() => desk && turf.members.length === 0);
   const [moreOpen, setMoreOpen] = useState(false);
   const membersQ = useQuery({ queryKey: ['members'], queryFn: () => apiGet('/members'), enabled: desk, staleTime: 60_000 });
+  const teamsQ = useQuery({ queryKey: ['teams'], queryFn: () => apiGet('/teams'), enabled: desk, staleTime: 60_000 });
   const assigned = new Set(turf.members.map((m) => m.id));
   const options = (membersQ.data?.members ?? []).filter((m) => !assigned.has(m.id));
+  // A team with someone not on the turf yet.
+  const teams = (teamsQ.data?.teams ?? []).filter((t) => t.members.some((m) => !assigned.has(m.id)));
   const left = Math.max(0, turf.doors - turf.doorsDone);
   const invite = me?.role === 'manager'; // the Team screen is manager-only
 
@@ -538,6 +541,14 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
   const assign = async (e) => {
     e.preventDefault();
     if (!pick) return;
+    if (pick.startsWith('team:')) {
+      const team = teams.find((t) => `team:${t.id}` === pick);
+      if (await run('turf.assign', { turf_id: turf.id, team_id: pick.slice(5) })) {
+        setPick('');
+        toast(`${team?.name || 'The team'} added`);
+      }
+      return;
+    }
     const who = options.find((m) => m.id === pick);
     if (await run('turf.assign', { turf_id: turf.id, user_id: pick })) {
       setPick('');
@@ -610,7 +621,7 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
           {membersQ.data && !options.length ? (
             <p className="turf-everyone">
               Everyone is on it
-              {invite && <> · <Link className="turf-invite" to="/team">Invite someone</Link></>}
+              {invite && <> · <Link className="turf-invite" to="/admin">Invite someone</Link></>}
             </p>
           ) : (
             <>
@@ -629,12 +640,17 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
                         : membersQ.isError ? 'Couldn’t load the team' : 'Add a canvasser…'}
                     </option>
                     {options.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.role}</option>)}
+                    {teams.length > 0 && (
+                      <optgroup label="Teams">
+                        {teams.map((t) => <option key={t.id} value={`team:${t.id}`}>{t.name} · {t.members.length} {t.members.length === 1 ? 'person' : 'people'}</option>)}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
                 <button type="submit" className="btn turf-act" disabled={busy || !pick}>Add</button>
               </form>
               {/* A new campaign's team is just the manager: the way to more people is right here. */}
-              {invite && <Link className="fk-link turf-invite-link" to="/team">Invite someone</Link>}
+              {invite && <Link className="fk-link turf-invite-link" to="/admin">Invite someone</Link>}
             </>
           )}
           {membersQ.isError && <p className="error">{membersQ.error.message}</p>}

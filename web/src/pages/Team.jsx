@@ -234,7 +234,7 @@ function RolesHelp() {
   );
 }
 
-export default function Team() {
+export default function Team({ embedded = false }) {
   const { me } = useOutletContext();
   const queryClient = useQueryClient();
   const isManager = me.role === 'manager';
@@ -300,7 +300,7 @@ export default function Team() {
 
   return (
     <div className="ot-page">
-      <div className="ot-top"><h1>Team</h1></div>
+      {!embedded && <div className="ot-top"><h1>Team</h1></div>}
 
       <form className="ot-invite" onSubmit={invite}>
         <label htmlFor="team-email" className="ot-sr">Email</label>

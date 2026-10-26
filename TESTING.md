@@ -22,7 +22,7 @@ npm start                 # → http://localhost:3200
    Surrey: your name, email and password. You become its manager (the
    workspace is *Imagine Surrey*, **BC — Municipal**). Setup works once:
    after that `/signup` says it's already set up, and everyone else joins
-   by invite from **Team**. (To start over, delete `data/`.)
+   by invite from **Admin → Members**. (To start over, delete `data/`.)
 2. On **Today**, press **Load sample data**: 52 Surrey voters across Newton,
    Whalley, Guildford, Fleetwood, Cloverdale, and South Surrey — with ratings,
    signs, donors, a shift, an event, a petition, and a Newton turf.
@@ -107,7 +107,7 @@ People tagged `store`.
 
 ## 3 · What to test, by role
 
-Invite real people from **Team** (tap your initials, top right — managers
+Invite real people from **Admin → Members** (tap your initials, top right — managers
 only). Each invite is a one-time link — emailed if email is connected,
 otherwise copy and text it.
 
@@ -146,7 +146,9 @@ one tap away under **More**.
   public volunteer page (`/v/imagine-surrey`), newsletter page
   (`/n/imagine-surrey`), petition, event, and donate (`/d/imagine-surrey`)
   links; *For your web developer* has the embed code for the site.
-- **Team** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
+- **Admin → Members** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
+- **Admin → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
+- **Admin → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
 - **Rating scale** (your initials → *Rating scale*) — change the words on 1
   (e.g. *Definitely*), rename a candidate, **Add** one, move it with ↑ ↓,
   **Take off** one (*Take Locke off the list? Yes · No*). The preview shows

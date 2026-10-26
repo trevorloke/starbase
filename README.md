@@ -32,11 +32,22 @@ manager — the workspace is *Imagine Surrey*, `bc-municipal`
 test suite sets it, since tests make several workspaces to check they stay
 apart.
 
-Managers reach **Team** from the account menu (their initials): invite volunteers and staff by email
-(or copy the join link and text it), set roles, see pending invites, and
-remove someone who has left (they are signed out everywhere at once; what
-they did stays on the record; a new invite lets them back in). Invitees
-open `/join/:token`, set a password, and land on the map (volunteers) or Today.
+Managers reach **Admin** from the account menu (their initials):
+- **Members**: invite volunteers and staff by email (or copy the join link
+  and text it), set roles, see pending invites, and remove someone who has
+  left (they are signed out everywhere at once; what they did stays on the
+  record; a new invite lets them back in). Invitees open `/join/:token`, set
+  a password, and land on the map (volunteers) or Today.
+- **Teams**: groups of members (a neighbourhood crew, the phone bank) with
+  a lead; a whole team goes onto a turf in one go (Map → turf → Add a
+  canvasser → Teams). Someone removed from the campaign leaves every team.
+- **Permissions**: the app is nine areas — People, Map & turfs, Shifts,
+  Money, Signs, Outreach, Website, Data, Admin. Each role has its usual ones
+  (`server/lib/perms.js`); a manager can take an area from a whole role or
+  give one to a single person on top of their role (a volunteer who runs
+  Outreach, a staffer kept out of Money). The server decides on every action
+  and read, and the app shows a person the tabs of the areas they have.
+  Managers always have every area.
 The same menu has **Rating scale** (below); People → More has **Profile
 fields** (managers) and **Most connected** (desk).
 

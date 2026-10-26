@@ -67,8 +67,11 @@ Twilio: set the number's incoming-message webhook to
    limit seeded) and closes sign-up. Everyone else joins by invite.
 2. **Today** shows a banner if the server's time-zone data is stale (step 1)
    so a manager can't miss it.
-3. **Team** (from the account menu, your initials): invite the staff and
-   treasurer first; volunteers later, once the lists are in.
+3. **Admin** (from the account menu, your initials): under **Members**
+   invite the staff and treasurer first, volunteers later once the lists
+   are in; under **Teams** group them (a crew per neighbourhood, the phone
+   bank); under **Permissions** decide which areas each role, or one person,
+   may use.
 4. **Outreach → More → Donations**: the donation instructions (for pledges
    and e-transfer) and the campaign's website link the public pages use.
 
@@ -118,7 +121,7 @@ In the app → **Website**:
 - Backups: Render's managed Postgres keeps daily backups; **Today → Export
   all data** (managers) downloads everything (site pictures are not in it).
 - Keys: every key above is in Render only, never in the repo or a chat.
-  Anyone who leaves the campaign is removed under **Team**, which ends their
+  Anyone who leaves the campaign is removed under **Admin → Members**, which ends their
   sign-in everywhere at once.
 
 ## What Starbase does on its own

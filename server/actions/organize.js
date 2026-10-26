@@ -74,24 +74,39 @@ export const ORGANIZE_ACTIONS = {
     },
   },
 
+  // One person, or a whole team (ext/admin: everyone on it now).
   'turf.assign': {
     roles: DESK_ROLES,
-    input: z.object({ turf_id: uuid(), user_id: uuid() }),
+    input: z.object({ turf_id: uuid(), user_id: uuid().optional(), team_id: uuid().optional() })
+      .refine((v) => Boolean(v.user_id) !== Boolean(v.team_id), 'a person or a team'),
     handler: async (tx, ctx, input, emit) => {
       const turf = (await tx.query(
         'select id from turfs where id = $1 and workspace_id = $2 and deleted_at is null', [input.turf_id, ctx.workspaceId],
       )).rows[0];
       if (!turf) throw httpError(404, 'turf not found');
-      const member = (await tx.query(
-        'select 1 from memberships where user_id = $1 and workspace_id = $2', [input.user_id, ctx.workspaceId],
-      )).rows[0];
-      if (!member) throw httpError(400, 'that person is not on the team — invite them first');
-      await tx.query(
-        `insert into turf_members (workspace_id, turf_id, user_id) values ($1, $2, $3) on conflict do nothing`,
-        [ctx.workspaceId, input.turf_id, input.user_id],
-      );
-      emit('turf', input.turf_id, 'update', { assigned: input.user_id });
-      return input;
+      let users = [];
+      if (input.team_id) {
+        const team = (await tx.query('select id from teams where id = $1 and workspace_id = $2 and deleted_at is null', [input.team_id, ctx.workspaceId])).rows[0];
+        if (!team) throw httpError(404, 'team not found');
+        users = (await tx.query('select user_id from team_members where team_id = $1', [team.id])).rows.map((r) => r.user_id);
+        if (!users.length) throw httpError(400, 'nobody is on that team yet');
+      } else {
+        const member = (await tx.query(
+          'select 1 from memberships where user_id = $1 and workspace_id = $2', [input.user_id, ctx.workspaceId],
+        )).rows[0];
+        if (!member) throw httpError(400, 'that person is not on the team — invite them first');
+        users = [input.user_id];
+      }
+      let added = 0;
+      for (const uid of users) {
+        const n = await tx.query(
+          `insert into turf_members (workspace_id, turf_id, user_id) values ($1, $2, $3) on conflict do nothing`,
+          [ctx.workspaceId, input.turf_id, uid],
+        );
+        added += n.affectedRows;
+      }
+      emit('turf', input.turf_id, 'update', input.team_id ? { assigned_team: input.team_id, assigned: users } : { assigned: input.user_id });
+      return { ...input, added };
     },
   },
 

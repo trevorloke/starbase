@@ -2,6 +2,7 @@
 // session tokens in the database, and a context loader that resolves the
 // session to { user, workspace, role } via the memberships table. Tenancy is
 // the membership row — a user's workspace is never a mutable column.
+import { permsOf } from './perms.js';
 import { randomBytes, scrypt, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 
@@ -52,7 +53,7 @@ export const destroySession = async (db, token) => {
 export const loadContext = async (db, token) => {
   if (!token) return null;
   const { rows } = await db.query(
-    `select u.id as user_id, u.email, u.name as user_name, m.role,
+    `select u.id as user_id, u.email, u.name as user_name, m.role, m.permissions,
             w.id as workspace_id, w.name as ws_name, w.slug as ws_slug, w.candidate, w.jurisdiction, w.settings
      from sessions s
      join users u on u.id = s.user_id
@@ -63,14 +64,18 @@ export const loadContext = async (db, token) => {
   );
   const r = rows[0];
   if (!r) return null;
+  const settings = typeof r.settings === 'string' ? JSON.parse(r.settings) : (r.settings || {});
+  const own = typeof r.permissions === 'string' ? JSON.parse(r.permissions) : (r.permissions || {});
   return {
     user: { id: r.user_id, email: r.email, name: r.user_name },
     role: r.role,
+    // Grants and denies on top of the role (lib/perms.js).
+    perms: permsOf(r.role, settings, own),
     workspaceId: r.workspace_id,
     workspace: {
       id: r.workspace_id, name: r.ws_name, slug: r.ws_slug, candidate: r.candidate,
       jurisdiction: r.jurisdiction,
-      settings: typeof r.settings === 'string' ? JSON.parse(r.settings) : (r.settings || {}),
+      settings,
     },
   };
 };

@@ -53,16 +53,21 @@ const Icon = ({ name }) => (
   </svg>
 );
 
+// Each desk tab is an area (lib/perms.js); a person sees the tabs of the
+// areas they have (me.areas), whatever their role.
 const NAV_DESK = [
   { to: '/',         label: 'Today',    end: true, icon: 'today' },
-  { to: '/map',      label: 'Map',      icon: 'map' },
-  { to: '/people',   label: 'People',   icon: 'people' },
-  { to: '/shifts',   label: 'Shifts',   icon: 'shifts' },
-  { to: '/money',    label: 'Money',    icon: 'money' },
-  { to: '/signs',    label: 'Signs',    icon: 'signs' },
-  { to: '/outreach', label: 'Outreach', icon: 'outreach' },
-  { to: '/website',  label: 'Website',  icon: 'website' },
+  { to: '/map',      label: 'Map',      icon: 'map', area: 'map' },
+  { to: '/people',   label: 'People',   icon: 'people', area: 'people' },
+  { to: '/shifts',   label: 'Shifts',   icon: 'shifts', area: 'shifts' },
+  { to: '/money',    label: 'Money',    icon: 'money', area: 'money' },
+  { to: '/signs',    label: 'Signs',    icon: 'signs', area: 'signs' },
+  { to: '/outreach', label: 'Outreach', icon: 'outreach', area: 'outreach' },
+  { to: '/website',  label: 'Website',  icon: 'website', area: 'website' },
 ];
+// The areas a person has: what the server said, else their role's usual ones.
+export const areasOf = (me) => (Array.isArray(me?.areas) ? me.areas : (isDesk(me) ? ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data'] : []));
+export const hasArea = (me, area) => !area || areasOf(me).includes(area) || (me?.role === 'manager');
 // Volunteers request signs at the door card, so Signs isn't a tab for them.
 const NAV_VOLUNTEER = [
   { to: '/',       label: 'Today',  end: true, icon: 'today' },
@@ -225,7 +230,7 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
           <span className="acct-name">{me.user.name}</span>
           <span className="acct-ws">{me.workspace.name}</span>
         </div>
-        {me.role === 'manager' && <NavLink to="/team" ref={firstRef} className="acct-item">Team</NavLink>}
+        {me.role === 'manager' && <NavLink to="/admin" ref={firstRef} className="acct-item">Admin</NavLink>}
         {me.role === 'manager' && <NavLink to="/rating-scale" className="acct-item">Rating scale</NavLink>}
         {confirmLeft > 0 ? (
           <div className="acct-confirm" role="group" aria-label="Sign out">
@@ -267,7 +272,10 @@ function SignedInShell({ me }) {
   const queryClient = useQueryClient();
 
   const desk = isDesk(me);
-  const nav = desk ? NAV_DESK : NAV_VOLUNTEER;
+  // A volunteer given an area gets its tab after their own four.
+  const nav = desk
+    ? NAV_DESK.filter((t) => hasArea(me, t.area))
+    : [...NAV_VOLUNTEER, ...NAV_DESK.filter((t) => t.area && t.area !== 'map' && areasOf(me).includes(t.area))];
   // New replies to your texts: a small count on Calls.
   const unread = Number(useTextingStatus(me).data?.unread) || 0;
   const badge = (n) => (n.to === '/calls' && unread > 0

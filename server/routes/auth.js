@@ -2,6 +2,7 @@
 // manager membership in one transaction; after that, sign-up is closed and
 // everyone else joins by invite (/join). Login binds the session to the
 // user's workspace membership.
+import { areasFor } from '../lib/perms.js';
 import { runHooks } from '../lib/hooks.js';
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
@@ -162,7 +163,7 @@ app.post('/login', async (c) => {
   const token = await createSession(db, user.id, membership.workspace_id);
   setCookie(c, SESSION_COOKIE, token, cookieOpts);
   const ctx = await loadContext(db, token);
-  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role });
+  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role, areas: areasFor(ctx) });
 });
 
 // ── Invites: look up, then join (new account, or an existing one by password) ──
@@ -222,7 +223,7 @@ app.post('/join', async (c) => {
   const sessionToken = await createSession(db, userId, inv.workspace_id);
   setCookie(c, SESSION_COOKIE, sessionToken, cookieOpts);
   const ctx = await loadContext(db, sessionToken);
-  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role });
+  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role, areas: areasFor(ctx) });
 });
 
 app.post('/logout', async (c) => {
@@ -236,7 +237,7 @@ app.get('/me', async (c) => {
   const db = await getDb();
   const ctx = await loadContext(db, getCookie(c, SESSION_COOKIE));
   if (!ctx) return c.json({ error: 'not signed in' }, 401);
-  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role });
+  return c.json({ user: ctx.user, workspace: clientWorkspace(ctx.workspace), role: ctx.role, areas: areasFor(ctx) });
 });
 
 export default app;

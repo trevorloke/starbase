@@ -2,6 +2,7 @@
 // go exclusively through POST /api/actions/:name. GET /api/events is the
 // sync protocol AND the public API — the same endpoint the app uses — and
 // GET /api/export is the contractual one-click full-fidelity export.
+import { mayRun, decide, areaOfPath } from '../lib/perms.js';
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { getDb } from '../db/client.js';
@@ -69,8 +70,13 @@ const DESK_ONLY_READS = [
 // phone and address, never anyone else's email, never a money tag. Applied
 // to every person row a volunteer reads: /persons, /persons/:id, /map/doors
 // and /turfs/:id/walk (and the features' own person rows, "My people").
+// …unless a manager granted them the area, and never an area a manager
+// denied this person or their role (lib/perms.js).
 app.use('*', async (c, next) => {
-  if (c.get('ctx').role === 'volunteer' && c.req.method === 'GET'
+  const ctx = c.get('ctx');
+  const d = decide(ctx.perms, areaOfPath(c.req.path));
+  if (d === false) return c.json({ error: 'not for you — ask a manager under Admin → Permissions' }, 403);
+  if (ctx.role === 'volunteer' && c.req.method === 'GET' && d !== true
       && DESK_ONLY_READS.some((re) => re.test(c.req.path))) {
     return c.json({ error: 'volunteers cannot view this' }, 403);
   }
@@ -87,7 +93,7 @@ app.post('/actions/:name', async (c) => {
   const action = Object.hasOwn(ACTIONS, name) ? ACTIONS[name] : null;
   if (!action) return c.json({ error: `unknown action '${name}'` }, 404);
   const ctx = c.get('ctx');
-  if (!action.roles.includes(ctx.role)) {
+  if (!mayRun(ctx, name, action)) {
     return c.json({ error: `role '${ctx.role}' may not perform ${name}` }, 403);
   }
   const parsed = action.input.safeParse(await c.req.json().catch(() => ({})));
@@ -115,7 +121,7 @@ app.post('/actions/:name', async (c) => {
 app.get('/actions', (c) => {
   const ctx = c.get('ctx');
   const names = Object.entries(ACTIONS)
-    .filter(([, a]) => a.roles.includes(ctx.role))
+    .filter(([name, a]) => mayRun(ctx, name, a))
     .map(([name]) => name);
   return c.json({ actions: names });
 });
