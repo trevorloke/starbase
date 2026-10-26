@@ -156,7 +156,10 @@ managers and staff signed in on the staff host.
   buyer in People tagged `store`; `checkout.session.expired` cancels an
   unpaid one; `charge.refunded` marks an order refunded in Starbase when
   the card is refunded in Stripe (items back on the shelf unless it had
-  shipped; a partial refund is noted on the order). A checkout holds its items while the buyer is on Stripe's
+  shipped; a partial refund is noted on the order). The same event voids a
+  card donation refunded in full (`stripe.refund`: its pledge reopens, its
+  receipt is voided, as a hand void does); a partial donation refund is only
+  noted on the gift for the treasurer. A checkout holds its items while the buyer is on Stripe's
   page (the session expires after 30 minutes); backing out to the cart
   closes the session and frees them, so the last shirt can't sell twice.
   Without `STRIPE_SECRET_KEY` the store shows its items and

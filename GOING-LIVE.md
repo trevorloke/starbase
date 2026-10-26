@@ -52,8 +52,9 @@ Stripe: in the Stripe dashboard add a webhook at
 events `checkout.session.completed`, `checkout.session.expired`,
 `charge.refunded` and `invoice.paid`, and copy its signing secret into
 `STRIPE_WEBHOOK_SECRET`. Donations and the store share the key and the
-webhook. A store refund made in Stripe marks the order refunded here; a
-refunded donation is voided by hand under Money.
+webhook. A refund made in Stripe shows here by itself: a store order is
+marked refunded, and a donation refunded in full leaves the books as a
+void does (its receipt is voided too).
 
 Twilio: set the number's incoming-message webhook to
 `https://starbase.imaginesurrey.ca/api/public/twilio/sms` (HTTP POST).

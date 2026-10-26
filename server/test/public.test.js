@@ -10,6 +10,7 @@ import { campaignDay } from '../lib/gifts.js';
 
 const tag = Math.random().toString(36).slice(2, 8);
 const mail = (who) => `${who}.pub.${tag}@example.org`;
+let db;
 let mgr, slug, wsId, wsName;
 
 // Each request from its own address, so the per-IP public rate limit never
@@ -50,7 +51,7 @@ const of = (events, action) => events.filter((e) => e.action === action);
 const eligible = { attest_individual: '1', attest_resident: '1', attest_own_funds: '1' };
 
 before(async () => {
-  await freshDb();
+  db = await freshDb();
   delete process.env.RESEND_API_KEY;
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.STRIPE_WEBHOOK_SECRET;
@@ -386,6 +387,34 @@ test('stripe: checkout link and every payment are logged; the thank-you says Str
     const mp = (await mgr.get('/api/pledges')).json.pledges.find((x) => x.id === mId);
     assert.equal(mp.status, 'paid');
     assert.ok(mp.last_received_on, 'the pledges list shows when the last card gift came in');
+
+    // Refunds made in Stripe. A partial one is noted; a full one voids the
+    // gift as a hand void would: the one-time pledge opens again, the monthly
+    // pledge forgets the month. Each delivery applies once.
+    const refund = async (id, object) => {
+      const b = JSON.stringify({ id, type: 'charge.refunded', created: Math.floor(Date.now() / 1000), data: { object: { object: 'charge', ...object } } });
+      return pub('POST', '/api/public/stripe/webhook', b, { 'stripe-signature': stripeSign(b, 'whsec_public') });
+    };
+    const giftRow = async (id) => (await db.query('select note, deleted_at from gifts where id = $1', [id])).rows[0];
+    const part = await refund(`evt_pub_${tag}_r1`, { payment_intent: 'pi_pub', amount: 10000, amount_refunded: 2500, refunded: false });
+    assert.equal(part.json.partial, 2500);
+    let g = await giftRow(paid.json.gift_id);
+    assert.equal(g.deleted_at, null, 'a partial refund keeps the gift');
+    assert.equal(g.note, 'Stripe pi_pub · Partly refunded in Stripe ($25)');
+    const whole = await refund(`evt_pub_${tag}_r2`, { payment_intent: 'pi_pub', amount: 10000, amount_refunded: 10000, refunded: true });
+    assert.equal(whole.json.voided, true, JSON.stringify(whole.json));
+    assert.equal(whole.json.pledge.status, 'pledged', 'the one-time pledge is open again');
+    g = await giftRow(paid.json.gift_id);
+    assert.ok(g.deleted_at, 'the gift left the books');
+    assert.equal((await mgr.get('/api/pledges')).json.pledges.find((x) => x.id === pledgeId).status, 'pledged');
+    assert.equal((await refund(`evt_pub_${tag}_r2`, { payment_intent: 'pi_pub', amount: 10000, amount_refunded: 10000, refunded: true })).json.duplicate, true);
+    assert.equal((await refund(`evt_pub_${tag}_r3`, { payment_intent: 'pi_pub', amount: 10000, amount_refunded: 10000, refunded: true })).json.ignored, 'nothing of ours for this charge', 'a voided gift is not found again');
+    const monthly = await refund(`evt_pub_${tag}_r4`, { payment_intent: 'pi_in_pub', invoice: 'in_pub', amount: 2500, amount_refunded: 2500, refunded: true });
+    assert.equal(monthly.json.gift_id, invPaid.json.gift_id, 'a monthly gift is found by its invoice');
+    assert.equal(monthly.json.pledge.last_received_on, null, 'the month is forgotten');
+    const rev = of(await fresh(), 'stripe.refund');
+    assert.ok(rev.some((e) => e.entity_type === 'gift' && e.op === 'void' && e.entity_id === paid.json.gift_id));
+    assert.ok(rev.every((e) => e.actor_id === null));
   } finally {
     globalThis.fetch = realFetch;
     delete process.env.STRIPE_SECRET_KEY;
@@ -397,7 +426,7 @@ test('stripe: checkout link and every payment are logged; the thank-you says Str
 test('every public write in this file is on the chain under the system actor, and the chain verifies', async () => {
   const all = (await mgr.get('/api/events?since=0&limit=1000')).json.events;
   const publicActions = new Set(['public.signup', 'public.subscribe', 'public.unsubscribe', 'public.sign', 'public.rsvp',
-    'public.volunteer', 'public.pledge', 'stripe.checkout', 'stripe.payment']);
+    'public.volunteer', 'public.pledge', 'stripe.checkout', 'stripe.payment', 'stripe.refund']);
   const pubEv = all.filter((e) => publicActions.has(e.action));
   assert.deepEqual([...new Set(pubEv.map((e) => e.action))].sort(), [...publicActions].sort(), 'each kind of public write appears');
   assert.ok(pubEv.every((e) => e.actor_id === null));

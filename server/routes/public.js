@@ -32,7 +32,7 @@ import { getDb } from '../db/client.js';
 import { runAction, newId } from '../lib/events.js';
 import { VOLUNTEER_ROLES, VOLUNTEER_ROLE_CODES } from '@starbase/shared/canvass';
 import { capFor, donorYearTotal } from '../lib/cap.js';
-import { logGift, campaignDay } from '../lib/gifts.js';
+import { logGift, campaignDay, voidGift } from '../lib/gifts.js';
 import { stripeConfigured, createCheckoutSession, verifyStripeSignature } from '../lib/stripe.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { renderMarkdown } from '@starbase/shared/markdown';
@@ -755,21 +755,54 @@ const storeWebhook = async (c, evt, obj) => {
 };
 
 // store.refund    charge.refunded             store_order update
-// A charge carries no order id, so the order is found by the payment intent
-// the paid webhook kept. A refund of anything else (a donation, say) is
-// ignored here: a refunded gift is voided by hand under Money.
+// stripe.refund   charge.refunded             gift void (+ pledge, receipt)
+// A charge carries no order or pledge id, so what it paid for is found by
+// the reference the paid webhook kept: a store order's payment intent, or a
+// gift's note ("Stripe <payment intent>" for a one-time gift, "Stripe
+// <invoice>" for a monthly one). A gift refunded in full leaves the books
+// as a hand void does (lib/gifts.js: its pledge reopens or its month is
+// forgotten; ext/receipts voids its receipt); a partial refund is noted on
+// the gift and nothing else moves — the treasurer decides.
+const claimEvent = async (tx, evt, wsId) => (await tx.query(
+  'insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing', [evt.id, wsId, evt.type],
+)).affectedRows > 0;
 const refundWebhook = async (c, evt, obj) => {
   const pi = typeof obj.payment_intent === 'string' ? obj.payment_intent : obj.payment_intent?.id;
-  if (!pi) return c.json({ ok: true, ignored: evt.type });
+  const invoice = typeof obj.invoice === 'string' ? obj.invoice : obj.invoice?.id;
+  if (!pi && !invoice) return c.json({ ok: true, ignored: evt.type });
   const db = await getDb();
-  const order = (await db.query('select id, workspace_id from store_orders where payment_intent = $1 limit 1', [pi])).rows[0];
-  if (!order) return c.json({ ok: true, ignored: 'no store order for this charge' });
-  const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [order.workspace_id])).rows[0];
-  const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.refund' }, async (tx, emit) => {
-    const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
-      [evt.id, ws.id, evt.type]);
-    if (fresh.affectedRows === 0) return { duplicate: true };
-    return refundStoreOrder(tx, emit, ws, order.id, obj);
+  // A delivery already applied (a voided gift is no longer found, so this
+  // comes first); the claim inside the action still guards two at once.
+  if ((await db.query('select 1 from stripe_events where id = $1', [evt.id])).rows.length) return c.json({ ok: true, duplicate: true });
+  const refunded = Number(obj.amount_refunded) || 0;
+  const full = obj.refunded === true || (Number(obj.amount) > 0 && refunded >= Number(obj.amount));
+
+  const order = pi ? (await db.query('select id, workspace_id from store_orders where payment_intent = $1 limit 1', [pi])).rows[0] : null;
+  if (order) {
+    const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [order.workspace_id])).rows[0];
+    const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.refund' }, async (tx, emit) => {
+      if (!(await claimEvent(tx, evt, ws.id))) return { duplicate: true };
+      return refundStoreOrder(tx, emit, ws, order.id, obj);
+    });
+    return c.json({ ok: true, ...result });
+  }
+
+  const refs = [pi && `Stripe ${pi}`, invoice && `Stripe ${invoice}`].filter(Boolean);
+  const gift = (await db.query(
+    // The reference is the note's first part: a partial refund adds to it.
+    `select id, workspace_id, note from gifts where split_part(note, ' · ', 1) = any($1::text[]) and deleted_at is null limit 1`, [refs],
+  )).rows[0];
+  if (!gift) return c.json({ ok: true, ignored: 'nothing of ours for this charge' });
+  const { result } = await runAction(db, { workspaceId: gift.workspace_id, actorId: null, action: 'stripe.refund' }, async (tx, emit) => {
+    if (!(await claimEvent(tx, evt, gift.workspace_id))) return { duplicate: true };
+    const note = `${gift.note} · ${full ? 'Refunded' : 'Partly refunded'} in Stripe (${dollars(refunded)})`;
+    await tx.query('update gifts set note = $3 where id = $1 and workspace_id = $2', [gift.id, gift.workspace_id, note]);
+    if (!full) {
+      emit('gift', gift.id, 'update', { note, refunded_cents: refunded, partial: true, stripe: true });
+      return { gift_id: gift.id, partial: refunded };
+    }
+    const v = await voidGift(tx, gift.workspace_id, gift.id, emit);
+    return { gift_id: gift.id, voided: true, pledge: v.pledge };
   });
   return c.json({ ok: true, ...result });
 };

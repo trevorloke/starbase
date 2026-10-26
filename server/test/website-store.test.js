@@ -318,7 +318,7 @@ test('webhook: a refund made in Stripe marks the order refunded; partial ones ar
   assert.equal((await product(mug.id)).stock, 1, 'the mug is back on the shelf');
   assert.equal((await charge('pi_refund_1', 1500, true, `evt_rf_${tag}_2`)).json.duplicate, true);
   assert.equal((await charge('pi_refund_1', 1500, true, `evt_rf_${tag}_3`)).json.already, 'refunded');
-  assert.equal((await charge('pi_nobody', 1500, true, `evt_rf_${tag}_4`)).json.ignored, 'no store order for this charge');
+  assert.equal((await charge('pi_nobody', 1500, true, `evt_rf_${tag}_4`)).json.ignored, 'nothing of ours for this charge');
   assert.equal((await mgr.action('store.order.update', { id: first, status: 'shipped' })).status, 409);
 
   // Shipped, then refunded in Stripe: the order is refunded, the items stay out.
