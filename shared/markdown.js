@@ -28,16 +28,17 @@ const safeUrl = (escaped, { image = false } = {}) => {
 
 // Inline formatting on one already-escaped line. Links and images become
 // numbered placeholders first so their URLs are never touched by * or _.
+// A URL may hold one level of (parentheses), as Wikipedia's do.
 const inline = (text) => {
   const held = [];
   const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
   let s = text
     .replace(/`([^`]+)`/g, (m, code) => hold(`<code>${code}</code>`))
-    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, url) => {
+    .replace(/!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (m, alt, url) => {
       const src = safeUrl(url, { image: true });
       return src ? hold(`<img src="${src}" alt="${alt}" loading="lazy" decoding="async">`) : m;
     })
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, url) => {
+    .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (m, label, url) => {
       const href = safeUrl(url);
       if (!href) return label;
       const outside = /^https?:/i.test(unescape(url));
@@ -107,8 +108,8 @@ export const renderMarkdown = (src) => {
 // marks dropped, links keep their words. Not HTML — escape it where it goes.
 export const markdownText = (src, max = 200) => {
   const t = String(src ?? '')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/!\[[^\]]*\]\((?:[^()]|\([^()]*\))*\)/g, '')
+    .replace(/\[([^\]]+)\]\((?:[^()]|\([^()]*\))*\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/^\s*(?:[-*+]|\d+[.)]|>)\s+/gm, '')
     .replace(/[*_`]+/g, '')

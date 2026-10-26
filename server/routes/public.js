@@ -76,7 +76,7 @@ ${inner}
   }
   // The tab says the page and the campaign, as it always has.
   return layout(chrome, { title, path: info.path || '/', main, noindex: /^\/u\//.test(info.path || ''), backlink: settingsOf(owner).website })
-    .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>`);
+    .replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>`);
 };
 
 // Public form paths remember their request's base and origin for page().

@@ -76,6 +76,20 @@ test('markdown: formatting works and no HTML, script, javascript: link or event 
     assert.doesNotMatch(out, /href="\/\//, src);
   }
   assert.equal(markdownText('## Hi **there** [link](https://x.ca)'), 'Hi there link');
+  // A refused link leaves just its words, no stray bracket; a URL may hold (parentheses).
+  assert.equal(renderMarkdown('see [click](javascript:alert(1)) now'), '<p>see click now</p>');
+  assert.match(renderMarkdown('[Surrey](https://en.wikipedia.org/wiki/Surrey,_British_Columbia_(city))'),
+    /<a href="https:\/\/en\.wikipedia\.org\/wiki\/Surrey,_British_Columbia_\(city\)" rel="noopener">Surrey<\/a>/);
+  assert.equal(markdownText('Read [this](https://x.ca/a_(b)) ![p](/media/x_(1)) now'), 'Read this now');
+});
+
+test('a campaign name with $ in it is written into the page title as it is', async () => {
+  const dollar = new Client();
+  const r = await dollar.signup({ workspaceName: "Dollars $' & $& Sense", email: mail('dollar') });
+  const page = await get(`/n/${r.json.workspace.slug}`);
+  assert.equal(page.status, 200);
+  assert.equal(page.text.match(/<title>/g).length, 1, 'one title tag, nothing spliced in');
+  assert.match(page.text, /<title>Stay in the loop · Dollars \$&#39; &amp; \$&amp; Sense<\/title>/);
 });
 
 test('permissions: volunteers are refused every website read and write; treasurers see orders only', async () => {
