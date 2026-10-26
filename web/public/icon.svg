@@ -1,8 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <title>Starbase</title>
-  <!-- Full-bleed so platforms can mask it; the star sits inside the central safe zone. -->
-  <rect width="512" height="512" fill="#0f1733"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#7c5cff" stroke-width="22" opacity=".6"/>
-  <path d="M256 92 L286 220 L414 256 L286 292 L256 420 L226 292 L98 256 L226 220 Z" fill="#ffd166"/>
-  <circle cx="256" cy="256" r="26" fill="#0f1733"/>
+  <!-- Full-bleed so platforms can mask it. Surrey Navy, the rise (Deep Navy,
+       edge climbing at 24°) and the marigold bar, from the brand guidelines. -->
+  <rect width="512" height="512" fill="#003979"/>
+  <path d="M0 512 L512 284 L512 512 Z" fill="#00224d"/>
+  <rect x="112" y="150" width="128" height="26" fill="#ffc72c"/>
+  <rect x="112" y="206" width="288" height="26" fill="#ffffff"/>
+  <rect x="112" y="262" width="208" height="26" fill="#ffffff"/>
 </svg>

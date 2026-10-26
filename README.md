@@ -142,7 +142,10 @@ managers and staff signed in on the staff host.
   New sites start with draft pages full of placeholder words — the
   campaign writes the real ones. Settings holds the title, hero, the two
   brand colours (`--primary`, `--accent`), contact, social links, the menu
-  order and the **Authorized by** line (election ads carry one).
+  order and the **Authorized by** line (election ads carry one), and the
+  campaign's **logo** (the reversed version, for the navy header and footer)
+  and **star device** (the browser tab). Until those are uploaded the site
+  shows its name; nothing stands in for the logo.
 - **Look.** Server-rendered HTML with per-page title, description and Open
   Graph tags, a sitemap and robots.txt; one stylesheet
   (`server/ext/website/assets/site.css`). The public forms (RSVP, donate,
@@ -275,6 +278,24 @@ copies and asks again every 15 s. Two tabs share one outbox. Sign-out sends a
 note still typed on an open card first; after sign-out nothing is saved on the
 computer. A screen never loaded on this device says *No signal — this loads
 when you're back online.*
+
+## The brand
+
+Imagine Surrey's brand guidelines (2.1) are applied in two places and nowhere
+else: `web/src/app.css` (the staff app's tokens: Surrey Navy `#003979`,
+Deep Navy `#00224d`, Marigold `#ffc72c`, the text-safe red `#c8151b`, Sky,
+Paper, Rule, Ink and Slate) and `server/ext/website/assets/site.css` (the
+public site; the two colours a manager can change default to navy and the
+text-safe red). Barlow Condensed carries headlines and labels, Inter
+everything people read; both are self-hosted under `web/public/fonts/`
+(Latin and Latin Extended, SIL Open Font License) and served to the app and
+the site alike. The rules the code keeps: marigold is never text on white or
+cream; white on Signal Red only at 19px bold and up, so buttons use the
+text-safe red; grounds are flat, and depth is the rise — a Deep Navy block
+with an edge climbing at 24 degrees — never a gradient. The logo is the
+supplied artwork only: the site shows it once uploaded under Website →
+Settings and its name until then; the staff app's own tile (`web/public/icon.svg`)
+is the rise and the marigold bar, no star.
 
 ## Architecture
 

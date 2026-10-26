@@ -5,12 +5,12 @@
 //   loadChrome(db, ws, { base, origin })  what the header and footer show
 //   layout(chrome, { title, description, image, path, main, … })  a whole page
 //   ASSETS / assetUrl()                    /site-assets/* (site.css, cart.js,
-//                                          icon.svg, star.svg), cached a year
+//                                          icon.svg, rise.svg), cached a year
 //                                          under a content hash
 import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { escapeHtml as esc } from '@starbase/shared/markdown';
-import { loadSettings, SECTIONS, SOCIALS } from './content.js';
+import { loadSettings, SECTIONS, SOCIALS, DEFAULT_PRIMARY, DEFAULT_ACCENT } from './content.js';
 
 // ── Static files, read once at boot ──
 const here = (p) => new URL(p, import.meta.url);
@@ -21,7 +21,7 @@ const file = (p, type) => {
 export const ASSETS = {
   'site.css': file('./assets/site.css', 'text/css; charset=utf-8'),
   'cart.js': file('./assets/cart.js', 'text/javascript; charset=utf-8'),
-  'star.svg': file('./assets/star.svg', 'image/svg+xml'),
+  'rise.svg': file('./assets/rise.svg', 'image/svg+xml'),
   // The Starbase mark — the staff app's own icon (web/public; the container
   // image keeps only the build, which has a copy).
   'icon.svg': file(existsSync(here('../../../web/public/icon.svg')) ? '../../../web/public/icon.svg' : '../../../web/dist/icon.svg', 'image/svg+xml'),
@@ -90,6 +90,17 @@ export const loadChrome = async (db, ws, { base = '/site', origin = '', canon = 
   };
 };
 
+// The campaign's mark in the header and footer: the logo uploaded under
+// Website → Settings (the reversed version, since both sit on navy), else
+// the site's name in the headline face. Never a stand-in drawing.
+const brand = (ch, lazy = false) => {
+  const s = ch.settings;
+  const inner = s.logo
+    ? `<img class="logo" src="/media/${esc(s.logo)}" alt="${esc(s.site_title)}" height="44"${lazy ? ' loading="lazy"' : ''}>`
+    : `<span>${esc(s.site_title)}</span>`;
+  return `<a class="brand" href="${esc(`${ch.base}/`)}">${inner}</a>`;
+};
+
 // The header's menu: a row of links on wide screens, a drop-down on phones.
 const header = (ch, current) => {
   const s = ch.settings;
@@ -97,7 +108,7 @@ const header = (ch, current) => {
   const cart = ch.store ? `<a class="cart-link" href="${esc(`${ch.base}/cart`)}" aria-label="Cart">${icon('bag')}<span class="cart-n"></span></a>` : '';
   return `<a class="skip" href="#main">Skip to content</a>
 <header class="sh"><div class="wrap sh-in">
-  <a class="brand" href="${esc(`${ch.base}/`)}"><img src="${assetUrl('icon.svg')}" alt="" width="40" height="40"><span>${esc(s.site_title)}</span></a>
+  ${brand(ch)}
   <nav class="sn" aria-label="Main">${links}</nav>
   <div class="sh-actions">
     ${cart}
@@ -121,7 +132,7 @@ const footer = (ch, backlink) => {
   ].join('');
   return `<footer class="sf"><div class="wrap sf-grid">
   <div>
-    <a class="brand" href="${esc(`${ch.base}/`)}"><img src="${assetUrl('icon.svg')}" alt="" width="40" height="40" loading="lazy"><span>${esc(s.site_title)}</span></a>
+    ${brand(ch, true)}
     ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ''}
     ${socialLinks(s.socials)}
   </div>
@@ -168,10 +179,11 @@ ${noindex ? '<meta name="robots" content="noindex">' : ''}
 ${desc ? `<meta property="og:description" content="${esc(desc)}">` : ''}
 <meta property="og:url" content="${esc(canonical)}">
 ${img ? `<meta property="og:image" content="${esc(img)}"><meta name="twitter:card" content="summary_large_image">` : '<meta name="twitter:card" content="summary">'}
-<meta name="theme-color" content="${col(s.primary, '#0f1733')}">
-<link rel="icon" href="${assetUrl('icon.svg')}" type="image/svg+xml">
+<meta name="theme-color" content="${col(s.primary, DEFAULT_PRIMARY)}">
+${s.mark ? `<link rel="icon" href="/media/${esc(s.mark)}">` : `<link rel="icon" href="${assetUrl('icon.svg')}" type="image/svg+xml">`}
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="${assetUrl('site.css')}">
-<style>:root{--primary:${col(s.primary, '#0f1733')};--accent:${col(s.accent, '#6d4aff')}}</style>
+<style>:root{--primary:${col(s.primary, DEFAULT_PRIMARY)};--accent:${col(s.accent, DEFAULT_ACCENT)}}</style>
 ${ch.store || scripts ? `<script src="${assetUrl('cart.js')}" defer></script>` : ''}
 </head>
 <body data-base="${esc(ch.base)}">

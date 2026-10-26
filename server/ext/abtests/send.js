@@ -183,7 +183,7 @@ export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
       const n = links.indexOf(u) + 1;
       out += esc(line.slice(last, m.index));
       out += n > 0
-        ? `<a href="${esc(`${base}/c/${token}/${n}`)}" style="color:#6d4aff">${esc(u)}</a>`
+        ? `<a href="${esc(`${base}/c/${token}/${n}`)}" style="color:#003979">${esc(u)}</a>`
         : esc(u);
       last = m.index + u.length;
     }

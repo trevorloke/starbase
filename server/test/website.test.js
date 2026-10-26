@@ -152,6 +152,28 @@ test('first look seeds draft pages with placeholder words; drafts never show; pu
   assert.equal((await get('/site/about')).status, 404);
 });
 
+test('logo and star device: uploaded pictures take the header, footer and tab; the name until then; never another campaign’s', async () => {
+  const before = (await get('/site/')).text;
+  assert.match(before, /<a class="brand" href="\/site\/"><span>Imagine Surrey<\/span><\/a>/, 'the name alone until a logo is uploaded');
+  assert.doesNotMatch(before, /<img class="logo"/);
+  assert.match(before, /<link rel="icon" href="\/site-assets\/icon\.svg\?v=\w+"/);
+  const logo = (await mgr.action('site.media.upload', { data: `data:image/png;base64,${PNG}`, name: 'logo-reversed.png', width: 1, height: 1 })).json.media;
+  const mark = (await mgr.action('site.media.upload', { data: `data:image/png;base64,${PNG}`, name: 'star.png', width: 1, height: 1 })).json.media;
+  assert.equal((await mgr.action('site.settings.save', { logo: logo.id, mark: mark.id })).status, 200);
+  const home = (await get('/site/')).text;
+  assert.equal((home.match(new RegExp(`<img class="logo" src="/media/${logo.id}" alt="Imagine Surrey" height="44"`, 'g')) || []).length, 2, 'header and footer');
+  assert.match(home, new RegExp(`<link rel="icon" href="/media/${mark.id}">`));
+  assert.doesNotMatch(home, /site-assets\/icon\.svg/, 'no stand-in mark once the real one is up');
+  assert.match((await get(`/n/${slug}`)).text, new RegExp(`<img class="logo" src="/media/${logo.id}"`), 'the public forms too');
+  // Another campaign's picture can't be the logo; clearing goes back to the name.
+  const other = new Client();
+  await other.signup({ workspaceName: 'Other Campaign Two', email: mail('other2') });
+  const theirs = (await other.action('site.media.upload', { data: `data:image/png;base64,${PNG}` })).json.media;
+  assert.equal((await mgr.action('site.settings.save', { logo: theirs.id })).status, 400);
+  assert.equal((await mgr.action('site.settings.save', { logo: null, mark: null })).status, 200);
+  assert.match((await get('/site/')).text, /<span>Imagine Surrey<\/span>/);
+});
+
 test('settings: colours, links and words are checked; the site wears them', async () => {
   assert.equal((await mgr.action('site.settings.save', { accent: 'red;}</style><script>' })).status, 400);
   assert.equal((await mgr.action('site.settings.save', { socials: { instagram: 'javascript:alert(1)' } })).status, 400);
@@ -227,7 +249,7 @@ test('media: JPG/PNG/WebP by their bytes only, size capped; served with its type
   assert.equal(tooBig.status, 400);
   assert.equal((await app.request('/media/not-an-id')).status, 404);
   // No picture bytes on the event log.
-  const ev = (await mgr.get('/api/events?since=0&limit=1000')).json.events.filter((e) => e.action === 'site.media.upload');
+  const ev = (await mgr.get('/api/events?since=0&limit=1000')).json.events.filter((e) => e.action === 'site.media.upload' && e.payload.name === 'dot.png');
   assert.equal(ev.length, 1);
   assert.equal(ev[0].payload.data, undefined);
 

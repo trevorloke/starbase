@@ -76,9 +76,12 @@ Twilio: set the number's incoming-message webhook to
 
 In the app → **Website**:
 
-1. **Settings**: title, the two brand colours, contact details, social
-   links, the menu order and **Authorized by** (election ads must carry it;
-   the footer shows it). Save the shipping fee if the store ships.
+1. **Settings**: title, the **logo** (the reversed version, a PNG with a
+   transparent background, from the brand kit's master files) and the
+   **star device** for the browser tab, contact details, social links, the
+   menu order and **Authorized by** (election ads must carry it; the footer
+   shows it). The colours already default to Surrey Navy and the brand's
+   text-safe red. Save the shipping fee if the store ships.
 2. **Pages**: the new site starts with draft pages of placeholder words.
    Write the real ones (Markdown with a toolbar; **Preview draft** shows the
    page on the site, visible only to staff). Publish when ready; drafts never

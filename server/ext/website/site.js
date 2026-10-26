@@ -149,7 +149,7 @@ const home = async (c) => {
   const headline = st.hero_headline || st.site_title;
   const main = `
 <section class="hero${st.hero_image ? '' : ' no-img'}">
-  ${st.hero_image ? img(st.hero_image, '', { cls: 'hero-img', eager: true }) : '<img class="hero-star" src="/site-assets/star.svg" alt="">'}
+  ${st.hero_image ? img(st.hero_image, '', { cls: 'hero-img', eager: true }) : ''}
   <div class="wrap hero-in">
     ${st.tagline ? `<span class="eyebrow">${esc(st.tagline)}</span>` : ''}
     <h1>${esc(headline)}</h1>

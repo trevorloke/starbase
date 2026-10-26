@@ -18,8 +18,11 @@ export const SOCIALS = [
 export const SECTIONS = [
   ['news', 'News'], ['events', 'Events'], ['team', 'Team'], ['store', 'Store'],
 ];
-export const DEFAULT_PRIMARY = '#0f1733';
-export const DEFAULT_ACCENT = '#6d4aff';
+// Imagine Surrey's colours (brand guidelines 2.1): Surrey Navy leads; the
+// accent is the text-safe red, for buttons (Signal Red only reads on white
+// at 24px and up). Marigold is in the stylesheet as the fixed --gold.
+export const DEFAULT_PRIMARY = '#003979';
+export const DEFAULT_ACCENT = '#c8151b';
 
 export const DEFAULTS = {
   title: '',              // '' → the campaign's name
@@ -27,6 +30,8 @@ export const DEFAULTS = {
   hero_headline: '',      // '' → the title
   hero_text: '',
   hero_image: null,
+  logo: null,             // the reversed logo (for the navy header and footer)
+  mark: null,             // the star device (square): browser tab, pins
   primary: DEFAULT_PRIMARY,
   accent: DEFAULT_ACCENT,
   contact_email: '',

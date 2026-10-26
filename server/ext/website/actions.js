@@ -31,7 +31,7 @@ const EDIT = ['manager', 'staff'];
 const text = (max) => z.string().trim().max(max);
 const body = () => z.string().max(50_000);
 const mediaId = () => z.uuid().nullable();
-const hex = () => z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a colour like #6d4aff');
+const hex = () => z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a colour like #003979');
 const httpsUrl = () => z.string().trim().max(300).refine((v) => v === '' || /^https:\/\/[^\s"'<>]+$/.test(v), 'a link starting with https://');
 const socials = () => z.object(Object.fromEntries(SOCIALS.map(([k]) => [k, httpsUrl().optional()]))).partial();
 
@@ -77,6 +77,8 @@ const settingsInput = z.object({
   hero_headline: text(140),
   hero_text: text(400),
   hero_image: mediaId(),
+  logo: mediaId(),
+  mark: mediaId(),
   primary: hex(),
   accent: hex(),
   contact_email: z.union([z.literal(''), z.email().max(320)]),
@@ -107,7 +109,7 @@ export const actions = {
     input: settingsInput,
     handler: async (tx, ctx, input, emit) => {
       const ws = ctx.workspaceId;
-      if ('hero_image' in input) await checkMedia(tx, ws, [input.hero_image]);
+      await checkMedia(tx, ws, ['hero_image', 'logo', 'mark'].filter((k) => k in input).map((k) => input[k]));
       if (input.socials) input.socials = Object.fromEntries(Object.entries(input.socials).filter(([, v]) => v));
       const cur = parseJ((await tx.query('select data from site_settings where workspace_id = $1 for update', [ws])).rows[0]?.data, {});
       const next = { ...cur, ...input };

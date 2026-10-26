@@ -1,46 +1,53 @@
 /* Starbase — one stylesheet.
-   Imagine Surrey's field app: a navy sidebar (a navy tab bar on phones),
-   white rounded cards on a cool grey page, one clean sans-serif, and a single
-   violet accent (--mark) for the one primary button on each screen. The
-   brand colours live here only — swap --mark/--navy to re-brand. */
+   Imagine Surrey's field app, in the party's own colours (brand guidelines
+   2.1): Surrey Navy leads (the sidebar, the one primary button), Marigold is
+   the spark (the active tab's bar, badges, focus on navy), red is for action
+   and danger only, Sky and Paper give everything room. Barlow Condensed for
+   headlines and labels, Inter for everything people read (self-hosted,
+   /fonts/fonts.css). Dark mode is Deep Navy with marigold accents, as the
+   guidelines say. The brand lives in these tokens only. */
 
 :root {
-  /* Type — one sans for everything; numbers line up (tabular). */
+  /* Type — Inter for reading, Barlow Condensed for headlines and labels. */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Inter', system-ui, Arial, sans-serif;
   /* Older names, kept so every screen picks up the same face. */
   --font-serif: var(--font-sans);
   --font-mono: var(--font-sans);
 
   /* Brand */
-  --navy: #0f1733;
-  --navy-2: #1a2450;
-  --navy-text: #cfd5f5;
-  --gold: #ffd166;
+  --navy: #003979;        /* Surrey Navy: grounds, headlines */
+  --navy-2: #00224d;      /* Deep Navy: depth, overlays */
+  --navy-text: #c9d6ea;   /* quiet text on navy */
+  --gold: #ffc72c;        /* Marigold: the spark — never as text on white or cream */
+  --red: #ef2023;         /* Signal Red: buttons and large type only (19px bold up) */
+  --red-text: #c8151b;    /* red that reads as text on white */
+  --cream: #f3ebda;
 
-  /* Surfaces: --paper is the page, --paper-0 a card */
-  --ink: #161a2e;
+  /* Surfaces: --paper is the page, --paper-0 a card, --paper-1 Sky panels */
+  --ink: #141a26;
   --paper-0: #ffffff;
-  --paper: #f4f5fa;
-  --paper-1: #eef0f7;
-  --paper-2: #e4e7f2;
-  --rule: #dde0ec;
-  --rule-2: #c9cee0;
+  --paper: #f6f7f9;
+  --paper-1: #e9f0f9;
+  --paper-2: #dbe5f2;
+  --rule: #d6dce5;
+  --rule-2: #bfc8d6;
 
   --text-1: var(--ink);
-  --text-2: #2c3250;
-  --text-3: #5d6481;
-  --text-4: #8f95ad;
+  --text-2: #2a3444;
+  --text-3: #5b6472;
+  --text-4: #8a94a6;
 
-  /* The mark — the one accent (primary button, active tab, focus) */
-  --mark: #6d4aff;
+  /* The mark — the one accent (primary button, active item, focus): navy. */
+  --mark: var(--navy);
   --mark-ink: #ffffff;
-  --mark-soft: #ece8ff;
-  --mark-deep: #5536e0;
+  --mark-soft: var(--paper-1);
+  --mark-deep: var(--navy-2);
 
   /* Status */
-  --ok: #138a52;
+  --ok: #1f7a4d;
   --warn: #9a5b00;
-  --danger: #d43c3c;
+  --danger: var(--red-text);
   /* Undecided — the map pins' amber. */
   --amber: #f5a524;
   --amber-deep: #b87400;
@@ -49,8 +56,8 @@
   --r-ctrl: 10px;
   --r-card: 14px;
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
-  --shadow-1: 0 1px 2px rgba(15, 23, 51, 0.06), 0 1px 1px rgba(15, 23, 51, 0.03);
-  --shadow-2: 0 8px 28px rgba(15, 23, 51, 0.14);
+  --shadow-1: 0 1px 2px rgba(0, 34, 77, 0.06), 0 1px 1px rgba(0, 34, 77, 0.03);
+  --shadow-2: 0 8px 28px rgba(0, 34, 77, 0.14);
   --side-w: 232px;
 
   --border: 1px solid var(--rule);
@@ -62,26 +69,28 @@
   --max-w: calc(var(--page-w) + 2 * var(--s-4));
 }
 
+/* Dark mode: Deep Navy ground, white text, marigold links and accents. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --ink: #e8eaf6;
-    --paper-0: #161c35;
-    --paper: #0d1226;
-    --paper-1: #1d2442;
-    --paper-2: #252d50;
-    --rule: #2a3254;
-    --rule-2: #3a4470;
-    --text-2: #c5cae0;
-    --text-3: #9aa1c2;
-    --text-4: #6f7699;
-    --navy: #090d1f;
-    --navy-2: #1a2142;
-    --mark: #7d5fff;
-    --mark-soft: #2a2357;
-    --mark-deep: #9b85ff;
+    --ink: #f6f7f9;
+    --paper-0: #0b3068;
+    --paper: #00224d;
+    --paper-1: #164082;
+    --paper-2: #1e4a8f;
+    --rule: #2a4f8a;
+    --rule-2: #3b63a3;
+    --text-2: #d6deeb;
+    --text-3: #a9b6cc;
+    --text-4: #7f8ea8;
+    --navy: #001a3d;
+    --navy-2: #0b3068;
+    --mark: #ffc72c;
+    --mark-ink: #00224d;
+    --mark-soft: #2b3f66;
+    --mark-deep: #f2bb1f;
+    --danger: #ff8a8a;
     --ok: #5fd39a;
     --warn: #f0b955;
-    --danger: #ff8a8a;
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
@@ -104,15 +113,16 @@ html, body {
 a { color: inherit; }
 ::selection { background: var(--mark-soft); color: var(--text-1); }
 
-h1, h2, h3 { font-weight: 700; margin: 0 0 var(--s-3); line-height: 1.2; letter-spacing: -0.01em; }
-h1 { font-size: 26px; }
-h2 { font-size: 18px; }
+/* Headlines in Barlow Condensed (700), sentence case, tight. */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0 0 var(--s-3); line-height: 1.1; letter-spacing: 0; }
+h1 { font-size: 30px; }
+h2 { font-size: 21px; }
 
 /* ── 1. Micro-label (eyebrow) — small, uppercase, quiet ── */
 .eyebrow {
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
   font-weight: 600;
@@ -142,7 +152,7 @@ h2 { font-size: 18px; }
 }
 .btn-primary {
   background: var(--mark); color: var(--mark-ink); border: 1px solid var(--mark);
-  box-shadow: 0 1px 2px rgba(85, 54, 224, 0.25);
+  box-shadow: 0 1px 2px rgba(0, 34, 77, 0.25);
 }
 .btn-quiet { border-color: transparent; background: transparent; color: var(--text-3); }
 /* Hover only where a pointer hovers. On a phone a tapped button keeps
@@ -305,7 +315,7 @@ h2 { font-size: 18px; }
 }
 .brand-mark { width: 32px; height: 32px; flex: none; display: block; border-radius: 8px; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-name { font-size: 17px; font-weight: 700; letter-spacing: 0.01em; }
+.brand-name { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: 0.01em; }
 .brand-org { font-size: 12px; font-weight: 600; color: var(--gold); }
 .nav .links { display: flex; gap: var(--s-1); }
 .nav .links a {
@@ -320,7 +330,7 @@ h2 { font-size: 18px; }
 }
 .nav .links .tab-icon { width: 20px; height: 20px; flex: none; opacity: 0.9; }
 @media (hover: hover) { .nav .links a:hover { color: #fff; background: var(--navy-2); } }
-.nav .links a.active { color: #fff; background: var(--mark); }
+.nav .links a.active { color: #fff; background: var(--navy-2); box-shadow: inset 3px 0 0 var(--gold); }
 .nav .links a:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 /* A small count on a tab (new replies on Calls). */
 .tab-badge {
@@ -487,8 +497,9 @@ h2 { font-size: 18px; }
 .list-plain li:last-child { border-bottom: 0; }
 .footer-row { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--rule); flex-wrap: wrap; }
 
-/* Sign in / set up: a white card on a navy night sky. */
-html:has(.auth-page) { min-height: 100%; background: var(--navy) radial-gradient(circle at 30% 15%, #2b2a7c, var(--navy) 62%) fixed; }
+/* Sign in / set up: a white card on Surrey Navy, with the rise — a Deep
+   Navy block whose edge climbs at 24 degrees, the brand's one device. */
+html:has(.auth-page) { min-height: 100%; background: linear-gradient(156deg, var(--navy) 0 64%, var(--navy-2) 64%) fixed; }
 html:has(.auth-page) body { background: transparent; }
 .auth-page {
   max-width: 420px; margin: 9vh auto var(--s-6); padding: 28px;
@@ -498,7 +509,7 @@ html:has(.auth-page) body { background: transparent; }
 @media (max-width: 460px) { .auth-page { margin: 6vh var(--s-3) var(--s-5); padding: 22px; } }
 .auth-page .brand {
   display: flex; align-items: center; gap: 10px;
-  font-size: 18px; font-weight: 800; letter-spacing: 0.01em; text-transform: none;
+  font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.01em; text-transform: none;
   color: var(--text-1); background: none; padding: 0;
   margin-bottom: var(--s-5);
 }
@@ -508,7 +519,9 @@ html:has(.auth-page) body { background: transparent; }
   border-radius: 10px;
 }
 .auth-page .brand-org { color: var(--mark); }
-.auth-page h1 { font-size: 24px; }
+.auth-page h1 { font-size: 28px; }
+/* The marigold bar: a short bar under a headline, one per page. */
+.auth-page h1::after { content: ''; display: block; width: 44px; height: 5px; margin-top: 10px; background: var(--gold); }
 .check { font-family: var(--font-sans); }
 .done { text-decoration: line-through; color: var(--text-4); }
 

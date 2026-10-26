@@ -81,12 +81,13 @@ export default function WebsiteSettings({ overview }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!HEX.test(f.primary) || !HEX.test(f.accent)) { save.setError('Colours look like #6d4aff'); return; }
+    if (!HEX.test(f.primary) || !HEX.test(f.accent)) { save.setError('Colours look like #003979'); return; }
     const fee = dollarsToCents(f.shipping_fee || '0');
     if (fee == null) { save.setError('Shipping fee: a dollar amount'); return; }
     await save.run('site.settings.save', {
       title: f.title.trim(), tagline: f.tagline.trim(), seo_description: f.seo_description.trim(),
       hero_headline: f.hero_headline.trim(), hero_text: f.hero_text.trim(), hero_image: f.hero_image || null,
+      logo: f.logo || null, mark: f.mark || null,
       donate_label: f.donate_label.trim() || 'Donate', involved_label: f.involved_label.trim() || 'Get involved',
       primary: f.primary, accent: f.accent, contact_email: f.contact_email.trim(), contact_phone: f.contact_phone.trim(),
       socials: Object.fromEntries(SOCIALS.map(([k]) => [k, (f.socials[k] || '').trim()])),
@@ -101,6 +102,8 @@ export default function WebsiteSettings({ overview }) {
         <h2>The site</h2>
         {text('title', 'Site name', { maxLength: 80, placeholder: overview.settings.site_title })}
         {text('tagline', 'Tagline', { maxLength: 160 })}
+        <ImageField label="Logo" value={f.logo} onChange={set('logo')} hint="The reversed version (white SURREY), as a PNG with a transparent background — it sits on the navy header and footer. Until one is uploaded, the site shows its name." />
+        <ImageField label="Star device" value={f.mark} onChange={set('mark')} hint="The star on its own, square, PNG with a transparent background: the browser tab." />
         <div className="field">
           <label htmlFor="st-seo">Search description</label>
           <textarea id="st-seo" className="input" rows={2} maxLength={300} value={f.seo_description} onChange={(e) => set('seo_description')(e.target.value)} />
@@ -138,9 +141,9 @@ export default function WebsiteSettings({ overview }) {
           <Colour id="st-primary" label="Main colour" value={f.primary} onChange={set('primary')} />
           <Colour id="st-accent" label="Accent colour" value={f.accent} onChange={set('accent')} />
         </div>
-        <div className="ws-swatch" style={{ background: HEX.test(f.primary) ? f.primary : '#0f1733' }}>
+        <div className="ws-swatch" style={{ background: HEX.test(f.primary) ? f.primary : '#003979' }}>
           <span>{f.title || overview.settings.site_title}</span>
-          <span className="ws-swatch__btn" style={{ background: HEX.test(f.accent) ? f.accent : '#6d4aff' }}>Button</span>
+          <span className="ws-swatch__btn" style={{ background: HEX.test(f.accent) ? f.accent : '#c8151b' }}>Button</span>
         </div>
       </section>
 
