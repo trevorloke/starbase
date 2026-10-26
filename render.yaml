@@ -41,7 +41,7 @@ services:
         sync: false
       - key: STARBASE_SITE_HOSTS     # the public website's domains, e.g. imaginesurrey.ca,www.imaginesurrey.ca
         sync: false
-      - key: GOOGLE_MAPS_SERVER_KEY  # optional: Google geocoding (with GEOCODER=google or GEOCODER_FALLBACK=google)
+      - key: GOOGLE_MAPS_SERVER_KEY  # optional: Google geocoding (GEOCODER=google / GEOCODER_FALLBACK=google) and map tiles (GOOGLE_MAPS_TILES=1)
         sync: false
 
 databases:

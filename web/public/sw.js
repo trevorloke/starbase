@@ -112,6 +112,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(tile(event, url));
     return;
   }
+  // Starbase's own tiles (Google Maps through the server): the same cache,
+  // fetched with the sign-in cookie.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/tiles/')) {
+    event.respondWith(tile(event, url, true));
+    return;
+  }
   // Another provider's tiles: images from elsewhere are checked against the
   // map's provider (read from the cache when the worker has just woken up);
   // anything else goes straight through, untouched.
@@ -258,14 +264,14 @@ color:#fff;border:0;border-radius:10px;padding:12px 18px;min-height:44px;cursor:
 
 let tilePuts = 0;
 
-async function tile(event, url) {
+async function tile(event, url, own = false) {
   const cache = await caches.open(TILES);
   const key = url.href;
   const hit = await cache.match(key);
   const age = hit ? Date.now() - Number(hit.headers.get(TILE_AT) || 0) : Infinity;
   if (hit && age < TILE_FRESH_MS) return hit;
 
-  const network = fetchTile(key);
+  const network = fetchTile(key, own);
   event.waitUntil(network.then((res) => (res?.ok ? storeTile(cache, key, res.clone()) : null)).catch(() => {}));
   const res = await (hit ? Promise.race([network, delay(TILE_TIMEOUT_MS).then(() => null)]) : network);
   if (res?.ok) return res;
@@ -283,8 +289,9 @@ async function tile(event, url) {
 // CORS (not no-cors) so the response is readable: opaque responses can't be
 // checked for errors and are charged megabytes each against storage quota.
 // null = offline (or a server that doesn't send CORS headers).
-async function fetchTile(href) {
+async function fetchTile(href, own = false) {
   try {
+    if (own) return await fetch(href, { mode: 'same-origin', credentials: 'same-origin' });
     return await fetch(href, { mode: 'cors', credentials: 'omit' });
   } catch {
     return null;

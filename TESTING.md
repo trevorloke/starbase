@@ -370,7 +370,9 @@ latest).
 ## 4 · Known limits in this build
 
 - Map tiles come from OpenStreetMap; very large teams should switch to a paid
-  tile provider before election week (`STARBASE_TILE_URL`, see the README).
+  tile provider before election week: Google Maps (`GOOGLE_MAPS_TILES=1` and
+  a `GOOGLE_MAPS_SERVER_KEY` with the Map Tiles API enabled) or any
+  `{z}/{x}/{y}` provider (`STARBASE_TILE_URL`) — see the README.
 - Offline covers **field work** (knocks, new people and doors, pins, sign
   requests, shift sign-ups, *My people*) and **reading the desk**; on a
   profile, ratings, notes and tags save offline. Gifts, imports, outreach

@@ -226,7 +226,18 @@ election week should switch to a paid provider.
 
 A bad value falls back to the default (and logs once); desk roles see which
 tiles took on the map's filter sheet (*Map tiles: OpenStreetMap — custom
-address ignored*). The service worker
+address ignored*).
+
+**Google Maps** instead: `GOOGLE_MAPS_TILES=1` with a `GOOGLE_MAPS_SERVER_KEY`
+that has the **Map Tiles API** enabled (`GOOGLE_MAPS_TILE_TYPE` roadmap |
+satellite | terrain). Google hands tiles out against a session, so the map
+draws `/tiles/{z}/{x}/{y}.png` from Starbase (signed in), which fetches
+each tile from Google with a session it keeps for everyone and renews
+(`server/lib/gtiles.js`, served by `server/ext/offline`), credited to
+Google, up to zoom 22; the service worker keeps the ones a phone has drawn
+as with any provider. Google bills per tile past its free allowance, and its
+terms have their own rules on attribution and caching — check them before
+election week. The service worker
 keeps the tiles a phone has already looked at (about 1,500, oldest out), so a
 turf viewed with signal still draws offline; it never fetches tiles ahead.
 

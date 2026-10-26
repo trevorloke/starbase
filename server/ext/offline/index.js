@@ -16,7 +16,15 @@
 //   STARBASE_TILE_ATTRIBUTION  the provider's credit line (links allowed)
 //   STARBASE_TILE_MAX_ZOOM     1–22 (default 19)
 // Read on every request, so a restart is all a change needs.
+// Google Maps instead (lib/gtiles.js): GOOGLE_MAPS_TILES=1 with a
+// GOOGLE_MAPS_SERVER_KEY that has the Map Tiles API enabled. The map then
+// draws /tiles/{z}/{x}/{y}.png from Starbase (signed in), which fetches each
+// tile from Google; STARBASE_TILE_* is ignored while it's on.
 import { Hono } from 'hono';
+import { getCookie } from 'hono/cookie';
+import { getDb } from '../../db/client.js';
+import { loadContext, SESSION_COOKIE } from '../../lib/auth.js';
+import { googleTilesOn, fetchTile, attribution as googleCredit, TILE_PATH as GOOGLE_PATH, MAX_ZOOM as GOOGLE_MAX } from '../../lib/gtiles.js';
 
 export const sql = `
 alter table signs add column if not exists client_id uuid;
@@ -47,6 +55,13 @@ const warnOnce = (msg) => {
 // ignored: which settings were set but can't be used ('url', 'maxZoom').
 export const tileConfig = (env = process.env) => {
   const out = { ...TILE_DEFAULTS, ignored: [] };
+  if (googleTilesOn(env)) {
+    return { url: GOOGLE_PATH, attribution: googleCredit(), maxZoom: GOOGLE_MAX, ignored: [] };
+  }
+  if (env.GOOGLE_MAPS_TILES === '1') {
+    out.ignored.push('google');
+    warnOnce('GOOGLE_MAPS_TILES=1 needs GOOGLE_MAPS_SERVER_KEY — using OpenStreetMap');
+  }
   if (env.STARBASE_TILE_URL) {
     const url = validUrl(env.STARBASE_TILE_URL);
     if (url) out.url = url;
@@ -77,6 +92,7 @@ export const tileConfig = (env = process.env) => {
 // host ("tiles.example") — never the whole address (it may carry a key).
 const hostOf = (url) => { try { return new URL(String(url).replace(/\{s\}/g, 'a')).hostname; } catch { return ''; } };
 export const tileSource = (url) => {
+  if (url === GOOGLE_PATH) return 'Google Maps';
   if (url === TILE_DEFAULTS.url || /(^|\.)openstreetmap\.org$/i.test(hostOf(url))) return 'OpenStreetMap';
   return hostOf(url) || 'custom';
 };
@@ -91,4 +107,32 @@ api.get('/map/config', (c) => {
     out.setup = { source: tileSource(t.url), custom: t.url !== TILE_DEFAULTS.url, ignored: t.ignored, maxZoom: t.maxZoom };
   }
   return c.json(out);
+});
+
+// The Google tiles, for anyone signed in (the map sends the session cookie;
+// the service worker fetches them with credentials too). A day's cache life:
+// the browser and the worker keep what they've drawn.
+export const publicRoutes = new Hono();
+publicRoutes.get('/tiles/:z/:x/:y', async (c) => {
+  if (!googleTilesOn()) return c.text('Not found', 404);
+  const ctx = await loadContext(await getDb(), getCookie(c, SESSION_COOKIE)).catch(() => null);
+  if (!ctx) return c.text('Sign in to see the map', 401);
+  const z = Number(c.req.param('z'));
+  const [x, y] = [c.req.param('x'), c.req.param('y').replace(/\.png$/, '')].map(Number);
+  const n = 2 ** z;
+  if (![z, x, y].every(Number.isInteger) || z < 0 || z > GOOGLE_MAX || x < 0 || y < 0 || x >= n || y >= n) {
+    return c.text('No such tile', 400);
+  }
+  let t;
+  try {
+    t = await fetchTile(z, x, y);
+  } catch (e) {
+    console.warn(`map tiles: ${e.message}`);
+    return c.text('Map tiles unavailable', 502);
+  }
+  if (!t.body) return c.text('Map tiles unavailable', t.status === 404 ? 404 : 502);
+  c.header('Content-Type', t.type);
+  c.header('Cache-Control', 'private, max-age=86400');
+  c.header('X-Content-Type-Options', 'nosniff');
+  return c.body(t.body);
 });
