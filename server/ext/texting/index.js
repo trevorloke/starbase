@@ -35,7 +35,16 @@ import { briefTexts, textOutRules } from './store.js';
 // Today's "texts this week" counts texts sent through the app too; a shift
 // notice texted from the campaign's number follows the same rules as a text
 // from the Calls card (no opted-out number, no quiet hours, E.164).
-export const hooks = { brief: briefTexts, textOut: textOutRules };
+// A member removed from the campaign: their own phone (for calls through
+// the campaign's number) is forgotten with them.
+const forgetRemoved = async (tx, meta, events) => {
+  for (const e of events) {
+    if (e.entityType === 'membership' && e.op === 'void') {
+      await tx.query('delete from texting_member_phones where workspace_id = $1 and user_id = $2', [meta.workspaceId, e.entityId]);
+    }
+  }
+};
+export const hooks = { brief: briefTexts, textOut: textOutRules, events: forgetRemoved };
 
 // In the full export: conversations, every text, opt-outs and the settings.
 // Never a caller's own phone or a call's token (texting_member_phones and

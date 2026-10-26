@@ -162,6 +162,61 @@ function InvitedRow({ inv, ids, canCancel, onChanged, onLinkGone, online = true 
   );
 }
 
+// A member: role picker, and Remove (never for yourself). Removing someone
+// signs them out everywhere at once; a new invite lets them back in.
+function MemberRow({ m, isMe, online, onRole, onChanged }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const remove = async () => {
+    setBusy(true); setError(null);
+    try {
+      await action('member.remove', { user_id: m.id });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <li className="ot-item">
+      <div className="ot-row ot-row--static ot-row--wrap">
+        <span className="ot-row__main">
+          <span className="ot-row__name">{m.name}{isMe ? <span className="muted"> (you)</span> : null}</span>
+          <span className="ot-row__sub ot-row__sub--stack">
+            <span className="ot-email"><Email value={m.email} /></span>
+            <span>since {fmtDay(m.created_at)}</span>
+          </span>
+        </span>
+        <span className="ot-actions ot-row__acts">
+          <select className="input ot-role" aria-label={`Role for ${m.name}`} value={m.role}
+            disabled={isMe || !online || busy} onChange={(e) => onRole(m.id, e.target.value)}>
+            {ROLES.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+          </select>
+          {!isMe && !confirming && (
+            <button type="button" className="btn btn-quiet ot-btn-tap" disabled={busy || !online}
+              onClick={() => setConfirming(true)}>Remove</button>
+          )}
+        </span>
+      </div>
+      {(confirming || error) && (
+        <div className="ot-body">
+          {confirming && (
+            <div className="ot-confirm ot-confirm-danger" role="group" aria-label={`Remove ${m.name}`}>
+              <span>Remove {m.name} from the team? They are signed out at once and would need a new invite.</span>
+              <button type="button" className="btn ot-btn-tap ot-btn-danger" disabled={busy} onClick={remove}>
+                {busy ? 'Removing…' : 'Yes, remove'}
+              </button>
+              <button type="button" className="btn btn-quiet ot-btn-tap" disabled={busy} onClick={() => setConfirming(false)}>No</button>
+            </div>
+          )}
+          {error && <p className="error">{error}</p>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function RolesHelp() {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -260,7 +315,7 @@ export default function Team() {
           {busy ? 'Inviting…' : emailOn ? 'Send invite' : 'Get invite link'}
         </button>
       </form>
-      {!online && <NeedsSignalLine>Inviting and changing roles need signal</NeedsSignalLine>}
+      {!online && <NeedsSignalLine>Inviting, changing roles and removing need signal</NeedsSignalLine>}
       {error && <p className="error">{error}</p>}
       {sent && <JoinLink sent={sent} testId="join-url" />}
 
@@ -272,21 +327,7 @@ export default function Team() {
       <h2 className="ot-sec-h">Members <span className="ot-count">{members.length}</span></h2>
       <ul className="ot-list">
         {members.map((m) => (
-          <li key={m.id} className="ot-item">
-            <div className="ot-row ot-row--static">
-              <span className="ot-row__main">
-                <span className="ot-row__name">{m.name}{m.id === me.user.id ? <span className="muted"> (you)</span> : null}</span>
-                <span className="ot-row__sub ot-row__sub--stack">
-                  <span className="ot-email"><Email value={m.email} /></span>
-                  <span>since {fmtDay(m.created_at)}</span>
-                </span>
-              </span>
-              <select className="input ot-role" aria-label={`Role for ${m.name}`} value={m.role}
-                disabled={m.id === me.user.id || !online} onChange={(e) => setMemberRole(m.id, e.target.value)}>
-                {ROLES.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
-              </select>
-            </div>
-          </li>
+          <MemberRow key={m.id} m={m} isMe={m.id === me.user.id} online={online} onRole={setMemberRole} onChanged={refresh} />
         ))}
       </ul>
 

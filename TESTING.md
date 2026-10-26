@@ -52,9 +52,12 @@ Postgres database (backups included).
 | `STARBASE_PUBLIC_URL` | your address, e.g. `https://starbase.imaginesurrey.ca` — used in invite, unsubscribe, and payment links | **yes** |
 | `RESEND_API_KEY`, `MAIL_FROM` | real email (invites, newsletters, press, shift alerts) | optional — without it, sends are saved as *queued* and invite links are shown to copy |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | SMS shift alerts; texting and calling from the app through the campaign's number | optional — without it, Calls opens the phone's own Messages and dialer |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | card donations | optional — without it the donate page takes **pledges** |
-
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | card donations and the store | optional — without it the donate page takes **pledges** and the store says *opens soon* |
 | `STARBASE_SITE_HOSTS` | the public website's own domain(s), e.g. `imaginesurrey.ca,www.imaginesurrey.ca` — those hosts get the site at `/` | optional — without it the site is at `/site/` |
+| `GOOGLE_MAPS_SERVER_KEY` | Google geocoding (`GEOCODER=google` or `GEOCODER_FALLBACK=google`) and Google Maps tiles (`GOOGLE_MAPS_TILES=1`) | optional — the free BC geocoder and OpenStreetMap tiles work without it |
+
+The whole order of things, from deploy to the public link, is in
+[GOING-LIVE.md](GOING-LIVE.md).
 
 For Stripe, add a webhook in the Stripe dashboard pointing at
 `https://<your address>/api/public/stripe/webhook` with events
@@ -141,7 +144,7 @@ one tap away under **More**.
   public volunteer page (`/v/imagine-surrey`), newsletter page
   (`/n/imagine-surrey`), petition, event, and donate (`/d/imagine-surrey`)
   links; *For your web developer* has the embed code for the site.
-- **Team** — invite a volunteer and a staff member; change a role.
+- **Team** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
 - **Rating scale** (your initials → *Rating scale*) — change the words on 1
   (e.g. *Definitely*), rename a candidate, **Add** one, move it with ↑ ↓,
   **Take off** one (*Take Locke off the list? Yes · No*). The preview shows

@@ -914,6 +914,27 @@ export const FIELD_ACTIONS = {
     },
   },
 
+  // Someone who has left the campaign: their membership goes, every session
+  // of theirs ends at once (the app signs them out on its next request), and
+  // they leave any turfs. What they did stays on the record under their
+  // name. A new invite lets them back in with the same account.
+  'member.remove': {
+    roles: MANAGER_ONLY,
+    input: z.object({ user_id: uuid() }),
+    handler: async (tx, ctx, input, emit) => {
+      if (input.user_id === ctx.user.id) throw httpError(400, 'you cannot remove yourself');
+      const n = await tx.query(
+        'delete from memberships where user_id = $1 and workspace_id = $2',
+        [input.user_id, ctx.workspaceId],
+      );
+      if (n.affectedRows === 0) throw httpError(404, 'member not found');
+      await tx.query('delete from sessions where user_id = $1 and workspace_id = $2', [input.user_id, ctx.workspaceId]);
+      await tx.query('delete from turf_members where user_id = $1 and workspace_id = $2', [input.user_id, ctx.workspaceId]);
+      emit('membership', input.user_id, 'void', {});
+      return { user_id: input.user_id };
+    },
+  },
+
   // ── Workspace settings (website link for public pages, cap override, …) ──
   'workspace.update': {
     roles: MANAGER_ONLY,

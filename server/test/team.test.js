@@ -76,6 +76,51 @@ test('team list, duplicate invite refused, role change, cannot demote yourself',
   assert.ok((await mgr.get('/api/team')).json.invites.some((i) => i.email === 'later@example.org'));
 });
 
+test('removing a member ends their sign-in at once; not yourself; a new invite lets them back in', async () => {
+  const inv = await mgr.action('member.invite', { email: 'leaver@example.org', role: 'staff' });
+  const leaver = new Client();
+  assert.equal((await leaver.post('/api/auth/join', { token: tokenOf(inv.json.joinUrl), name: 'Lee Leaver', password: 'leaver-pass-1' })).status, 200);
+  const id = (await leaver.get('/api/auth/me')).json.user.id;
+  assert.equal((await leaver.action('person.create', { name: 'Before Leaving' })).status, 200);
+  // A second signed-in device of theirs.
+  const phone = new Client();
+  assert.equal((await phone.post('/api/auth/login', { email: 'leaver@example.org', password: 'leaver-pass-1' })).status, 200);
+  assert.equal((await mgr.action('turf.assign', { turf_id: (await mgr.action('turf.create', { name: 'Leaver turf', polygon: [[49.1, -122.8], [49.11, -122.8], [49.11, -122.79]] })).json.turf.id, user_id: id })).status, 200);
+
+  const db = await getDb();
+  const wsId = (await mgr.get('/api/auth/me')).json.workspace.id;
+  await db.query('insert into texting_member_phones (workspace_id, user_id, phone) values ($1, $2, $3)', [wsId, id, '+16045550123']);
+
+  const me = (await mgr.get('/api/auth/me')).json.user;
+  assert.equal((await mgr.action('member.remove', { user_id: me.id })).status, 400, 'not yourself');
+  const gone = await mgr.action('member.remove', { user_id: id });
+  assert.equal(gone.status, 200, JSON.stringify(gone.json));
+  assert.equal((await mgr.action('member.remove', { user_id: id })).status, 404, 'already gone');
+
+  assert.equal((await leaver.get('/api/auth/me')).status, 401, 'signed out on the computer');
+  assert.equal((await phone.get('/api/auth/me')).status, 401, 'and on the phone');
+  assert.equal((await leaver.action('person.create', { name: 'After Leaving' })).status, 401);
+  assert.equal((await new Client().post('/api/auth/login', { email: 'leaver@example.org', password: 'leaver-pass-1' })).status, 403, 'no campaign to sign in to');
+  const team = (await mgr.get('/api/team')).json;
+  assert.ok(!team.members.some((m) => m.id === id));
+  assert.ok(!(await mgr.get('/api/members')).json.members.some((m) => m.id === id), 'not offered for assignment');
+  // What they did stays on the record.
+  assert.equal((await mgr.get('/api/persons?q=Before%20Leaving')).json.persons.length, 1);
+  assert.equal((await db.query('select count(*)::int as n from turf_members where user_id = $1', [id])).rows[0].n, 0);
+  assert.equal((await db.query('select count(*)::int as n from texting_member_phones where user_id = $1', [id])).rows[0].n, 0, 'their own phone is forgotten');
+  const ev = (await mgr.get('/api/events?since=0&limit=1000')).json.events.find((e) => e.entity_type === 'membership' && e.op === 'void');
+  assert.ok(ev, 'the removal is on the log');
+  assert.equal(ev.entity_id, id);
+
+  // Back with a new invite, same account.
+  const again = await mgr.action('member.invite', { email: 'leaver@example.org', role: 'volunteer' });
+  assert.equal(again.status, 200);
+  const back = new Client();
+  assert.equal((await back.post('/api/auth/join', { token: tokenOf(again.json.joinUrl), password: 'leaver-pass-1' })).status, 200);
+  assert.equal((await back.get('/api/auth/me')).json.role, 'volunteer');
+  assert.equal((await back.get('/api/auth/me')).json.user.id, id);
+});
+
 test('only managers manage the team; tokens never enter the event log; expired invites fail', async () => {
   const inv = await mgr.action('member.invite', { email: 'expiring@example.org', role: 'volunteer' });
   const t = tokenOf(inv.json.joinUrl);

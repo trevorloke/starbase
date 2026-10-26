@@ -33,7 +33,9 @@ test suite sets it, since tests make several workspaces to check they stay
 apart.
 
 Managers reach **Team** from the account menu (their initials): invite volunteers and staff by email
-(or copy the join link and text it), set roles, see pending invites. Invitees
+(or copy the join link and text it), set roles, see pending invites, and
+remove someone who has left (they are signed out everywhere at once; what
+they did stays on the record; a new invite lets them back in). Invitees
 open `/join/:token`, set a password, and land on the map (volunteers) or Today.
 The same menu has **Rating scale** (below); People → More has **Profile
 fields** (managers) and **Most connected** (desk).
@@ -311,6 +313,8 @@ referrer policy. The event log keeps no sign-in, invite or Stripe secrets
 and no image bytes.
 
 ## Run
+
+Taking it live for the campaign, step by step: [GOING-LIVE.md](GOING-LIVE.md).
 
 ```sh
 cd starbase
