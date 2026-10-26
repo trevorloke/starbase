@@ -102,7 +102,7 @@ In the app → **Website**:
 
 ## 7 · Before the public link goes out
 
-- `https://imaginesurrey.ca/` and `/donate`, `/n/imagine-surrey`,
+- `https://imaginesurrey.ca/` and `/d/imagine-surrey` (donate), `/n/imagine-surrey`,
   `/v/imagine-surrey` load over https with the campaign's header and footer.
 - A test newsletter reaches a real inbox with a working unsubscribe link.
 - A test donation (live key, a real card, refunded in Stripe afterwards)
