@@ -127,6 +127,7 @@ const doorPerson = (p, fallback = {}) => ({
   phone: p.phone ?? null,
   email: p.email ?? null,
   address: p.address ?? fallback.address ?? null,
+  house_number: p.house_number ?? fallback.house_number ?? null,
   unit: p.unit ?? fallback.unit ?? null,
   lat: p.lat ?? fallback.lat,
   lng: p.lng ?? fallback.lng,
@@ -161,9 +162,13 @@ function PersonFields({ idPrefix, form, set, withAddress }) {
       </div>
       {withAddress && (
         <div className="form-row">
-          <div className="field" style={{ flex: '3 1 180px' }}>
-            <label htmlFor={`${idPrefix}-address`}>Address</label>
-            <input id={`${idPrefix}-address`} className="input" required maxLength={1000} autoComplete="off" placeholder="12345 72 Ave" value={form.address} onChange={set('address')} />
+          <div className="field" style={{ flex: '1 1 90px' }}>
+            <label htmlFor={`${idPrefix}-house`}>House no.</label>
+            <input id={`${idPrefix}-house`} className="input mono" maxLength={20} inputMode="numeric" autoComplete="off" placeholder="12345" value={form.house_number} onChange={set('house_number')} />
+          </div>
+          <div className="field" style={{ flex: '3 1 160px' }}>
+            <label htmlFor={`${idPrefix}-address`}>Street</label>
+            <input id={`${idPrefix}-address`} className="input" required maxLength={1000} autoComplete="off" placeholder="72 Ave" value={form.address} onChange={set('address')} />
           </div>
           <div className="field" style={{ flex: '1 1 80px' }}>
             <label htmlFor={`${idPrefix}-unit`}>Unit</label>
@@ -280,7 +285,7 @@ export function AddPersonInline({ door, onDone, onCancel, toast, toastQueued = t
 export function AddDoorForm({ latlng, onDone, onCancel, toast }) {
   const queryClient = useQueryClient();
   const refresh = useRefresh();
-  const [form, setForm] = useState({ name: '', address: '', unit: '', phone: '' });
+  const [form, setForm] = useState({ name: '', house_number: '', address: '', unit: '', phone: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -296,6 +301,7 @@ export function AddDoorForm({ latlng, onDone, onCancel, toast }) {
       const name = form.name.trim();
       const r = await queueAction('person.create', {
         name,
+        house_number: form.house_number.trim() || undefined,
         address: form.address.trim(),
         unit: form.unit.trim() || undefined,
         phone: form.phone.trim() || undefined,

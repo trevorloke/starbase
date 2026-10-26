@@ -6,6 +6,7 @@
 // campaign lock (sending email); each of its writes is a runAction of its
 // own. The palette, buttons, and the public API all call the same registry
 // via POST /api/actions/:name; there is no other way to mutate campaign data.
+import { civic, streetOf } from '../lib/address.js';
 import { z } from 'zod';
 import { zodFor } from '@starbase/shared/registry';
 import { newId } from '../lib/events.js';
@@ -26,12 +27,13 @@ const personInput = z.object({
   email: z.string().email().max(320).nullish(),
   phone: z.string().max(40).nullish(),
   address: z.string().max(1000).nullish(),
+  house_number: z.string().max(20).nullish(),
   ...personFieldExtensions,
 });
 
 const rowToPerson = (r) => ({
   id: r.id, kind: r.kind, name: r.name, email: r.email,
-  phone: r.phone, address: r.address, unit: r.unit, city: r.city, postal: r.postal,
+  phone: r.phone, address: r.address, house_number: r.house_number, unit: r.unit, city: r.city, postal: r.postal,
   lat: r.lat, lng: r.lng,
   tags: typeof r.tags === 'string' ? JSON.parse(r.tags) : (r.tags || []),
   socials: typeof r.socials === 'string' ? JSON.parse(r.socials) : (r.socials || {}),
@@ -51,13 +53,15 @@ export const ACTIONS = {
         if (cur) return { person: rowToPerson(cur), duplicate: true };
       }
       const id = clientId || newId();
+      // The house number and the street, however they came (lib/address.js).
+      Object.assign(input, civic(input));
       await tx.query(
-        `insert into persons (id, workspace_id, kind, name, email, phone, address, unit, city, postal, lat, lng, tags, socials)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+        `insert into persons (id, workspace_id, kind, name, email, phone, address, house_number, unit, city, postal, lat, lng, tags, socials)
+         values ($1, $2, $3, $4, $5, $6, $7, $15, $8, $9, $10, $11, $12, $13, $14)`,
         [id, ctx.workspaceId, input.kind, input.name, input.email || null,
          input.phone || null, input.address || null, input.unit || null,
          input.city || null, input.postal || null, input.lat ?? null, input.lng ?? null,
-         JSON.stringify(input.tags || []), JSON.stringify(input.socials || {})],
+         JSON.stringify(input.tags || []), JSON.stringify(input.socials || {}), input.house_number],
       );
       const payload = { id, ...input };
       emit('person', id, 'create', payload);
@@ -76,22 +80,29 @@ export const ACTIONS = {
       )).rows[0];
       if (!cur) throw httpError(404, 'person not found');
       const next = { ...rowToPerson(cur), ...patch };
+      // A new street or house number: the two parts settle together (a new
+      // street keeps the house number only if the patch says so).
+      if ('address' in patch || 'house_number' in patch) {
+        // A new number alone goes onto the street as it was, not onto the old line.
+        const street = 'address' in patch ? patch.address : streetOf(cur.house_number, cur.address);
+        Object.assign(next, civic({ house_number: 'house_number' in patch ? patch.house_number : ('address' in patch ? null : cur.house_number), address: street }));
+      }
       // A changed address makes the old pin wrong: drop it (the person lands in
       // the map's "place" list) unless the same patch supplies new coordinates.
-      const addrChanged = ('address' in patch && (patch.address || null) !== (cur.address || null))
+      const addrChanged = (('address' in patch || 'house_number' in patch) && (next.address || null) !== (cur.address || null))
         || ('unit' in patch && (patch.unit || null) !== (cur.unit || null));
       if (addrChanged && !('lat' in patch) && !('lng' in patch)) { next.lat = null; next.lng = null; }
       await tx.query(
         `update persons set kind = $3, name = $4, email = $5, phone = $6, address = $7,
-           unit = $8, city = $9, postal = $10, lat = $11, lng = $12, tags = $13, socials = $14,
+           unit = $8, city = $9, postal = $10, lat = $11, lng = $12, tags = $13, socials = $14, house_number = $15,
            updated_at = now()
          where id = $1 and workspace_id = $2`,
         [id, ctx.workspaceId, next.kind, next.name, next.email || null,
          next.phone || null, next.address || null, next.unit || null,
          next.city || null, next.postal || null, next.lat ?? null, next.lng ?? null,
-         JSON.stringify(next.tags || []), JSON.stringify(next.socials || {})],
+         JSON.stringify(next.tags || []), JSON.stringify(next.socials || {}), next.house_number || null],
       );
-      emit('person', id, 'update', patch);
+      emit('person', id, 'update', { ...patch, ...(('address' in patch || 'house_number' in patch) ? { address: next.address, house_number: next.house_number } : {}) });
       return { person: next };
     },
   },

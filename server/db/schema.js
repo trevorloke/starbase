@@ -78,6 +78,8 @@ create table if not exists persons (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+-- The house number on its own (lib/address.js); address stays the whole civic line.
+alter table persons add column if not exists house_number text;
 create index if not exists persons_ws_name_idx on persons (workspace_id, lower(name)) where deleted_at is null;
 create index if not exists persons_ws_email_idx on persons (workspace_id, lower(email)) where deleted_at is null;
 create index if not exists persons_ws_addr_idx on persons (workspace_id, lower(address)) where deleted_at is null;

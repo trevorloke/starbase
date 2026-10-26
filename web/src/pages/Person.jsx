@@ -9,6 +9,7 @@
 // and History (open by default). Volunteers see only what a door needs: Details
 // (open), the rating card, one "Last contact" line and Signs. Their back link
 // returns to wherever they came from (walk list, map, Calls).
+import { streetOf } from '../components/address.js';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useParams, useOutletContext, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -337,7 +338,7 @@ function RatingCard({ person, refresh, channel, setChannel, cardRef }) {
 function EditDetailsForm({ person, refresh, onClose }) {
   const [form, setForm] = useState({
     name: person.name || '', kind: person.kind || 'person', phone: person.phone || '', email: person.email || '',
-    address: person.address || '', unit: person.unit || '', city: person.city || '', postal: person.postal || '',
+    house_number: person.house_number || '', address: streetOf(person), unit: person.unit || '', city: person.city || '', postal: person.postal || '',
   });
   const act = useAction(refresh, { needsSignal: true });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -350,7 +351,7 @@ function EditDetailsForm({ person, refresh, onClose }) {
       name: form.name.trim(),
       kind: form.kind,
       phone: v(form.phone), email: v(form.email),
-      address: v(form.address), unit: v(form.unit), city: v(form.city), postal: v(form.postal),
+      house_number: v(form.house_number), address: v(form.address), unit: v(form.unit), city: v(form.city), postal: v(form.postal),
     });
     if (res) onClose();
   };
@@ -381,9 +382,13 @@ function EditDetailsForm({ person, refresh, onClose }) {
         </div>
       </div>
       <div className="form-row">
-        <div className="field" style={{ flex: '2 1 200px' }}>
-          <label htmlFor="ed-address">Street address</label>
-          <input id="ed-address" className="input" maxLength={1000} value={form.address} onChange={set('address')} />
+        <div className="field" style={{ flex: '0 1 100px' }}>
+          <label htmlFor="ed-house">House no.</label>
+          <input id="ed-house" className="input mono" maxLength={20} inputMode="numeric" value={form.house_number} onChange={set('house_number')} />
+        </div>
+        <div className="field" style={{ flex: '2 1 180px' }}>
+          <label htmlFor="ed-address">Street</label>
+          <input id="ed-address" className="input" maxLength={1000} value={form.address} onChange={set('address')} placeholder="104 Ave" />
         </div>
         <div className="field" style={{ flex: '0 1 90px' }}>
           <label htmlFor="ed-unit">Unit</label>

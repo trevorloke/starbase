@@ -11,7 +11,7 @@ button, no paragraphs, everything else one tap away.
 
 | Screen | What it is |
 |---|---|
-| **Today** | Desk: three big numbers (doors · support · raised) and *Needs you*. Volunteers: one big *Start canvassing* and their next shift |
+| **Today** | Managers: the **dashboard** — every team's contacts, the chart over time, and the map of who is out where. Desk: three big numbers (doors · support · raised) and *Needs you*. Volunteers: one big *Start canvassing* and their next shift |
 | **Map** | Field mode. Houses as clickable pins; tap a door → rate, log, request a sign, call/text. Turfs and walk lists |
 | **People** | Everyone, filterable by rating / tag / role / the campaign's own fields; profiles with socials, roles, gifts, history, *More details* and who they know; **Calls** works a list one person at a time; **My people** is each volunteer's own circle |
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
@@ -94,11 +94,30 @@ than a week after they came off is refused. Contacts are door, phone, text or
   canvassers), Interaction status, Interaction date, Organizer, Email
   opt-in, SMS opt-in, Sign, Support (the list's 1–5, kept apart from the
   rating scale) and Voted. *Profile fields → Add the standard fields* puts
-  them on a campaign set up before they existed. The import also takes a
-  **House number** column (joined to the street: 13450 + 104 Ave), **Latitude
+  them on a campaign set up before they existed. Every person has a
+  **House number** of its own, apart from the street (the door card, the
+  profile and *Add a person* ask for both; the address line reads 13450 104
+  Ave, and a number typed into the street is split out). The import takes a
+  **House number** column the same way, **Latitude
   / Longitude** (a pin, only where there is none), and **Volunteer / Donor**
   1/0 columns (the tags); yes/no fields read 1 and 0, and dates come in as
   spreadsheets write them (10/21/2026, 21 Oct 2026).
+- **The dashboard** (managers, at the top of Today): contacts today, in the
+  last 7 or 30 days or in all — how many, doors, calls & texts, people
+  reached, support, canvassers, who is out now; a bar per day (per week on
+  *All time*) stacked by outcome, Grouped and Table views; **In the field**,
+  a map of the period's contacts (a dot at the door, coloured by outcome)
+  and everyone who has canvassed as their initials — a ring and *out now*
+  while they share their location, grey at their last door otherwise — pick
+  a person for their trail (today) and their numbers; **By team**, each
+  team's contacts and outcomes and how many of its members are out; the
+  latest twenty contacts. It refreshes itself every minute.
+- **Share my location while I'm out** (the map's *Show* sheet, any role):
+  off unless the person turns it on; while it's on, their phone tells the
+  server where they are about once a minute or every 25 m (`field.ping`),
+  and managers see them live. Off takes them off the map at once; a trail
+  is kept for the day and a position only while they share it. Pings are
+  not on the event log and not in the export.
 - **Relationships**: who knows whom (Family · Friend · Neighbour · Work ·
   Community · Other), *brought in by*, and each volunteer's **My people** —
   add someone you know, call, text, or rate a talk in person. A profile's

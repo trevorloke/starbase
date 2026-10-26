@@ -58,7 +58,7 @@ export const actions = {
         if (cur) return { person: doorPerson(cur), duplicate: true };
       }
       const home = (await tx.query(
-        `select address, unit, city, postal, lat, lng from persons
+        `select address, house_number, unit, city, postal, lat, lng from persons
          where id = $1 and workspace_id = $2 and deleted_at is null`,
         [housemateId, ctx.workspaceId],
       )).rows[0];
@@ -70,13 +70,13 @@ export const actions = {
       const id = clientId || newId();
       const person = {
         id, kind: 'person', name, phone: phone || null,
-        address: home.address || null, unit: home.unit || null, city: home.city || null,
+        address: home.address || null, house_number: home.house_number || null, unit: home.unit || null, city: home.city || null,
         postal: home.postal || null, lat: home.lat, lng: home.lng,
       };
       await tx.query(
-        `insert into persons (id, workspace_id, kind, name, phone, address, unit, city, postal, lat, lng, tags, socials)
-         values ($1, $2, 'person', $3, $4, $5, $6, $7, $8, $9, $10, '[]', '{}')`,
-        [id, ctx.workspaceId, name, person.phone, person.address, person.unit, person.city, person.postal, person.lat, person.lng],
+        `insert into persons (id, workspace_id, kind, name, phone, address, house_number, unit, city, postal, lat, lng, tags, socials)
+         values ($1, $2, 'person', $3, $4, $5, $11, $6, $7, $8, $9, $10, '[]', '{}')`,
+        [id, ctx.workspaceId, name, person.phone, person.address, person.unit, person.city, person.postal, person.lat, person.lng, person.house_number],
       );
       emit('person', id, 'create', { ...person, tags: [], at_door_of: housemateId });
       return { person: doorPerson(person) };

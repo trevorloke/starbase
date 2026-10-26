@@ -1,5 +1,6 @@
 // Data routes (desk roles): bulk import with dedupe, batch geocoding, and the
 // Imagine Surrey sample dataset. Mounted under /api/data, after auth.
+import { civic } from '../lib/address.js';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { matchRating, offeredCodes } from '@starbase/shared/scale';
@@ -98,14 +99,12 @@ const cleanRow = (raw, i, scale) => {
   // "13450" + "104 Ave" → "13450 104 Ave" (Surrey's streets are numbers
   // themselves, so only a street that already begins with this very number
   // keeps it as it is).
-  let address = norm(v.address) || null;
-  const house = norm(v.house_number == null ? '' : String(v.house_number)).replace(/\.0$/, '');
-  if (house && address && !address.toLowerCase().startsWith(`${house.toLowerCase()} `)) address = `${house} ${address}`;
+  const { house_number, address } = civic({ house_number: v.house_number == null ? '' : String(v.house_number), address: v.address });
   const lat = coord(v.lat, 90); const lng = coord(v.lng, 180);
   const pin = lat != null && lng != null && !(lat === 0 && lng === 0) ? { lat, lng } : null;
   return {
     row: {
-      name, email, rating, socials, pin,
+      name, email, rating, socials, pin, house_number,
       phone: norm(v.phone) || null,
       address,
       unit: norm(v.unit) || null,
@@ -158,7 +157,7 @@ const candidates = async (tx, workspaceId, clean) => {
   if (!ids.size) return [];
   return (await tx.query(
     `select p.* from unnest($2::uuid[]) as k(id) cross join lateral (
-       select id, name, email, phone, address, unit, city, postal, tags, socials, rating, lat, lng, created_at from persons
+       select id, name, email, phone, address, house_number, unit, city, postal, tags, socials, rating, lat, lng, created_at from persons
        where id = k.id and workspace_id = $1 offset 0) as p
      order by p.created_at, p.id`, [workspaceId, [...ids]],
   )).rows.map(({ created_at: _, ...p }) => ({ ...p, tags: parseJson(p.tags, []), socials: parseJson(p.socials, {}) }));
@@ -229,7 +228,7 @@ app.post('/import', async (c) => {
       if (match) {
         // Merge: fill blanks, union tags — never overwrite what's on file.
         const patch = {};
-        for (const k of ['email', 'phone', 'address', 'unit', 'city', 'postal']) {
+        for (const k of ['email', 'phone', 'address', 'unit', 'city', 'postal', 'house_number']) {
           if (!match[k] && r[k]) patch[k] = r[k];
         }
         const tags = [...new Set([...(match.tags || []), ...r.tags])].slice(0, 50);
@@ -248,14 +247,17 @@ app.post('/import', async (c) => {
           const next = { ...match, ...patch };
           await tx.query(
             `update persons set email = $3, phone = $4, address = $5, unit = $6, city = $7, postal = $8, tags = $9,
-               rating = $10, socials = $11, lat = $12, lng = $13, updated_at = now() where id = $1 and workspace_id = $2`,
+               rating = $10, socials = $11, lat = $12, lng = $13, house_number = $14, updated_at = now() where id = $1 and workspace_id = $2`,
             [match.id, ctx.workspaceId, next.email, next.phone, next.address, next.unit, next.city, next.postal,
              JSON.stringify(next.tags || []), next.rating || null, JSON.stringify(next.socials || {}),
-             next.lat ?? null, next.lng ?? null],
+             next.lat ?? null, next.lng ?? null, next.house_number || null],
           );
           emit('person', match.id, 'update', { ...patch, source: 'import' });
           Object.assign(match, patch);
-          index(match);
+          // The lookups key on name, email, phone and address: only a change
+          // to those moves this person in them (a house number read off an
+          // address they already had, or a pin, changes no key).
+          if (Object.keys(patch).some((k) => !['house_number', 'lat', 'lng'].includes(k))) index(match);
         }
       } else {
         created += 1;
@@ -263,13 +265,13 @@ app.post('/import', async (c) => {
         decisions.push({ row: r.index + 1, name: r.name, action: 'created', id });
         const p = { id, name: r.name, email: r.email, phone: r.phone, address: r.address, unit: r.unit,
           city: r.city, postal: r.postal, tags: r.tags, socials: r.socials, rating: r.rating,
-          lat: r.pin?.lat ?? null, lng: r.pin?.lng ?? null };
+          lat: r.pin?.lat ?? null, lng: r.pin?.lng ?? null, house_number: r.house_number };
         if (write) {
           await tx.query(
-            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, socials, rating, lat, lng)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            `insert into persons (id, workspace_id, name, email, phone, address, unit, city, postal, tags, socials, rating, lat, lng, house_number)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
             [id, ctx.workspaceId, p.name, p.email, p.phone, p.address, p.unit, p.city, p.postal,
-             JSON.stringify(p.tags), JSON.stringify(p.socials), p.rating, p.lat, p.lng],
+             JSON.stringify(p.tags), JSON.stringify(p.socials), p.rating, p.lat, p.lng, p.house_number],
           );
           emit('person', id, 'create', { ...p, source: 'import' });
         }

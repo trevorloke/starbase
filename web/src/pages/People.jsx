@@ -536,7 +536,7 @@ function FilterSheet({ f, update, tagOptions, onClose, phone }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Add person (inline, ?new=1)
 // ─────────────────────────────────────────────────────────────────────────────
-const EMPTY = { name: '', kind: 'person', email: '', phone: '', address: '', unit: '', city: 'Surrey', postal: '' };
+const EMPTY = { name: '', kind: 'person', email: '', phone: '', house_number: '', address: '', unit: '', city: 'Surrey', postal: '' };
 
 function AddPersonForm({ onClose }) {
   const queryClient = useQueryClient();
@@ -556,6 +556,7 @@ function AddPersonForm({ onClose }) {
       kind: form.kind,
       email: opt(form.email),
       phone: opt(form.phone),
+      house_number: opt(form.house_number),
       address: opt(form.address),
       unit: opt(form.unit),
       city: opt(form.city),
@@ -586,9 +587,15 @@ function AddPersonForm({ onClose }) {
           <input id="np-email" className="input" type="email" maxLength={320} value={form.email} onChange={set('email')} />
         </div>
       </div>
-      <div className="field">
-        <label htmlFor="np-address">Street address</label>
-        <input id="np-address" className="input" maxLength={1000} value={form.address} onChange={set('address')} placeholder="13450 104 Ave" />
+      <div className="form-row">
+        <div className="field" style={{ flex: '0 1 110px' }}>
+          <label htmlFor="np-house">House no.</label>
+          <input id="np-house" className="input mono" maxLength={20} inputMode="numeric" value={form.house_number} onChange={set('house_number')} placeholder="13450" />
+        </div>
+        <div className="field">
+          <label htmlFor="np-address">Street</label>
+          <input id="np-address" className="input" maxLength={1000} value={form.address} onChange={set('address')} placeholder="104 Ave" />
+        </div>
       </div>
       <button type="button" className="pp-moredetails disclose disclose--inline" aria-expanded={more} onClick={() => setMore((v) => !v)}>
         More details
