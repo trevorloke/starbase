@@ -27,6 +27,7 @@
 //   stripe.payment    Stripe webhook                  pledge update, gift create
 //   store.payment / store.expire  Stripe webhook for website store orders
 import { Hono } from 'hono';
+import { clientIp, makeLimiter } from '../lib/guard.js';
 import { getDb } from '../db/client.js';
 import { runAction, newId } from '../lib/events.js';
 import { VOLUNTEER_ROLES, VOLUNTEER_ROLE_CODES } from '@starbase/shared/canvass';
@@ -43,16 +44,9 @@ import { applyStorePayment, expireStoreOrder } from '../ext/website/store.js';
 
 const app = new Hono();
 
-// Per-IP rate limit: 30 public writes per 10 minutes.
-const hits = new Map();
-const limited = (ip) => {
-  const now = Date.now();
-  const arr = (hits.get(ip) || []).filter((t) => now - t < 600000);
-  arr.push(now);
-  hits.set(ip, arr);
-  return arr.length > 30;
-};
-const ipOf = (c) => c.req.header('x-forwarded-for')?.split(',')[0].trim() || c.req.header('x-real-ip') || 'local';
+// Per-IP rate limit: 30 public writes per 10 minutes (lib/guard.js).
+const limited = makeLimiter({ windowMs: 600000, max: 30 });
+const ipOf = clientIp;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const settingsOf = (ws) => (typeof ws.settings === 'string' ? JSON.parse(ws.settings) : (ws.settings || {}));

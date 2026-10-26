@@ -12,6 +12,8 @@ import { parseJ } from './content.js';
 
 export const LINE_MAX_QTY = 20;
 export const CART_MAX_LINES = 30;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const ORDER_STATUSES = ['pending', 'paid', 'packed', 'shipped', 'picked_up', 'refunded', 'cancelled'];
 // Statuses whose items have come out of stock (paid and after).
 export const STOCK_OUT = new Set(['paid', 'packed', 'shipped', 'picked_up']);
@@ -35,7 +37,9 @@ export const leftOf = (p, variant) => {
 // A checkout holds its items while the buyer is on Stripe's page: open
 // (pending) orders from the last HOLD_MINUTES count against what's left.
 // Stripe sessions expire after CHECKOUT_MINUTES (the webhook then cancels the
-// order); the hold ends a little later even if that webhook never comes.
+// order); the hold ends a little later even if that webhook never comes. An
+// order that never got its Stripe session (the server fell over between the
+// two steps) holds nothing after two minutes.
 export const CHECKOUT_MINUTES = 30;
 const HOLD_MINUTES = CHECKOUT_MINUTES + 5;
 
@@ -44,7 +48,8 @@ export const heldQty = async (db, ws) => {
   const held = {};
   const { rows } = await db.query(
     `select items from store_orders where workspace_id = $1 and status = 'pending'
-       and created_at > now() - ($2 || ' minutes')::interval`,
+       and created_at > now() - ($2 || ' minutes')::interval
+       and (stripe_session_id is not null or created_at > now() - interval '2 minutes')`,
     [ws.id, String(HOLD_MINUTES)],
   );
   for (const r of rows) {
@@ -63,7 +68,7 @@ export const priceCart = async (db, ws, items) => {
   const merged = new Map();
   for (const it of (Array.isArray(items) ? items : []).slice(0, CART_MAX_LINES)) {
     const id = String(it?.product_id || '');
-    if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+    if (!UUID_RE.test(id)) continue;
     const variant = typeof it.variant === 'string' ? it.variant.slice(0, 40) : '';
     const qty = Math.floor(Number(it.qty));
     if (!Number.isFinite(qty) || qty < 1) continue;

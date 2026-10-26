@@ -10,7 +10,10 @@ import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 // Each test file gets its own fresh database, as it does under the in-memory
 // runner (helpers.freshDb) — files may assume they start from nothing (the
 // first-run setup) or that their campaign is the only one (the website).
-const files = readdirSync('server/test').filter((f) => f.endsWith('.test.js')).sort().map((f) => `server/test/${f}`);
+// Optional arguments name the test files to run (default: all of them).
+const files = process.argv.length > 2
+  ? process.argv.slice(2)
+  : readdirSync('server/test').filter((f) => f.endsWith('.test.js')).sort().map((f) => `server/test/${f}`);
 let failed = 0;
 for (const file of files) {
   const port = 55432 + Math.floor(Math.random() * 1000);

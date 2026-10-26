@@ -13,6 +13,7 @@ import { emailConfigured, textConfigured } from '../lib/notify.js';
 import { RECORD_TYPES } from '@starbase/shared/registry';
 import { SOCIAL_PLATFORMS } from '@starbase/shared/canvass';
 import { staleTimeZoneData } from '../lib/tzcheck.js';
+import { crossSiteWrite } from '../lib/guard.js';
 import dataRoutes from './data.js';
 import { pointInPolygon, groupDoors, walkOrder } from '../lib/geo.js';
 import { checkCap } from '../lib/cap.js';
@@ -26,6 +27,15 @@ import { goingRow, retryable, sendJobOn } from '../ext/abtests/send.js';
 const dateOnly = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 
 const app = new Hono();
+
+// A write must come from the app itself (lib/guard.js): the browser says
+// same-origin (or nothing), and the body is JSON. A form on another site —
+// or another host under the campaign's domain — can't post with the cookie.
+app.use('*', async (c, next) => {
+  const why = crossSiteWrite(c);
+  if (why) return c.json({ error: why }, c.req.header('sec-fetch-site') && !/JSON/.test(why) ? 403 : 415);
+  await next();
+});
 
 // Auth + context middleware.
 app.use('*', async (c, next) => {
@@ -74,7 +84,7 @@ const badId = (c) => !UUID_RE.test(c.req.param('id') || '');
 // ── Actions: the only write path ──
 app.post('/actions/:name', async (c) => {
   const name = c.req.param('name');
-  const action = ACTIONS[name];
+  const action = Object.hasOwn(ACTIONS, name) ? ACTIONS[name] : null;
   if (!action) return c.json({ error: `unknown action '${name}'` }, 404);
   const ctx = c.get('ctx');
   if (!action.roles.includes(ctx.role)) {

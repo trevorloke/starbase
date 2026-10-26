@@ -26,7 +26,7 @@ export { api } from './api.js';
 export const publicRoutes = new Hono();
 publicRoutes.get('/media/:id', async (c) => serveMedia(c, await getDb()));
 publicRoutes.get('/site-assets/:file', (c) => {
-  const a = ASSETS[c.req.param('file')];
+  const a = Object.hasOwn(ASSETS, c.req.param('file')) ? ASSETS[c.req.param('file')] : null;
   if (!a) return c.text('not found', 404);
   return c.body(a.body, 200, {
     'Content-Type': a.type,

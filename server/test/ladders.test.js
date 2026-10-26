@@ -25,7 +25,7 @@ const pub = async (method, path, body) => {
     method,
     headers: {
       'content-type': form ? 'application/x-www-form-urlencoded' : 'application/json',
-      'x-forwarded-for': `203.0.113.${ipN % 250}, 10.9.${Math.floor(ipN / 250)}.1`,
+      'x-forwarded-for': `10.9.${Math.floor(ipN / 250)}.1, 203.0.113.${ipN % 250}`,
     },
     body: body === undefined ? undefined : (form ? body.toString() : JSON.stringify(body)),
   });

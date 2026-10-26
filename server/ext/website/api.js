@@ -150,7 +150,7 @@ const ORDER_FILTERS = {
 };
 api.get('/store/orders', async (c) => {
   if (!may(c, ORDERS)) return refuse(c);
-  const f = ORDER_FILTERS[c.req.query('status')] || ORDER_FILTERS.open;
+  const f = (Object.hasOwn(ORDER_FILTERS, c.req.query('status') || '') && ORDER_FILTERS[c.req.query('status')]) || ORDER_FILTERS.open;
   const rows = (await c.get('db').query(
     `select id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents, paid_cents, buyer_name, email, phone,
             ship_address, person_id, note, paid_at, created_at, updated_at

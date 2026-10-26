@@ -131,4 +131,7 @@ create table if not exists store_orders (
 );
 create index if not exists store_orders_ws_idx on store_orders (workspace_id, status, created_at desc);
 create index if not exists store_orders_session_idx on store_orders (stripe_session_id);
+
+-- Who started a checkout, to cap open ones per address (not shown anywhere).
+alter table store_orders add column if not exists client_ip text;
 `;

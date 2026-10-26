@@ -12,6 +12,7 @@ import { getDb } from './db/client.js';
 import { EXTENSIONS } from './ext.js';
 import { startJobRunner, stopJobRunner } from './lib/jobs.js';
 import { staleTimeZoneData } from './lib/tzcheck.js';
+import { bodyLimit } from 'hono/body-limit';
 import { siteApp, siteOnItsOwnHost } from './ext/website/site.js';
 
 export const app = new Hono();
@@ -21,6 +22,25 @@ export const app = new Hono();
 // paths (/news, /events, /store, /about …); everything the staff app and the
 // public forms use (/api, /assets, /login, /e, /d, /n, …) falls through to
 // the routes below, unchanged. Every host also has the site at /site.
+// How big a request body may be: 256 KB for anything, more for the two
+// uploads (a CSV import's 2,000 rows; a picture, as base64). Hono buffers a
+// body before parsing, so without this a few big requests could take all
+// the memory — no sign-in needed.
+const BODY_MAX = { '/api/data/import': 16 * 1024 * 1024, '/api/actions/site.media.upload': 4 * 1024 * 1024 };
+app.use('*', (c, next) => bodyLimit({
+  maxSize: BODY_MAX[c.req.path] || 256 * 1024,
+  onError: (cc) => cc.json({ error: 'request too large' }, 413),
+})(c, next));
+// Headers every answer carries: not framed by another site (voter data on
+// screen), no sniffing a type, no full URLs leaking off-site. A route that
+// set its own keeps it.
+app.use('*', async (c, next) => {
+  await next();
+  const h = c.res.headers;
+  if (!h.has('X-Frame-Options')) h.set('X-Frame-Options', 'DENY');
+  if (!h.has('X-Content-Type-Options')) h.set('X-Content-Type-Options', 'nosniff');
+  if (!h.has('Referrer-Policy')) h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+});
 app.use('*', siteOnItsOwnHost);
 app.route('/site', siteApp);
 

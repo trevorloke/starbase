@@ -13,14 +13,31 @@ import {
   createSession, destroySession, loadContext, SESSION_COOKIE,
 } from '../lib/auth.js';
 import { ORG_NAME, ORG_JURISDICTION, openSignupForced, SETUP_CLOSED_MESSAGE } from '../lib/org.js';
+import { clientIp, makeLimiter, crossSiteWrite } from '../lib/guard.js';
 
 const app = new Hono();
+
+// Writes must be the app's own (JSON, same origin) — see routes/api.js.
+app.use('*', async (c, next) => {
+  const why = crossSiteWrite(c);
+  if (why) return c.json({ error: why }, c.req.header('sec-fetch-site') && !/JSON/.test(why) ? 403 : 415);
+  await next();
+});
 
 // Secure cookies behind TLS: on in production unless STARBASE_SECURE_COOKIES=0
 // (e.g. a local container on plain http); force on anywhere with =1.
 const secureFlag = process.env.STARBASE_SECURE_COOKIES;
 const secure = secureFlag ? secureFlag === '1' : process.env.NODE_ENV === 'production';
-const cookieOpts = { httpOnly: true, sameSite: 'Lax', path: '/', secure, maxAge: 30 * 86400 };
+// Strict: the cookie goes only with requests the app itself makes (the app
+// is one origin; a link opened from an email loads the app, which then asks
+// for /api/auth/me itself).
+const cookieOpts = { httpOnly: true, sameSite: 'Strict', path: '/', secure, maxAge: 30 * 86400 };
+
+// Sign-in guesses: 30 tries from one address and 10 failures against one
+// email per 15 minutes, then 429 for the rest of the window.
+const triesFrom = makeLimiter({ windowMs: 15 * 60_000, max: 30 });
+const failsFor = makeLimiter({ windowMs: 15 * 60_000, max: 10 });
+const TOO_MANY = 'too many sign-in attempts — wait 15 minutes';
 
 const signupInput = z.object({
   name: z.string().trim().min(1).max(200),
@@ -114,19 +131,26 @@ app.post('/signup', async (c) => {
 
 app.post('/login', async (c) => {
   const db = await getDb();
+  if (triesFrom(clientIp(c))) return c.json({ error: TOO_MANY }, 429);
   const { email, password } = await c.req.json().catch(() => ({}));
   if (!email || !password) return c.json({ error: 'email and password required' }, 400);
+  const lower = String(email).toLowerCase().slice(0, 320);
+  const key = `email:${lower}`;
+  if (failsFor.count(key) >= 10) return c.json({ error: TOO_MANY }, 429);
   const user = (await db.query(
     'select id, password_hash from users where email = $1',
-    [String(email).toLowerCase()],
+    [lower],
   )).rows[0];
   if (!user) {
     await dummyVerify();
+    failsFor(key);
     return c.json({ error: 'invalid credentials' }, 401);
   }
   if (!(await verifyPassword(password, user.password_hash))) {
+    failsFor(key);
     return c.json({ error: 'invalid credentials' }, 401);
   }
+  failsFor.clear(key);
   const membership = (await db.query(
     'select workspace_id from memberships where user_id = $1 order by created_at limit 1',
     [user.id],
@@ -162,6 +186,7 @@ const joinInput = z.object({
 
 app.post('/join', async (c) => {
   const db = await getDb();
+  if (triesFrom(clientIp(c))) return c.json({ error: TOO_MANY }, 429);
   const parsed = joinInput.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0].message }, 400);
   const { token, name, password } = parsed.data;

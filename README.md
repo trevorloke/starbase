@@ -296,6 +296,20 @@ gifts, totals, or donor tier; Today has no money), and refuses them the gift
 ledger, exports, the raw event log, the audit replay, and the subscriber,
 signature, and blast lists.
 
+**What faces the internet** (`server/lib/guard.js`): request bodies are
+capped (256 KB; 16 MB for a CSV import, 4 MB for a picture); the address
+a request is from is the entry `STARBASE_TRUSTED_PROXIES` hops from the
+right of `X-Forwarded-For` (default 1 — one proxy, as on Render), never
+what the sender wrote; public writes are limited to 30 per 10 minutes per
+address and sign-in to 30 tries per address and 10 failures per email per
+15 minutes; a cookie-carrying write must be the app's own (JSON, same
+origin — a form on another host, even under the campaign's domain, can't
+post with it; the session cookie is `SameSite=Strict`); open store
+checkouts are capped at 2 per address; and every answer carries
+`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and a
+referrer policy. The event log keeps no sign-in, invite or Stripe secrets
+and no image bytes.
+
 ## Run
 
 ```sh

@@ -24,6 +24,7 @@ import { siteWorkspace, parseJ, dateOnly, money } from './content.js';
 import { loadChrome, layout, img, fmtDay, fmtWhen, fmtTime, dateTile, socialLinks, icon } from './layout.js';
 import { priceCart, checkoutParams, productRow, leftOf } from './store.js';
 import { onSiteHost, originOf, siteHosts } from './hosts.js';
+import { clientIp, makeLimiter } from '../../lib/guard.js';
 import { getCookie } from 'hono/cookie';
 import { loadContext, SESSION_COOKIE } from '../../lib/auth.js';
 
@@ -390,16 +391,12 @@ const waysOf = (st) => {
   return ways;
 };
 
-// Public writes: 30 per 10 minutes from one address.
-const hits = new Map();
-const limited = (c) => {
-  const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim() || c.req.header('x-real-ip') || 'local';
-  const now = Date.now();
-  const arr = (hits.get(ip) || []).filter((t) => now - t < 600000);
-  arr.push(now);
-  hits.set(ip, arr);
-  return arr.length > 30;
-};
+// Public writes: 30 per 10 minutes from one address (lib/guard.js).
+const hitsFrom = makeLimiter({ windowMs: 600000, max: 30 });
+const limited = (c) => hitsFrom(clientIp(c));
+// Open checkouts (unpaid, holding their items) from one address at once.
+// Beyond this, "sold out" could be faked by starting checkouts and never paying.
+const OPEN_CHECKOUTS_PER_IP = 2;
 
 siteApp.post('/store/quote', async (c) => {
   const s = await site(c);
@@ -425,9 +422,15 @@ siteApp.post('/store/checkout', async (c) => {
   // (holding its items) before the buyer goes to Stripe. Actions take the
   // campaign's row lock, so two buyers of the last shirt can't both get it.
   const orderId = newId();
+  const ip = clientIp(c);
   let order;
   let refused = null;
   await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
+    const open = (await tx.query(
+      `select count(*)::int as n from store_orders where workspace_id = $1 and status = 'pending' and client_ip = $2
+         and created_at > now() - interval '35 minutes'`, [s.ws.id, ip],
+    )).rows[0].n;
+    if (open >= OPEN_CHECKOUTS_PER_IP) { refused = [429, { error: 'You have a checkout open already — finish or cancel it first.' }]; return; }
     const q = await priceCart(tx, s.ws, b.items);
     if (!q.lines.length) { refused = [400, { error: 'Your cart is empty.' }]; return; }
     if (q.problems.length) {
@@ -444,9 +447,9 @@ siteApp.post('/store/checkout', async (c) => {
       total_cents: q.subtotal_cents + way.cents,
     };
     await tx.query(
-      `insert into store_orders (id, workspace_id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents)
-       values ($1, $2, 'pending', $3, $4, $5, $6, $7)`,
-      [order.id, s.ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents],
+      `insert into store_orders (id, workspace_id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents, client_ip)
+       values ($1, $2, 'pending', $3, $4, $5, $6, $7, $8)`,
+      [order.id, s.ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, ip],
     );
     emit('store_order', order.id, 'create', {
       status: 'pending', fulfilment: order.fulfilment, total_cents: order.total_cents,
