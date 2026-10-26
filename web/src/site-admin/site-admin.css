@@ -1,0 +1,8 @@
+/* The website admin's own chrome: a white header, the editors below. */
+.sa-head { position: sticky; top: 0; z-index: 50; background: var(--paper-0); border-bottom: 1px solid var(--rule); }
+.sa-head__in { max-width: var(--max-w); margin: 0 auto; padding: 0 var(--s-4); min-height: 64px; display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.sa-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--navy); text-decoration: none; font-family: var(--font-display); font-weight: 700; font-size: 20px; }
+.sa-brand img { height: 40px; width: auto; }
+.sa-who { margin-left: auto; font-size: 14px; }
+.sa-main { max-width: var(--max-w); margin: 0 auto; padding: var(--s-5) var(--s-4) var(--s-7); }
+@media (max-width: 560px) { .sa-brand span { display: none; } .sa-app { display: none; } }

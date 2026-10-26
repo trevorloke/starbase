@@ -13,7 +13,8 @@ import { EXTENSIONS } from './ext.js';
 import { startJobRunner, stopJobRunner } from './lib/jobs.js';
 import { staleTimeZoneData } from './lib/tzcheck.js';
 import { bodyLimit } from 'hono/body-limit';
-import { siteApp, siteOnItsOwnHost } from './ext/website/site.js';
+import { siteApp, siteOnItsOwnHost, siteOnEveryHost } from './ext/website/site.js';
+import { serveMode, siteApiAllows } from './lib/serve.js';
 
 export const app = new Hono();
 
@@ -41,20 +42,33 @@ app.use('*', async (c, next) => {
   if (!h.has('X-Content-Type-Options')) h.set('X-Content-Type-Options', 'nosniff');
   if (!h.has('Referrer-Policy')) h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 });
-app.use('*', siteOnItsOwnHost);
+// What this process serves (lib/serve.js): the app, the site, or both.
+app.use('*', (c, next) => {
+  const mode = serveMode();
+  if (mode === 'site') return siteOnEveryHost(c, next);
+  if (mode === 'all') return siteOnItsOwnHost(c, next);
+  return next();
+});
+app.use('/site/*', (c, next) => (serveMode() === 'app' ? c.text('not on this service', 404) : next()));
 app.route('/site', siteApp);
 
 app.get('/api/health', (c) => c.json({ ok: true, service: 'starbase', tzdataCurrent: !staleTimeZoneData() }));
 app.route('/api/auth', authRoutes);
 app.route('/', publicRoutes); // /p, /n, /v, /u, /api/public — no auth
 for (const e of EXTENSIONS) if (e.publicRoutes) app.route('/', e.publicRoutes);
+// The site's own service answers only the API its admin needs.
+app.use('/api/*', (c, next) => (serveMode() === 'site' && !siteApiAllows(c.req.path) ? c.json({ error: 'not on this service' }, 404) : next()));
 app.route('/api', apiRoutes);
 
 // Static web build (SPA fallback to index.html for URL routing). Resolved
 // from this file, not the working directory, so any launch location works.
 const WEB_ROOT = relative(process.cwd(), fileURLToPath(new URL('../web/dist', import.meta.url))) || '.';
 app.use('*', serveStatic({ root: WEB_ROOT }));
-app.get('*', serveStatic({ root: WEB_ROOT, path: 'index.html' }));
+// The website's admin: its own small app (web/website-admin.html), on any
+// service that serves the site.
+app.get('/website-admin', (c, next) => (serveMode() === 'app' ? c.text('not on this service', 404) : next()), serveStatic({ root: WEB_ROOT, path: 'website-admin.html' }));
+app.get('/website-admin/*', (c, next) => (serveMode() === 'app' ? c.text('not on this service', 404) : next()), serveStatic({ root: WEB_ROOT, path: 'website-admin.html' }));
+app.get('*', (c, next) => (serveMode() === 'site' ? c.text('not found', 404) : next()), serveStatic({ root: WEB_ROOT, path: 'index.html' }));
 
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop());
 if (isMain) {
@@ -65,7 +79,8 @@ if (isMain) {
   const tz = staleTimeZoneData();
   if (tz) console.warn(`starbase: ${tz}`);
   // Background jobs (ladder steps, A/B winners). STARBASE_JOBS=off disables.
-  if (process.env.STARBASE_JOBS !== 'off') {
+  // The site's own service leaves the campaign's jobs to the app's.
+  if (process.env.STARBASE_JOBS !== 'off' && serveMode() !== 'site') {
     getDb().then((db) => startJobRunner(db, { everyMs: Number(process.env.STARBASE_JOBS_EVERY_MS) || 30_000 }));
   }
   // Deploys send SIGTERM: stop accepting requests, then close the database so

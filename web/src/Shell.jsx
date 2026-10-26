@@ -63,7 +63,6 @@ const NAV_DESK = [
   { to: '/money',    label: 'Money',    icon: 'money', area: 'money' },
   { to: '/signs',    label: 'Signs',    icon: 'signs', area: 'signs' },
   { to: '/outreach', label: 'Outreach', icon: 'outreach', area: 'outreach' },
-  { to: '/website',  label: 'Website',  icon: 'website', area: 'website' },
 ];
 // The areas a person has: what the server said, else their role's usual ones.
 export const areasOf = (me) => (Array.isArray(me?.areas) ? me.areas : (isDesk(me) ? ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data'] : []));
@@ -231,6 +230,9 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
           <span className="acct-ws">{me.workspace.name}</span>
         </div>
         {me.role === 'manager' && <NavLink to="/admin" ref={firstRef} className="acct-item">Admin</NavLink>}
+        {(hasArea(me, 'website') || me.role === 'treasurer') && me.site_admin_url && (
+          <a href={me.site_admin_url} className="acct-item" target="_blank" rel="noopener">Edit the website ↗</a>
+        )}
         {me.role === 'manager' && <NavLink to="/rating-scale" className="acct-item">Rating scale</NavLink>}
         {confirmLeft > 0 ? (
           <div className="acct-confirm" role="group" aria-label="Sign out">

@@ -90,9 +90,12 @@ Starbase serves the campaign's whole public site from the same service.
    `/api`, `/e`, `/d`, `/n`, `/v`, `/p`, `/u` and the app's own screens
    keep working on every host. Before DNS is ready, the site is at
    `https://starbase.imaginesurrey.ca/site/`.
-3. Edit everything in the staff app → **Website** (managers and staff):
-   Pages · News · Events · Team · Store · Orders · Settings. Fill
-   **Settings → Authorized by** before the site goes public.
+3. Edit everything in the **website admin** at `/website-admin` (the
+   account menu's *Edit the website*; managers and staff edit, treasurers
+   see Orders): Pages · News · Events · Team · Store · Orders · Settings.
+   Fill **Settings → Authorized by** before the site goes public.
+   `STARBASE_SERVE=site` runs the website as its own service, apart from
+   the field app, on the same database; see GOING-LIVE.md.
 
 What to try: publish a page (drafts never show), post news with a cover
 picture, add an event with a picture (it's the same event list as

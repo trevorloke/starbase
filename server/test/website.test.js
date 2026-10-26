@@ -389,3 +389,34 @@ test('every website write is on the chain and the chain verifies', async () => {
   }
   assert.equal((await mgr.get('/api/audit/verify')).json.ok, true);
 });
+
+test('STARBASE_SERVE: the site as its own service answers at / and only the admin’s API; the app alone has no site', async () => {
+  const was = process.env.STARBASE_SERVE;
+  try {
+    process.env.STARBASE_SERVE = 'site';
+    const home = await app.request('/');
+    assert.equal(home.status, 200);
+    assert.match(await home.text(), /class="sh"/, 'the site at / on any host');
+    assert.equal((await app.request('/news')).status, 200);
+    assert.equal((await app.request('/map')).status, 404, 'no field app here');
+    assert.equal((await app.request('/api/persons', { headers: { cookie: mgr.cookie } })).status, 404, 'the campaign’s people are not on this service');
+    assert.equal((await mgr.action('person.create', { name: 'Not Here' })).status, 404);
+    assert.equal((await mgr.get('/api/site/overview')).status, 200, 'the website’s admin reads');
+    assert.equal((await mgr.action('site.settings.save', { tagline: 'From the site service' })).status, 200, 'and writes');
+    assert.equal((await mgr.get('/api/auth/me')).json.site_admin_url, '/website-admin');
+
+    process.env.STARBASE_SERVE = 'app';
+    assert.equal((await app.request('/site/')).status, 404, 'no site pages on the app alone');
+    assert.doesNotMatch(await (await app.request('/', { headers: { host: 'imaginesurrey.ca' } })).text(), /class="sh"/);
+    assert.equal((await app.request('/website-admin')).status, 404);
+    assert.equal((await mgr.get('/api/site/overview')).status, 200, 'the API is whole; the site’s admin lives on the site service');
+    process.env.STARBASE_SITE_HOSTS = 'imaginesurrey.ca';
+    assert.equal((await mgr.get('/api/auth/me')).json.site_admin_url, 'https://imaginesurrey.ca/website-admin', 'the account menu points at the site’s own host');
+    delete process.env.STARBASE_SITE_HOSTS;
+    assert.equal((await mgr.get('/api/auth/me')).json.site_admin_url, null);
+    assert.equal((await app.request(`/n/${slug}`)).status, 200, 'the public forms are on both');
+  } finally {
+    if (was === undefined) delete process.env.STARBASE_SERVE; else process.env.STARBASE_SERVE = was;
+    delete process.env.STARBASE_SITE_HOSTS;
+  }
+});

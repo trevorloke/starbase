@@ -552,7 +552,7 @@ siteApp.get('*', async (c) => {
 const APP_PATHS = new Set([
   'api', 'assets', 'site', 'site-assets', 'media', 'login', 'signup', 'join', 'map', 'calls', 'people', 'shifts', 'turfs',
   'signs', 'inbox', 'my-people', 'money', 'outreach', 'filings', 'team', 'ladders', 'follow-ups', 'surveys', 'rating-scale',
-  'website', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c',
+  'website', 'website-admin', 'admin', 'fonts', 'tiles', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c',
 ]);
 const SITE_PATH = /^\/(?:news|events|our-team|store|cart)(?:\/|$)|^\/(?:sitemap\.xml|robots\.txt)$/;
 
@@ -564,5 +564,10 @@ export const claimsPath = (path) => {
 
 export const siteOnItsOwnHost = async (c, next) => {
   if (!onSiteHost(c) || !claimsPath(c.req.path)) return next();
+  return siteApp.fetch(c.req.raw, c.env);
+};
+// The site as its own service (STARBASE_SERVE=site): at / on every host.
+export const siteOnEveryHost = async (c, next) => {
+  if (!claimsPath(c.req.path)) return next();
   return siteApp.fetch(c.req.raw, c.env);
 };

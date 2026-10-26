@@ -139,9 +139,16 @@ tagged by source, and is appended to the event log under a system actor.
 
 ## Website (imaginesurrey.ca) and store
 
-Starbase hosts the campaign's public website, edited from **Website** in
-the staff app (managers and staff; treasurers see Orders):
-**Pages · News · Events · Team · Store · Orders · Settings** and *View site*.
+Starbase hosts the campaign's public website. It is edited in its own
+small app, the **website admin** at `/website-admin` (the same accounts:
+managers and staff edit, treasurers see Orders; the field app's account
+menu has *Edit the website*): **Pages · News · Events · Team · Store ·
+Orders · Settings** and *View site*. The website is apart from the field
+app: `STARBASE_SERVE=site` runs it as its own service (the site at `/` on
+every host, its admin, the public forms and the Stripe webhook, and only
+the slice of the API its admin needs — never the campaign's people, money
+or lists), `STARBASE_SERVE=app` runs the field app without it, and the
+default `all` serves both from one process (`server/lib/serve.js`).
 A saved page or post shows **View on site**, or **Preview draft** while unpublished:
 the site's `?preview` shows a draft (marked, never cached or indexed) only to
 managers and staff signed in on the staff host.

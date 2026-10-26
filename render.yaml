@@ -41,8 +41,38 @@ services:
         sync: false
       - key: STARBASE_SITE_HOSTS     # the public website's domains, e.g. imaginesurrey.ca,www.imaginesurrey.ca
         sync: false
+      - key: STARBASE_SERVE          # all (default) | app | site — see GOING-LIVE.md "One service or two"
+        sync: false
       - key: GOOGLE_MAPS_SERVER_KEY  # optional: Google geocoding (GEOCODER=google / GEOCODER_FALLBACK=google) and map tiles (GOOGLE_MAPS_TILES=1)
         sync: false
+
+  # The website as its own service, apart from the field app (same database):
+  # uncomment, put the imaginesurrey.ca domains on it, point the Stripe
+  # webhook at it, and set STARBASE_SERVE=app on the service above.
+  # - type: web
+  #   name: starbase-site
+  #   runtime: docker
+  #   plan: starter
+  #   region: oregon
+  #   dockerfilePath: ./Dockerfile
+  #   dockerContext: .
+  #   healthCheckPath: /api/health
+  #   autoDeploy: true
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: STARBASE_SERVE
+  #       value: site
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: starbase-db
+  #         property: connectionString
+  #     - key: STARBASE_PUBLIC_URL
+  #       sync: false
+  #     - key: STRIPE_SECRET_KEY
+  #       sync: false
+  #     - key: STRIPE_WEBHOOK_SECRET
+  #       sync: false
 
 databases:
   - name: starbase-db

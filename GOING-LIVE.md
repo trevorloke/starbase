@@ -21,10 +21,20 @@ where it happens and how to tell it worked. The longer explanations are in
 | Host | What it serves | Where |
 |---|---|---|
 | `starbase.imaginesurrey.ca` | the staff and volunteer app, and the public forms | Render → Settings → Custom Domains |
-| `imaginesurrey.ca`, `www.imaginesurrey.ca` | the public website at `/` | same, plus `STARBASE_SITE_HOSTS` below |
+| `imaginesurrey.ca`, `www.imaginesurrey.ca` | the public website at `/`, and its admin at `/website-admin` | same, plus `STARBASE_SITE_HOSTS` below |
 
 Add the DNS records Render shows; it issues the certificates. Until DNS is
-ready the site is at `https://starbase.imaginesurrey.ca/site/`.
+ready the site is at `https://starbase.imaginesurrey.ca/site/` and its
+admin at `https://starbase.imaginesurrey.ca/website-admin`.
+
+**One service or two.** One `starbase` service serves both (the default).
+To keep the website apart from the field app — its own service, its own
+scaling, the campaign's data never on the public host — add a second Render
+web service from the same repo with `STARBASE_SERVE=site`, the same
+`DATABASE_URL`, `STRIPE_*` and `STARBASE_PUBLIC_URL`, put the
+`imaginesurrey.ca` domains on it, and set `STARBASE_SERVE=app` on the first
+(`render.yaml` has the second service ready to uncomment). The Stripe
+webhook then points at the site service.
 
 ## 3 · Settings (Render → starbase → Environment)
 
@@ -77,7 +87,8 @@ Twilio: set the number's incoming-message webhook to
 
 ## 5 · The website
 
-In the app → **Website**:
+Open the **website admin** (`/website-admin` on the site's host, or *Edit
+the website* in the app's account menu) and sign in with the same account:
 
 1. **Settings**: title, the **logo** (the reversed version, a PNG with a
    transparent background, from the brand kit's master files) and the
