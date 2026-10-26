@@ -102,8 +102,8 @@ export default function WebsiteSettings({ overview }) {
         <h2>The site</h2>
         {text('title', 'Site name', { maxLength: 80, placeholder: overview.settings.site_title })}
         {text('tagline', 'Tagline', { maxLength: 160 })}
-        <ImageField label="Logo" value={f.logo} onChange={set('logo')} hint="The reversed version (white SURREY), as a PNG with a transparent background — it sits on the navy header and footer. Until one is uploaded, the site shows its name." />
-        <ImageField label="Star device" value={f.mark} onChange={set('mark')} hint="The star on its own, square, PNG with a transparent background: the browser tab." />
+        <ImageField label="Logo" value={f.logo} onChange={set('logo')} hint="The full-colour logo, a PNG with a transparent background, for the white header. The supplied one is in until you change it." />
+        <ImageField label="Star device" value={f.mark} onChange={set('mark')} hint="The star on its own, PNG with a transparent background: the browser tab. The supplied one is in until you change it." />
         <div className="field">
           <label htmlFor="st-seo">Search description</label>
           <textarea id="st-seo" className="input" rows={2} maxLength={300} value={f.seo_description} onChange={(e) => set('seo_description')(e.target.value)} />

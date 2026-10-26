@@ -426,7 +426,7 @@ function SignedInShell({ me }) {
       <header className="nav" ref={headerRef}>
         <div className="nav-inner">
           <NavLink to="/" className="brand" aria-label={`Starbase — ${me.workspace.name}`}>
-            <img className="brand-mark" src="/icon.svg" alt="" width="32" height="32" />
+            <img className="brand-mark" src="/star.png" alt="" height="32" />
             <span className="brand-text">
               <span className="brand-name">Starbase</span>
               <span className="brand-org">{me.workspace.name}</span>

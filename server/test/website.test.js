@@ -154,16 +154,17 @@ test('first look seeds draft pages with placeholder words; drafts never show; pu
 
 test('logo and star device: uploaded pictures take the header, footer and tab; the name until then; never another campaign’s', async () => {
   const before = (await get('/site/')).text;
-  assert.match(before, /<a class="brand" href="\/site\/"><span>Imagine Surrey<\/span><\/a>/, 'the name alone until a logo is uploaded');
-  assert.doesNotMatch(before, /<img class="logo"/);
-  assert.match(before, /<link rel="icon" href="\/site-assets\/icon\.svg\?v=\w+"/);
+  assert.match(before, /<img class="logo" src="\/site-assets\/logo\.png\?v=\w+" alt="Imagine Surrey" height="52">/, 'the supplied logo until one is uploaded');
+  assert.match(before, /<link rel="icon" href="\/site-assets\/star\.png\?v=\w+" type="image\/png">/);
+  assert.equal((await app.request('/site-assets/logo.png')).headers.get('content-type'), 'image/png');
   const logo = (await mgr.action('site.media.upload', { data: `data:image/png;base64,${PNG}`, name: 'logo-reversed.png', width: 1, height: 1 })).json.media;
   const mark = (await mgr.action('site.media.upload', { data: `data:image/png;base64,${PNG}`, name: 'star.png', width: 1, height: 1 })).json.media;
   assert.equal((await mgr.action('site.settings.save', { logo: logo.id, mark: mark.id })).status, 200);
   const home = (await get('/site/')).text;
-  assert.equal((home.match(new RegExp(`<img class="logo" src="/media/${logo.id}" alt="Imagine Surrey" height="44"`, 'g')) || []).length, 2, 'header and footer');
-  assert.match(home, new RegExp(`<link rel="icon" href="/media/${mark.id}">`));
-  assert.doesNotMatch(home, /site-assets\/icon\.svg/, 'no stand-in mark once the real one is up');
+  assert.equal((home.match(new RegExp(`<img class="logo" src="/media/${logo.id}" alt="Imagine Surrey" height="52"`, 'g')) || []).length, 1, 'the header; the navy footer carries the name');
+  assert.match(home, /<footer class="sf">[\s\S]*<a class="brand" href="\/site\/"><span>Imagine Surrey<\/span><\/a>/);
+  assert.match(home, new RegExp(`<link rel="icon" href="/media/${mark.id}" type="image/png">`));
+  assert.doesNotMatch(home, /site-assets\/(logo|star)\.png/, 'the supplied files step aside once an upload is in');
   assert.match((await get(`/n/${slug}`)).text, new RegExp(`<img class="logo" src="/media/${logo.id}"`), 'the public forms too');
   // Another campaign's picture can't be the logo; clearing goes back to the name.
   const other = new Client();
@@ -171,7 +172,7 @@ test('logo and star device: uploaded pictures take the header, footer and tab; t
   const theirs = (await other.action('site.media.upload', { data: `data:image/png;base64,${PNG}` })).json.media;
   assert.equal((await mgr.action('site.settings.save', { logo: theirs.id })).status, 400);
   assert.equal((await mgr.action('site.settings.save', { logo: null, mark: null })).status, 200);
-  assert.match((await get('/site/')).text, /<span>Imagine Surrey<\/span>/);
+  assert.match((await get('/site/')).text, /site-assets\/logo\.png/);
 });
 
 test('settings: colours, links and words are checked; the site wears them', async () => {

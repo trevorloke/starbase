@@ -5,9 +5,9 @@
 //   loadChrome(db, ws, { base, origin })  what the header and footer show
 //   layout(chrome, { title, description, image, path, main, … })  a whole page
 //   ASSETS / assetUrl()                    /site-assets/* (site.css, cart.js,
-//                                          icon.svg, rise.svg), cached a year
+//                                          logo.png, star.png, rise.svg), cached a year
 //                                          under a content hash
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { escapeHtml as esc } from '@starbase/shared/markdown';
 import { loadSettings, SECTIONS, SOCIALS, DEFAULT_PRIMARY, DEFAULT_ACCENT } from './content.js';
@@ -22,9 +22,11 @@ export const ASSETS = {
   'site.css': file('./assets/site.css', 'text/css; charset=utf-8'),
   'cart.js': file('./assets/cart.js', 'text/javascript; charset=utf-8'),
   'rise.svg': file('./assets/rise.svg', 'image/svg+xml'),
-  // The Starbase mark — the staff app's own icon (web/public; the container
-  // image keeps only the build, which has a copy).
-  'icon.svg': file(existsSync(here('../../../web/public/icon.svg')) ? '../../../web/public/icon.svg' : '../../../web/dist/icon.svg', 'image/svg+xml'),
+  // The campaign's own artwork, as supplied: the full-colour logo (for the
+  // white header) and its star device (the browser tab). Website → Settings
+  // can replace either with an upload.
+  'logo.png': file('./assets/logo.png', 'image/png'),
+  'star.png': file('./assets/star.png', 'image/png'),
 };
 export const assetUrl = (name) => `/site-assets/${name}?v=${ASSETS[name].hash}`;
 
@@ -90,14 +92,14 @@ export const loadChrome = async (db, ws, { base = '/site', origin = '', canon = 
   };
 };
 
-// The campaign's mark in the header and footer: the logo uploaded under
-// Website → Settings (the reversed version, since both sit on navy), else
-// the site's name in the headline face. Never a stand-in drawing.
-const brand = (ch, lazy = false) => {
+// The campaign's mark: the full-colour logo on the white header (the one
+// uploaded under Website → Settings, else the supplied file). The footer is
+// navy, where full colour never goes, so it carries the site's name.
+const brand = (ch, { footer = false } = {}) => {
   const s = ch.settings;
-  const inner = s.logo
-    ? `<img class="logo" src="/media/${esc(s.logo)}" alt="${esc(s.site_title)}" height="44"${lazy ? ' loading="lazy"' : ''}>`
-    : `<span>${esc(s.site_title)}</span>`;
+  const inner = footer
+    ? `<span>${esc(s.site_title)}</span>`
+    : `<img class="logo" src="${s.logo ? `/media/${esc(s.logo)}` : assetUrl('logo.png')}" alt="${esc(s.site_title)}" height="52">`;
   return `<a class="brand" href="${esc(`${ch.base}/`)}">${inner}</a>`;
 };
 
@@ -132,7 +134,7 @@ const footer = (ch, backlink) => {
   ].join('');
   return `<footer class="sf"><div class="wrap sf-grid">
   <div>
-    ${brand(ch, true)}
+    ${brand(ch, { footer: true })}
     ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ''}
     ${socialLinks(s.socials)}
   </div>
@@ -180,7 +182,7 @@ ${desc ? `<meta property="og:description" content="${esc(desc)}">` : ''}
 <meta property="og:url" content="${esc(canonical)}">
 ${img ? `<meta property="og:image" content="${esc(img)}"><meta name="twitter:card" content="summary_large_image">` : '<meta name="twitter:card" content="summary">'}
 <meta name="theme-color" content="${col(s.primary, DEFAULT_PRIMARY)}">
-${s.mark ? `<link rel="icon" href="/media/${esc(s.mark)}">` : `<link rel="icon" href="${assetUrl('icon.svg')}" type="image/svg+xml">`}
+<link rel="icon" href="${s.mark ? `/media/${esc(s.mark)}` : assetUrl('star.png')}" type="image/png">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="${assetUrl('site.css')}">
 <style>:root{--primary:${col(s.primary, DEFAULT_PRIMARY)};--accent:${col(s.accent, DEFAULT_ACCENT)}}</style>
