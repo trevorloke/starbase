@@ -285,12 +285,58 @@ test('holds: an open checkout holds its items; backing out of Stripe frees them;
   assert.equal((await buy()).status, 200);
 });
 
+test('webhook: a refund made in Stripe marks the order refunded; partial ones are noted; shipped items stay out', async () => {
+  const pay = async (pi) => {
+    const co = await pub('POST', '/site/store/checkout', { items: [{ product_id: mug.id, qty: 1 }], fulfilment: 'pickup' });
+    assert.equal(co.status, 200, JSON.stringify(co.json));
+    const r = await hook({ id: `evt_pay_${pi}`, type: 'checkout.session.completed', data: { object: {
+      id: `cs_${pi}`, object: 'checkout.session', mode: 'payment', payment_status: 'paid', amount_total: 1500, payment_intent: pi,
+      customer_details: { email: mail('refundee'), name: 'Rae Refundee' }, metadata: { store_order: co.json.order_id, workspace_id: wsId },
+    } } });
+    assert.equal(r.json.status, 'paid');
+    return co.json.order_id;
+  };
+  const charge = (pi, amount_refunded, refunded, id) => hook({ id, type: 'charge.refunded', data: { object: {
+    object: 'charge', payment_intent: pi, amount: 1500, amount_refunded, refunded,
+  } } });
+  const orderOf = async (id) => (await mgr.get('/api/store/orders?status=all')).json.orders.find((o) => o.id === id);
+
+  const first = await pay('pi_refund_1');
+  assert.equal((await product(mug.id)).stock, 0);
+  const part = await charge('pi_refund_1', 500, false, `evt_rf_${tag}_1`);
+  assert.equal(part.status, 200);
+  assert.equal(part.json.partial, 500);
+  let o = await orderOf(first);
+  assert.equal(o.status, 'paid', 'a partial refund moves nothing');
+  assert.match(o.note, /Partly refunded in Stripe \(\$5\.00\)/);
+  const full = await charge('pi_refund_1', 1500, true, `evt_rf_${tag}_2`);
+  assert.equal(full.json.status, 'refunded');
+  assert.equal(full.json.restocked, true);
+  o = await orderOf(first);
+  assert.equal(o.status, 'refunded');
+  assert.match(o.note, /^Refunded in Stripe \(\$15\.00\)$/, 'the partial note is replaced, not stacked');
+  assert.equal((await product(mug.id)).stock, 1, 'the mug is back on the shelf');
+  assert.equal((await charge('pi_refund_1', 1500, true, `evt_rf_${tag}_2`)).json.duplicate, true);
+  assert.equal((await charge('pi_refund_1', 1500, true, `evt_rf_${tag}_3`)).json.already, 'refunded');
+  assert.equal((await charge('pi_nobody', 1500, true, `evt_rf_${tag}_4`)).json.ignored, 'no store order for this charge');
+  assert.equal((await mgr.action('store.order.update', { id: first, status: 'shipped' })).status, 409);
+
+  // Shipped, then refunded in Stripe: the order is refunded, the items stay out.
+  const second = await pay('pi_refund_2');
+  assert.equal((await mgr.action('store.order.update', { id: second, status: 'packed' })).status, 200);
+  assert.equal((await mgr.action('store.order.update', { id: second, status: 'picked_up' })).status, 200);
+  const late = await charge('pi_refund_2', 1500, true, `evt_rf_${tag}_5`);
+  assert.equal(late.json.status, 'refunded');
+  assert.equal(late.json.restocked, false);
+  assert.equal((await product(mug.id)).stock, 0, 'picked-up items are not restocked by a refund');
+});
+
 test('the store’s writes are on the chain under the system actor and the chain verifies', async () => {
   const all = (await mgr.get('/api/events?since=0&limit=2000')).json.events;
-  for (const a of ['store.product.save', 'store.checkout', 'store.payment', 'store.expire', 'store.order.update']) {
+  for (const a of ['store.product.save', 'store.checkout', 'store.payment', 'store.expire', 'store.refund', 'store.order.update']) {
     assert.ok(all.some((e) => e.action === a), a);
   }
-  assert.ok(all.filter((e) => ['store.checkout', 'store.payment', 'store.expire'].includes(e.action)).every((e) => e.actor_id === null));
+  assert.ok(all.filter((e) => ['store.checkout', 'store.payment', 'store.expire', 'store.refund'].includes(e.action)).every((e) => e.actor_id === null));
   assert.ok(all.some((e) => e.action === 'store.payment' && e.entity_type === 'person' && e.payload.tags.includes('store')));
   assert.equal((await mgr.get('/api/audit/verify')).json.ok, true);
 });

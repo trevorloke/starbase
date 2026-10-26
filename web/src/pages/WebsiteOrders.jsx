@@ -77,7 +77,7 @@ function OrderRow({ o, editor }) {
                     {live && <button type="button" className="btn ops-tap" disabled={save.busy} onClick={() => set('refunded', { restock })}>Refunded</button>}
                     <button type="button" className="btn ops-danger ops-tap" disabled={save.busy} onClick={() => set('cancelled', { restock: live && restock })}>Cancelled</button>
                   </div>
-                  {live && <p className="ops-meta">Refund the card in Stripe too.</p>}
+                  {live && <p className="ops-meta">A refund made in Stripe marks the order refunded here by itself (items back if it hadn't shipped). Use Refunded for one made another way, and refund the card in Stripe too.</p>}
                 </div>
               )}
             </>

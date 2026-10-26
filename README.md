@@ -154,7 +154,9 @@ managers and staff signed in on the staff host.
   The Stripe webhook (`checkout.session.completed`) marks the order paid
   once — retries change nothing — takes the items out of stock and puts the
   buyer in People tagged `store`; `checkout.session.expired` cancels an
-  unpaid one. A checkout holds its items while the buyer is on Stripe's
+  unpaid one; `charge.refunded` marks an order refunded in Starbase when
+  the card is refunded in Stripe (items back on the shelf unless it had
+  shipped; a partial refund is noted on the order). A checkout holds its items while the buyer is on Stripe's
   page (the session expires after 30 minutes); backing out to the cart
   closes the session and frees them, so the last shirt can't sell twice.
   Without `STRIPE_SECRET_KEY` the store shows its items and

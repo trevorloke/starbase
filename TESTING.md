@@ -61,8 +61,9 @@ The whole order of things, from deploy to the public link, is in
 
 For Stripe, add a webhook in the Stripe dashboard pointing at
 `https://<your address>/api/public/stripe/webhook` with events
-`checkout.session.completed`, `invoice.paid` (donations) and
-`checkout.session.expired` (the store: abandoned checkouts). The store uses
+`checkout.session.completed`, `invoice.paid` (donations),
+`checkout.session.expired` (the store: abandoned checkouts) and
+`charge.refunded` (the store: a refund made in Stripe shows here). The store uses
 the same key and webhook as donations. Use **test mode** keys
 (`sk_test_…`) and card `4242 4242 4242 4242` while testing.
 

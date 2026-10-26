@@ -49,9 +49,11 @@ Then, as each one is ready:
 
 Stripe: in the Stripe dashboard add a webhook at
 `https://starbase.imaginesurrey.ca/api/public/stripe/webhook` with the
-events `checkout.session.completed`, `checkout.session.expired` and
-`invoice.paid`, and copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
-Donations and the store share the key and the webhook.
+events `checkout.session.completed`, `checkout.session.expired`,
+`charge.refunded` and `invoice.paid`, and copy its signing secret into
+`STRIPE_WEBHOOK_SECRET`. Donations and the store share the key and the
+webhook. A store refund made in Stripe marks the order refunded here; a
+refunded donation is voided by hand under Money.
 
 Twilio: set the number's incoming-message webhook to
 `https://starbase.imaginesurrey.ca/api/public/twilio/sms` (HTTP POST).

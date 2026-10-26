@@ -8,6 +8,7 @@
 //   applyStorePayment  checkout.session.completed → order paid, stock down,
 //                      buyer matched into People (tag 'store'); once per order
 //   expireStoreOrder checkout.session.expired → the unpaid order is cancelled
+//   refundStoreOrder charge.refunded → refunded (items back if not shipped)
 import { parseJ } from './content.js';
 
 export const LINE_MAX_QTY = 20;
@@ -221,6 +222,35 @@ export const applyStorePayment = async (tx, emit, ws, obj, { upsertPersonTx }) =
     ...(short.length ? { oversold: short.map((l) => ({ product_id: l.product_id, variant: l.variant, qty: l.qty })) } : {}),
   });
   return { order_id: order.id, status: 'paid', oversold: short.length > 0 };
+};
+
+// charge.refunded for a store order (found by its payment intent), inside
+// the webhook's action. A refund made in Stripe for the whole amount marks
+// the order refunded and, if it hadn't shipped yet, puts the items back on
+// the shelf; a partial refund is noted on the order and nothing else moves.
+// Stripe sends the charge's running total refunded, so the note is replaced,
+// not stacked, when a second refund follows.
+const dollars = (cents) => `$${(Number(cents) / 100).toFixed(2)}`;
+export const refundStoreOrder = async (tx, emit, ws, orderId, obj) => {
+  const cur = (await tx.query(
+    'select * from store_orders where id = $1 and workspace_id = $2 for update', [orderId, ws.id],
+  )).rows[0];
+  if (!cur) return { ignored: 'unknown order' };
+  if (!STOCK_OUT.has(cur.status)) return { already: cur.status };
+  const refunded = Number(obj.amount_refunded) || 0;
+  const full = obj.refunded === true || (Number(obj.amount) > 0 && refunded >= Number(obj.amount));
+  const keep = String(cur.note || '').split(' · ').filter((part) => part && !/refunded in Stripe/i.test(part));
+  const note = [...keep, `${full ? 'Refunded' : 'Partly refunded'} in Stripe (${dollars(refunded)})`].join(' · ');
+  if (!full) {
+    await tx.query('update store_orders set note = $2, updated_at = now() where id = $1', [cur.id, note]);
+    emit('store_order', cur.id, 'update', { refunded_cents: refunded, partial: true, stripe: true });
+    return { order_id: cur.id, status: cur.status, partial: refunded };
+  }
+  const back = cur.status === 'paid' || cur.status === 'packed';
+  if (back) await moveStock(tx, ws.id, parseJ(cur.items, []), +1);
+  await tx.query(`update store_orders set status = 'refunded', note = $2, updated_at = now() where id = $1`, [cur.id, note]);
+  emit('store_order', cur.id, 'update', { status: 'refunded', from: cur.status, restocked: back, refunded_cents: refunded, stripe: true });
+  return { order_id: cur.id, status: 'refunded', restocked: back };
 };
 
 export const expireStoreOrder = async (tx, emit, ws, obj) => {

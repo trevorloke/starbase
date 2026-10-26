@@ -25,7 +25,7 @@
 //   public.pledge     donate page pledge (/d)         pledge create
 //   stripe.checkout   card checkout opened for a pledge  pledge update
 //   stripe.payment    Stripe webhook                  pledge update, gift create
-//   store.payment / store.expire  Stripe webhook for website store orders
+//   store.payment / store.expire / store.refund  Stripe webhook for website store orders
 import { Hono } from 'hono';
 import { clientIp, makeLimiter } from '../lib/guard.js';
 import { getDb } from '../db/client.js';
@@ -40,7 +40,7 @@ import { renderMarkdown } from '@starbase/shared/markdown';
 import { loadChrome, layout, assetUrl, img, dateTile } from '../ext/website/layout.js';
 import { siteWorkspace } from '../ext/website/content.js';
 import { onSiteHost, originOf } from '../ext/website/hosts.js';
-import { applyStorePayment, expireStoreOrder } from '../ext/website/store.js';
+import { applyStorePayment, expireStoreOrder, refundStoreOrder } from '../ext/website/store.js';
 
 const app = new Hono();
 
@@ -668,6 +668,7 @@ app.post('/api/public/stripe/webhook', async (c) => {
   }
   const evt = JSON.parse(raw);
   const obj = evt.data?.object || {};
+  if (evt.type === 'charge.refunded') return refundWebhook(c, evt, obj);
   if (obj.metadata?.store_order) return storeWebhook(c, evt, obj);
   const meta = obj.metadata?.pledge_id ? obj.metadata
     : obj.subscription_details?.metadata?.pledge_id ? obj.subscription_details.metadata
@@ -749,6 +750,26 @@ const storeWebhook = async (c, evt, obj) => {
       [evt.id, ws.id, evt.type]);
     if (fresh.affectedRows === 0) return { duplicate: true };
     return paid ? applyStorePayment(tx, emit, ws, obj, { upsertPersonTx }) : expireStoreOrder(tx, emit, ws, obj);
+  });
+  return c.json({ ok: true, ...result });
+};
+
+// store.refund    charge.refunded             store_order update
+// A charge carries no order id, so the order is found by the payment intent
+// the paid webhook kept. A refund of anything else (a donation, say) is
+// ignored here: a refunded gift is voided by hand under Money.
+const refundWebhook = async (c, evt, obj) => {
+  const pi = typeof obj.payment_intent === 'string' ? obj.payment_intent : obj.payment_intent?.id;
+  if (!pi) return c.json({ ok: true, ignored: evt.type });
+  const db = await getDb();
+  const order = (await db.query('select id, workspace_id from store_orders where payment_intent = $1 limit 1', [pi])).rows[0];
+  if (!order) return c.json({ ok: true, ignored: 'no store order for this charge' });
+  const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [order.workspace_id])).rows[0];
+  const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.refund' }, async (tx, emit) => {
+    const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
+      [evt.id, ws.id, evt.type]);
+    if (fresh.affectedRows === 0) return { duplicate: true };
+    return refundStoreOrder(tx, emit, ws, order.id, obj);
   });
   return c.json({ ok: true, ...result });
 };
