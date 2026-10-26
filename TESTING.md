@@ -344,6 +344,14 @@ A full voter list (hundreds of thousands of people) takes a few hours. Set
 `BC_GEOCODER_KEY` (a free key from the BC government's API gateway) for
 higher limits, and `GEOCODE_CONCURRENCY` (default 6) to ask more at once.
 
+To use Google Maps for the lookups instead, or for the addresses the BC
+service can't place: in Google Cloud enable the **Geocoding API**, create a
+key restricted to that API (and to the server's IP), and set
+`GOOGLE_MAPS_SERVER_KEY` with `GEOCODER=google` (Google for everything) or
+`GEOCODER_FALLBACK=google` (BC first, Google for the rest). Google charges
+per lookup past its free monthly allowance — check the current pricing
+before running a whole voter list through it.
+
 For your real voters list: map its columns on the second step; re-importing
 the same file never creates duplicates.
 

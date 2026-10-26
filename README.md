@@ -165,7 +165,12 @@ actions.js, api.js), admin screens `web/src/pages/Website*.jsx`.
 ## Placing people on the map (geocoding)
 
 Addresses are looked up with the BC Address Geocoder (`server/lib/geocode.js`;
-`GEOCODER=nominatim|off`, `BC_GEOCODER_KEY`, `GEOCODE_MIN_SCORE`). **Place on
+`GEOCODER=bc|google|nominatim|off`, `BC_GEOCODER_KEY`, `GEOCODE_MIN_SCORE`).
+Google's Geocoding API is the other option (`GOOGLE_MAPS_SERVER_KEY`, a key
+with only that API enabled and restricted to the server's IP; lookups are
+biased to Surrey and limited to BC, and only a rooftop or street-number
+match counts). `GEOCODER_FALLBACK=google` keeps the free BC service first
+and asks Google only for addresses it can't place. **Place on
 map** starts a background run (`server/ext/geocoding`, a job like ladder
 emails): rounds of 120 people, one lookup per address (a household shares
 it), pins already on file at the same address copied, `GEOCODE_CONCURRENCY`
