@@ -26,6 +26,7 @@ import { useThisDevice } from './components/queued.js';
 import { forgetPhoneCopies, keepOnlyMine } from './components/OfflineCache.js';
 import { useKeptTime } from './components/KeptCopies.js';
 import { useTextingStatus } from './components/TextingStatus.js';
+import { useShareLocation } from './components/ShareLocation.js';
 import './pages/offline.css';
 
 // Staff, treasurers and managers. App.jsx guards the desk-only routes with it.
@@ -280,6 +281,8 @@ function SignedInShell({ me }) {
     : [...NAV_VOLUNTEER, ...NAV_DESK.filter((t) => t.area && t.area !== 'map' && areasOf(me).includes(t.area))];
   // New replies to your texts: a small count on Calls.
   const unread = Number(useTextingStatus(me).data?.unread) || 0;
+  // "Share my location while I'm out" (the map's switch): pings while it's on.
+  useShareLocation(me);
   const badge = (n) => (n.to === '/calls' && unread > 0
     ? <span className="tab-badge mono"><span aria-hidden="true">{unread}</span><span className="tab-sr">{` · ${unread} new ${unread === 1 ? 'reply' : 'replies'}`}</span></span>
     : null);

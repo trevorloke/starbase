@@ -40,6 +40,8 @@ import { bandOf, offTail, ratingByCode } from '@starbase/shared/scale';
 import DoorCard, { AddDoorForm, SIGN_LABEL, doorTitle, patchDoors } from '../components/DoorCard.jsx';
 import { More, useScale } from '../components/RatingButtons.jsx';
 import GeocodeButton from '../components/GeocodeButton.jsx';
+import { DEFAULT_TILES, safeAttribution } from '../components/tiles.js';
+import { useSharePref } from '../components/ShareLocation.js';
 import { cachedWalkLists, useOnline } from './Turfs.jsx';
 import './map.css';
 
@@ -194,34 +196,6 @@ const CLUSTER_PX = 36;
 const PIN_INSET = 20;
 const CLUSTER_OFF_ZOOM = 19; // everything apart (or the tiles' max zoom, if lower)
 
-// The map's tiles when the server hasn't said (no signal, an older server).
-const DEFAULT_TILES = {
-  url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 19,
-};
-// The provider's credit line, kept to text and http(s) links.
-function safeAttribution(html) {
-  if (!html || typeof DOMParser === 'undefined') return '';
-  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
-  const out = document.createElement('span');
-  const walk = (node, into) => {
-    for (const n of node.childNodes) {
-      if (n.nodeType === 3) into.append(n.textContent);
-      else if (n.nodeType === 1 && /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(n.tagName)) continue;
-      else if (n.nodeType === 1 && n.tagName === 'A' && /^https?:\/\//i.test(n.getAttribute('href') || '')) {
-        const a = document.createElement('a');
-        a.href = n.getAttribute('href');
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.textContent = n.textContent;
-        into.append(a);
-      } else if (n.nodeType === 1) walk(n, into);
-    }
-  };
-  walk(doc.body.firstChild || doc.body, out);
-  return out.innerHTML;
-}
 // The service worker keeps tiles from this provider once they've been seen
 // (never fetched ahead — tile servers' rules).
 function tellServiceWorker(url) {
@@ -795,6 +769,7 @@ const tilesLine = (setup) => {
 // for desks, one quiet line naming the map tiles (tilesNote).
 function FilterSheet({
   filters, filter, onFilter, counts, showTurfs, onTurfs, turfCount, desk, onDraw, unlocated, onPlace, onClose, tilesNote = null,
+  sharing = false, onShare = null,
 }) {
   return (
     <>
@@ -835,6 +810,24 @@ function FilterSheet({
               <span className="map-fswitch__label">Turfs <span className="mono map-fswitch__n">{turfCount}</span></span>
               <span className="map-fswitch__track" aria-hidden="true"><span className="map-fswitch__knob" /></span>
             </button>
+          </div>
+        )}
+        {onShare && (
+          <div className="map-fsheet__layers">
+            <h3 className="map-fsheet__sub">You</h3>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={sharing}
+              className={`map-fswitch${sharing ? ' is-on' : ''}`}
+              onClick={() => onShare(!sharing)}
+            >
+              <span className="map-fswitch__label">Share my location while I’m out</span>
+              <span className="map-fswitch__track" aria-hidden="true"><span className="map-fswitch__knob" /></span>
+            </button>
+            <p className="map-fsheet__note">{sharing
+              ? 'Managers see where you are on their dashboard, about once a minute, while this is on. Turn it off when you’re done.'
+              : 'Off. Turn it on while you canvass and managers see where you are on their dashboard.'}</p>
           </div>
         )}
         {(desk || unlocated > 0) && (
@@ -887,6 +880,7 @@ export default function MapPage() {
 
   const [filterPick, setFilter] = useState(null); // null: the role's default (below)
   const [showTurfs, setShowTurfs] = useState(readTurfsPref);
+  const [sharing, setSharing] = useSharePref();
   const [hintSeen, setHintSeen] = useState(readHintSeen);
   const hideHint = useCallback(() => { setHintSeen(true); writeHintSeen(); }, []);
   const [draft, setDraft] = useState(EMPTY_DRAFT); // turf being drawn: [lat, lng] points
@@ -1705,6 +1699,8 @@ export default function MapPage() {
           onPlace={() => { setFilterOpen(false); setPickerOpen(true); setAddAt(null); cancelMode(); }}
           onClose={closeFilter}
           tilesNote={canCreate ? tilesLine(tilesQ.data?.setup) : null}
+          sharing={sharing}
+          onShare={setSharing}
         />
       )}
 

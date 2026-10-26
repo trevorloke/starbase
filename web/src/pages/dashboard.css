@@ -1,0 +1,116 @@
+/* The managers' dashboard on Today (Dashboard.jsx). Everything is dash-*. */
+.dash { margin: var(--s-4) 0 var(--s-5); min-width: 0; }
+.dash-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.dash-head .today-h { margin: 0; }
+.dash-stale { opacity: 0.6; transition: opacity 120ms ease; }
+
+/* The period row — one filter for the whole dashboard. */
+.dash-periods { display: inline-flex; gap: 2px; padding: 2px; background: var(--paper-1); border-radius: 999px; }
+.dash-period {
+  font: inherit; font-size: 13px; font-weight: 600; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--text-2); cursor: pointer; touch-action: manipulation;
+}
+.dash-period.is-on { background: var(--paper-0); color: var(--text-1); box-shadow: var(--shadow-1); }
+.dash-period:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: 2px; }
+
+/* Figures: a small tile each, the period's number big. */
+.dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: var(--s-2); margin: 0 0 var(--s-4); }
+.dash-fig {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--s-3);
+  background: var(--paper-0); border: var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-1);
+}
+.dash-fig__n { font-family: var(--font-serif); font-size: clamp(24px, 5vw, 36px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; }
+.dash-fig__label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); margin-top: 4px; }
+.dash-fig__sub { font-size: 11.5px; color: var(--text-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-fig--live { border-color: color-mix(in srgb, var(--ok) 50%, var(--rule)); }
+
+/* Sections */
+.dash-sec { margin: var(--s-4) 0; min-width: 0; }
+.dash-sec__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.dash-sec__h { font-size: 16px; margin: 0; }
+.dash-sec__h .muted { font-weight: 400; font-size: 14px; }
+.dash-sec__link { font-size: 14px; text-decoration: none; color: var(--text-2); }
+.dash-sec__link:hover { text-decoration: underline; }
+.dash-note { font-size: 12.5px; color: var(--text-3); margin: var(--s-2) 0 0; }
+
+/* Stacked / Grouped / Table */
+.dash-seg { display: inline-flex; border: var(--border-2); border-radius: var(--r-ctrl); overflow: hidden; }
+.dash-seg__b { font: inherit; font-size: 13px; min-height: 32px; padding: 0 12px; border: 0; background: var(--paper-0); color: var(--text-2); cursor: pointer; }
+.dash-seg__b + .dash-seg__b { border-left: var(--border-2); }
+.dash-seg__b.is-on { background: var(--ink); color: var(--paper-0); }
+.dash-seg__b:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+
+/* Legend — always present; text in text tokens, the swatch carries identity. */
+.dash-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); padding: 0; margin: 0 0 var(--s-2); font-size: 13px; color: var(--text-2); }
+.dash-legend__i { display: inline-flex; align-items: center; gap: 6px; }
+.dash-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* The chart */
+.dash-chart { position: relative; width: 100%; background: var(--paper-0); border: var(--border); border-radius: var(--r-card); padding: var(--s-2) var(--s-2) 0; box-sizing: border-box; overflow: hidden; }
+.dash-chart svg { display: block; max-width: 100%; }
+.dash-grid { stroke: var(--rule); stroke-width: 1; }
+.dash-base { stroke: var(--rule-2); stroke-width: 1; }
+.dash-axis { font-family: var(--font-mono); font-size: 10.5px; fill: var(--text-3); }
+.dash-bar { stroke: var(--paper-0); stroke-width: 1; }
+.dash-hit { fill: transparent; cursor: default; outline: none; }
+.dash-hit.is-on { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
+.dash-hit:focus-visible { fill: color-mix(in srgb, var(--mark-deep) 12%, transparent); }
+.dash-tip {
+  position: absolute; top: 8px; transform: translateX(-50%); z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; gap: 2px; min-width: 150px; padding: 8px 10px; font-size: 12.5px; color: var(--text-1);
+  background: var(--paper-0); border: var(--border-2); border-radius: var(--r-ctrl); box-shadow: var(--shadow-2);
+}
+.dash-tip > span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Tables */
+.dash-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: var(--border); border-radius: var(--r-card); background: var(--paper-0); }
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.dash-table th, .dash-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.dash-table th[scope='row'], .dash-table th:first-child { text-align: left; }
+.dash-table thead th { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); }
+.dash-table tbody tr:last-child th, .dash-table tbody tr:last-child td { border-bottom: 0; }
+
+/* In the field: the map beside the people (stacked on a phone). */
+.dash-field { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: var(--s-3); align-items: stretch; }
+@media (max-width: 720px) { .dash-field { grid-template-columns: minmax(0, 1fr); } }
+.dash-map { min-height: 360px; height: 100%; border: var(--border); border-radius: var(--r-card); overflow: hidden; background: var(--paper-1); }
+.dash-people { min-width: 0; max-height: 480px; overflow-y: auto; border: var(--border); border-radius: var(--r-card); background: var(--paper-0); }
+@media (max-width: 720px) { .dash-map { height: 320px; } .dash-people { max-height: none; } }
+.dash-plist { list-style: none; margin: 0; padding: 0; }
+.dash-plist > li + li { border-top: 1px solid var(--rule); }
+.dash-prow {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%; min-height: 56px; padding: 6px 10px 6px 10px;
+  font: inherit; text-align: left; color: var(--text-1); background: transparent; border: 0; cursor: pointer; touch-action: manipulation;
+}
+.dash-prow.is-on { background: var(--paper-1); }
+.dash-prow:focus-visible { outline: 2px solid var(--mark-deep); outline-offset: -2px; }
+.dash-prow__main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.dash-prow__name { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dash-prow__sub { font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-prow__when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.dash-live { font-size: 11px; min-height: 0; padding: 1px 7px; }
+.dash-pdetail { padding: 0 12px 10px 56px; font-size: 13px; color: var(--text-2); }
+.dash-pdetail__line { margin: 0 0 6px; }
+.dash-pdetail__by { margin: 0; }
+
+/* People on the map: initials in a disc; a ring while out now; grey when
+   it is only their last door. */
+.dash-who-wrap { background: transparent; border: 0; }
+.dash-who {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%;
+  font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.02em; color: #fff; background: #003979;
+  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); box-sizing: border-box;
+}
+.dash-who.is-stale { background: #6b7384; }
+.dash-who.is-out { box-shadow: 0 0 0 3px #2a9d8f, 0 1px 4px rgba(0, 0, 0, 0.35); }
+.dash-who.is-sel { background: #ffc72c; color: #00224d; }
+.dash-prow__av { width: 36px; height: 36px; flex: none; box-shadow: none; border-color: var(--paper-0); }
+.dash-prow__av.is-out { box-shadow: 0 0 0 2px #2a9d8f; }
+.dash-acc { stroke: #2a9d8f; fill: #2a9d8f; fill-opacity: 0.1; stroke-width: 1; }
+
+/* Latest */
+.dash-recent { list-style: none; margin: 0; padding: 0; border: var(--border); border-radius: var(--r-card); background: var(--paper-0); }
+.dash-recent__i { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; font-size: 14px; }
+.dash-recent__i + .dash-recent__i { border-top: 1px solid var(--rule); }
+.dash-recent__main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-recent__when { font-size: 12px; color: var(--text-3); white-space: nowrap; }

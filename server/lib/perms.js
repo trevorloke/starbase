@@ -45,7 +45,13 @@ const ACTION_AREA = {
   site: 'website', store: 'website',
   member: 'admin', team: 'admin', permission: 'admin', workspace: 'admin', scale: 'admin', field: 'admin',
 };
-export const areaOfAction = (name) => (name === 'field.values.set' ? 'people' : ACTION_AREA[String(name).split('.')[0]] || null);
+// field.values.set is a person's record; field.ping ("I'm here", from the
+// map) is nobody's area — anyone who canvasses may say where they are.
+export const areaOfAction = (name) => {
+  if (name === 'field.values.set') return 'people';
+  if (name === 'field.ping') return null;
+  return ACTION_AREA[String(name).split('.')[0]] || null;
+};
 
 const PATH_AREA = [
   [/^\/api\/(records|export|events|audit)(\/|$)/, 'data'],

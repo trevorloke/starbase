@@ -118,6 +118,17 @@ Every screen has one yellow button: that's the main job. Everything else is
 one tap away under **More**.
 
 ### Manager (you)
+- **Today → Dashboard** — with the sample loaded: the figures (contacts,
+  doors, calls & texts, people reached, support, canvassers, out now), each
+  with today's and all-time numbers; *Today · 7 days · 30 days · All time*
+  changes everything at once. **Interactions over time**: hover a day for
+  its breakdown, *Grouped* lays the outcomes side by side, *Table* shows the
+  numbers. **In the field**: tap a volunteer in the list — the map goes to
+  them, their contacts stay, their trail shows (today); *out now* and a
+  green ring mean they're sharing their location this minute. **By team**
+  is each team's contacts (make teams under *Admin → Teams* to see it fill).
+  Have a volunteer turn on *Share my location while I'm out* on their map
+  (below) and watch them appear within a minute.
 - **Today** — three big numbers (doors this week · support · raised); tap
   *Support* for the breakdown by candidate. **Needs you** lists what's waiting:
   gifts over the limit, open pledges, filings due, shifts short of people,
@@ -185,6 +196,11 @@ one tap away under **More**.
   it means). **4** asks *Voting for?* — McCallum · Locke · Annis · van Vliet ·
   Randhawa · Not sure (or the list your manager set; *Not sure* is always
   last). A toast confirms; *Change* fixes a mis-tap.
+- **Map → Show → Share my location while I'm out** — off until you turn it
+  on; the phone asks for location once. While it's on, your manager's
+  dashboard shows where you are, about once a minute (a green ring, *out
+  now*); turn it off when you're done and you're off the map at once. It
+  stays on across screens until you turn it off or sign out.
 - **My people** (a quiet row on Today, *My people · 6*, and on Calls) — the
   people you know. **Add someone**: a name, a phone or an email, how you know
   them, and an optional note under *More details* (it shows on the row:

@@ -13,7 +13,9 @@
 //     other turfs and the upcoming events (with their RSVP pages) sit under
 //     "More". With no signal, "Start canvassing" opens the walk list kept on
 //     this phone (Turfs.jsx's offline copy), else the turf list.
-//   Desk: three big numbers (doors this week · support · total raised). Doors
+//   Desk: managers get the dashboard first (pages/Dashboard.jsx: every
+//     team's contacts, the chart, who is out where) — then, for every desk
+//     role, three big numbers (doors this week · support · total raised). Doors
 //     and money are taps to their screens (›); support opens its breakdown in
 //     place (+), opposed by candidate ("McCallum 3 · Locke 2"). Then "Needs
 //     you" (gifts over the limit, open pledges, filings due, new volunteers
@@ -27,7 +29,7 @@
 // A nearly empty campaign gets a one-click sample dataset (managers); a quiet
 // "Sample data is loaded" line stays at the top while it's there. Volunteers
 // never see money.
-import { useEffect, useId, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { allCodes, bandOf, ratingByCode } from '@starbase/shared/scale';
@@ -37,6 +39,9 @@ import { useFollowupCount } from '../components/LaddersCount.js';
 import { useTextingStatus } from '../components/TextingStatus.js';
 import { NeedsSignal, useOnline } from '../components/NoSignal.jsx';
 import './today.css';
+
+// The managers' dashboard (its map and chart load with it, not with Today).
+const Dashboard = lazy(() => import('./Dashboard.jsx'));
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -807,6 +812,12 @@ function DeskToday({ b, me, toast }) {
       {offerSample && <SampleCard onToast={toast.show} />}
       {b.sampleLoaded && <SampleLine desk />}
       {showSteps && <GettingStarted steps={stepsLeft} role={me?.role} navigate={navigate} />}
+
+      {isManager && (
+        <Suspense fallback={<p className="muted">Loading the dashboard…</p>}>
+          <Dashboard />
+        </Suspense>
+      )}
 
       <Numbers b={b} pic={pic} />
 
