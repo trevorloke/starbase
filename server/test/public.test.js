@@ -1,5 +1,5 @@
 // Public pages + website bridge: every public write is on the hash-chained
-// event log under the system actor (so "Verify my books" covers it), and
+// event log under the system actor (so "Verify the records" covers it), and
 // every public page says only what the server did.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';

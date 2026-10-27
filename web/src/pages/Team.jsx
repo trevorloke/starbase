@@ -15,7 +15,7 @@ import './outreach.css';
 const ROLES = [
   { code: 'volunteer', label: 'Volunteer', hint: 'Map, doors, calls, texts, signs' },
   { code: 'staff',     label: 'Staff',     hint: 'Everything but team and website' },
-  { code: 'treasurer', label: 'Treasurer', hint: 'Staff, plus filings' },
+  { code: 'treasurer', label: 'Treasurer', hint: 'Staff, plus receipt settings and exports' },
   { code: 'manager',   label: 'Manager',   hint: 'Everything, including the team' },
 ];
 const roleLabel = (code) => ROLES.find((r) => r.code === code)?.label || code;

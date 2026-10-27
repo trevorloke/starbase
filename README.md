@@ -11,7 +11,7 @@ One build, two apps, told apart by the address:
 | | Address | Who | What |
 |---|---|---|---|
 | **Field app** | `/` | everyone — it is what a volunteer sees and uses | Today · Map · Calls · Shifts · ImagineU, the door card, walk lists, your call lists, your people, your texts. A manager who opens it gets exactly a volunteer's screens (and *Admin ↗* in the account menu). |
-| **Admin** | `/admin/` | managers, staff, treasurers — and a volunteer given an area under Permissions | everything: the dashboard, the map with turfs, People and imports, Shifts, Money, Signs, Outreach, ImagineU's editor and Progress, phone banks, **Settings** (members, teams, permissions), the rating scale, the website's admin. A plain volunteer who opens it is told it isn't theirs. |
+| **Admin** | `/admin/` | managers, staff, treasurers — and a volunteer given an area under Permissions | everything: the dashboard, the map with turfs, People and imports, Shifts, Donations, Signs, Outreach, ImagineU's editor and Progress, phone banks, **Settings** (members, teams, permissions), the rating scale, the website's admin. A plain volunteer who opens it is told it isn't theirs. |
 
 Signing in sends each person to their app: a desk role to the admin, a
 volunteer to the field app. A desk address typed into the field app
@@ -28,7 +28,7 @@ button, no paragraphs, everything else one tap away.
 | **Map** | Field mode. Houses as clickable pins; tap a door → rate, log, request a sign, call/text. Turfs and walk lists |
 | **People** | Everyone, filterable by rating / tag / role / the campaign's own fields; profiles with socials, roles, gifts, history, *More details* and who they know; **Calls** works a list one person at a time; **My people** is each volunteer's own circle |
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
-| **Money** | Gifts (one-time / monthly) with the entity-keyed cap engine; donor tiers; filings |
+| **Donations** | Gifts (one-time / monthly) with the entity-keyed cap engine; receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
 | **Outreach** | Newsletter + press-release blasts, petitions, and the Imagine Surrey website bridge |
 | **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
@@ -56,10 +56,10 @@ Managers reach **Admin** from the account menu (their initials):
   a lead; a whole team goes onto a turf in one go (Map → turf → Add a
   canvasser → Teams). Someone removed from the campaign leaves every team.
 - **Permissions**: the app is nine areas — People, Map & turfs, Shifts,
-  Money, Signs, Outreach, Website, Data, Admin. Each role has its usual ones
+  Donations, Signs, Outreach, Website, Data, Admin. Each role has its usual ones
   (`server/lib/perms.js`); a manager can take an area from a whole role or
   give one to a single person on top of their role (a volunteer who runs
-  Outreach, a staffer kept out of Money). The server decides on every action
+  Outreach, a staffer kept out of Donations). The server decides on every action
   and read, and the app shows a person the tabs of the areas they have.
   Managers always have every area.
 The same menu has **Rating scale** (below); People → More has **Profile
@@ -353,14 +353,14 @@ chip ("this device" on a computer) with the reason — *Try again* or
 *Dismiss*.
 
 Desk screens keep the last copy each sign-in loaded — Today, People and its
-search, profiles opened, Shifts, Signs, Calls, Money (desk roles), the Inbox —
+search, profiles opened, Shifts, Signs, Calls, Donations (desk roles), the Inbox —
 and the strip says when it's from (*No signal · from 2:14 pm*). On a profile,
 a rating with its note and tags put on or taken off save on this device and
 send once; every other write says it needs signal (*Adding people needs
 signal*). Copies are keyed to the person, campaign and role. They are a day
 old at most (older ones are dropped when the app opens) and are forgotten at
 sign-out (in every open tab), when the session ends, and when the person's
-role changes. On a desk sign-in, Today, profiles, Money and People lists (they
+role changes. On a desk sign-in, Today, profiles, Donations and People lists (they
 carry donor tags) are kept for that browser tab only; the map's doors and the
 Calls list stay in the browser for a day. Wifi with no internet, or the server
 restarting (502/503), reads as *No answer*: the app stays signed in on its kept

@@ -711,11 +711,6 @@ app.get('/brief', async (c) => {
       g.cap_cents = cap.checked ? Number(cap.capCents) : null;
     }
   }
-  const filings = (await db.query(
-    `select id, name, due_date, status, (due_date - current_date)::int as days_left
-     from filings where workspace_id = $1 and deleted_at is null and status = 'upcoming'
-     order by due_date limit 5`, [ws],
-  )).rows;
   const people = (await db.query(
     `select count(*)::int as total from persons where workspace_id = $1 and deleted_at is null`, [ws],
   )).rows[0];
@@ -778,16 +773,13 @@ app.get('/brief', async (c) => {
   const sampleLoaded = !!(ctx.workspace.settings?.sample);
   const desk = ctx.role !== 'volunteer';
   // The desk's first steps. One of them is whether a gift was ever logged,
-  // so — like money, filings and pledges — a volunteer never receives it.
+  // so — like money and pledges — a volunteer never receives it.
   let activation = null;
   if (desk) {
     activation = {
       steps: [
         { key: 'person', label: 'Add your first person', done: people.total > 0 },
         { key: 'gift', label: 'Log your first gift', done: Number(money.gifts) > 0 },
-        { key: 'filing', label: 'Add a filing deadline', done: (await db.query(
-          'select count(*)::int as n from filings where workspace_id = $1', [ws],
-        )).rows[0].n > 0 },
       ],
     };
     activation.complete = activation.steps.every((s) => s.done);
@@ -795,7 +787,6 @@ app.get('/brief', async (c) => {
   const body = {
     money: desk ? { totalCents: Number(money.total), weekCents: Number(money.week), gifts: Number(money.gifts) } : null,
     flagged: desk ? flagged : [],
-    filings: desk ? filings : [],
     people,
     field: {
       week: field.week, doors: field.doors, calls: field.calls, texts: field.texts,

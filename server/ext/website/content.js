@@ -98,7 +98,7 @@ export const freeSlug = async (tx, table, ws, base, exceptId = null) => {
 export const RESERVED_SLUGS = new Set([
   'news', 'events', 'our-team', 'store', 'cart', 'media', 'site', 'site-assets', 'sitemap-xml', 'robots-txt',
   'home', 'api', 'assets', 'login', 'signup', 'join', 'map', 'calls', 'people', 'shifts', 'turfs', 'signs',
-  'inbox', 'my-people', 'money', 'outreach', 'filings', 'team', 'ladders', 'follow-ups', 'surveys',
+  'inbox', 'my-people', 'money', 'outreach', 'team', 'ladders', 'follow-ups', 'surveys',
   'rating-scale', 'website', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c', 'index-html',
 ]);
 

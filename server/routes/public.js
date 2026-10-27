@@ -14,7 +14,7 @@
 // the JSON endpoint lets the website keep its own design and post here.
 //
 // Every public write goes through runAction as the system (actor null), so
-// the hash-chained event log — "Verify my books" — covers it like any desk
+// the hash-chained event log — "Verify the records" — covers it like any desk
 // action. The person a submission creates or tags is logged under
 // 'public.signup'; the submission itself under its own action:
 //   public.subscribe  newsletter signup (/n, bridge)  subscription create/update

@@ -32,7 +32,6 @@ const Shifts = lazy(() => import('./pages/Shifts.jsx'));
 const Money = lazy(() => import('./pages/Money.jsx'));
 const Signs = lazy(() => import('./pages/Signs.jsx'));
 const Outreach = lazy(() => import('./pages/Outreach.jsx'));
-const Filings = lazy(() => import('./pages/Filings.jsx'));
 const Admin = lazy(() => import('./pages/Admin.jsx'));
 const ImportPeople = lazy(() => import('./pages/ImportPeople.jsx'));
 const Turfs = lazy(() => import('./pages/Turfs.jsx'));
@@ -84,7 +83,7 @@ function NotForYou({ me }) {
 
 // A desk address typed into the field app (an old bookmark, a link in an
 // email): the admin has it. Volunteers go home, as before.
-const DESK_PATHS = /^\/(people(\/(import|fields|connected))?|money|outreach|filings|ladders|follow-ups|surveys|rating-scale|settings|team|admin|inbox\/settings|banks\/new)(\/|$)/;
+const DESK_PATHS = /^\/(people(\/(import|fields|connected))?|money|outreach|ladders|follow-ups|surveys|rating-scale|settings|team|admin|inbox\/settings|banks\/new)(\/|$)/;
 function FieldFallback() {
   const ctx = useOutletContext();
   const { pathname, search } = useLocation();
@@ -101,7 +100,7 @@ function FieldFallback() {
 // Permissions); a desk role denied the area is sent home too.
 const ROUTE_AREA = [
   [/^\/people\/(import|connected)/, 'people'], [/^\/people\/fields/, 'admin'],
-  [/^\/money|^\/filings/, 'money'], [/^\/outreach|^\/ladders|^\/follow-ups|^\/surveys|^\/inbox\/settings/, 'outreach'],
+  [/^\/money/, 'money'], [/^\/outreach|^\/ladders|^\/follow-ups|^\/surveys|^\/inbox\/settings/, 'outreach'],
   [/^\/team|^\/settings|^\/rating-scale/, 'admin'],
 ];
 function DeskOnly() {
@@ -182,7 +181,6 @@ export default function App({ mode = 'field' }) {
           <Route path="/money/receipts/:id" element={<ReceiptsOne />} />
           <Route path="/outreach" element={<Outreach />} />
           <Route path="/outreach/:tab" element={<Outreach />} />
-          <Route path="/filings" element={<Filings />} />
           {/* Settings: members, teams, permissions (the old /admin and /team). */}
           <Route path="/team" element={<Navigate to="/settings" replace />} />
           <Route path="/admin" element={<Navigate to="/settings" replace />} />

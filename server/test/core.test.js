@@ -167,7 +167,7 @@ test('the export holds every campaign table — receipts, answers, opt-outs, lad
   assert.equal(ex.status, 200);
   const x = ex.json;
   for (const key of [
-    'persons', 'events', 'gifts', 'filings', 'contacts', 'signs', 'turfs', 'turf_members', 'shifts', 'shift_assignments',
+    'persons', 'events', 'gifts', 'contacts', 'signs', 'turfs', 'turf_members', 'shifts', 'shift_assignments',
     'pledges', 'blasts', 'blast_recipients', 'receipts', 'receipt_settings', 'surveys', 'survey_questions',
     'survey_responses', 'texting_optouts', 'texting_conversations', 'texting_messages', 'ladders', 'ladder_runs',
     'ladder_followups',

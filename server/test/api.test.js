@@ -75,7 +75,7 @@ test('records pagination pages cleanly with no overlap', async () => {
   assert.equal(new Set(ids).size, 7, 'no overlaps, nothing missed');
 });
 
-test('brief composes money, flags, filings, activation', async () => {
+test('brief composes money, flags, activation', async () => {
   const c = new Client();
   await c.signup({ workspaceName: 'Brief WS' });
   const brief0 = await c.get('/api/brief');
@@ -84,12 +84,10 @@ test('brief composes money, flags, filings, activation', async () => {
 
   const donor = await c.createPerson('Grand Donor');
   await c.action('gift.log', { person_id: donor.id, amount_cents: 200000, date: '2025-04-01' });
-  await c.action('filing.create', { name: 'Annual financial report', due_date: '2027-03-31', status: 'upcoming' });
 
   const brief = await c.get('/api/brief');
   assert.equal(brief.json.money.totalCents, 200000);
   assert.equal(brief.json.flagged.length, 1, 'over-cap gift surfaces on Today');
-  assert.equal(brief.json.filings.length, 1);
   assert.equal(brief.json.activation.complete, true);
 });
 
@@ -103,12 +101,9 @@ test('export carries everything: persons, records, and the event log', async () 
   assert.ok(ex.json.events.every((e) => e.hash), 'events export with their chain hashes');
 });
 
-test('filing.update flips status and role gates hold', async () => {
+test('an unknown action is 404', async () => {
   const c = new Client();
-  await c.signup({ workspaceName: 'Filing WS' });
-  const created = await c.action('filing.create', { name: 'Q1 report', due_date: '2026-04-30', status: 'upcoming' });
-  const updated = await c.action('filing.update', { id: created.json.filing.id, status: 'filed' });
-  assert.equal(updated.json.filing.status, 'filed');
+  await c.signup({ workspaceName: 'Unknown Action WS' });
   const unknown = await c.action('nope.nothing', {});
   assert.equal(unknown.status, 404);
 });

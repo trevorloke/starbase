@@ -139,7 +139,7 @@ one tap away under **More**.
   (below) and watch them appear within a minute.
 - **Today** — three big numbers (doors this week · support · raised); tap
   *Support* for the breakdown by candidate. **Needs you** lists what's waiting:
-  gifts over the limit, open pledges, filings due, shifts short of people,
+  gifts over the limit, open pledges, shifts short of people,
   signs to put up.
 - **Outreach → Newsletter** — without email connected, a newsletter is
   *Saved — not sent*; connect email (Resend) and tap *Send now*. A send
@@ -184,7 +184,7 @@ one tap away under **More**.
   (on the bank page) crosses one off without a call.
 - **Settings → Members** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
 - **Settings → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
-- **Settings → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
+- **Settings → Permissions** — untick Donations for Staff and watch a staffer's Donations tab go; tick Outreach for one volunteer and watch them get it.
 - **Rating scale** (your initials → *Rating scale*) — change the words on 1
   (e.g. *Definitely*; up to 30 letters, a long one wraps on the buttons),
   rename a candidate, **Add** one, move it with ↑ ↓,
@@ -279,7 +279,7 @@ one tap away under **More**.
   lists what's waiting. Reload with no signal: the campaign's own rating
   buttons still show, and Today, Calls, Shifts and any profile you opened
   read from the phone (never with money or anyone else's email).
-- Confirm a volunteer **never sees money or the supporter list**: no Money,
+- Confirm a volunteer **never sees money or the supporter list**: no Donations,
   People or Outreach; typing those addresses lands back on Today. (The
   server enforces this too: their browser never receives other people's
   emails or donor tags.)
@@ -312,7 +312,7 @@ one tap away under **More**.
   tagged *do-not-contact* gets no nudge and is never the one suggested. A
   long note (a link) wraps in Knows.
 - **Desk with no signal** — with wifi, open Today, People, a profile,
-  Shifts, Signs, Money and the Inbox. Turn wifi off and reload: each shows
+  Shifts, Signs, Donations and the Inbox. Turn wifi off and reload: each shows
   what it had and the strip says *No signal · from 2:14 pm*. Search People —
   it searches what this tab kept. A profile never opened says *No signal —
   this profile loads when you're back online*. On a profile, add a note and
@@ -322,7 +322,7 @@ one tap away under **More**.
   read-only (*Changing these needs signal*); Knows and its nudge show from the
   kept copy, with *+ Someone they know* and *Remove* off (*Adding and removing
   need signal*). *Add person*, *Log a gift*, *Add a sign*, *New shift*, *Edit
-  details*, *Get invite link*, *Add filing*, *Clear sample data* and Profile
+  details*, *Get invite link*, *Clear sample data* and Profile
   fields changes say they need signal. Rating scale, Team and a shift never
   opened say *No signal — this loads…* with no time in the strip. A People or
   Calls filter on a profile field never opened with signal says *No signal —
@@ -339,17 +339,17 @@ one tap away under **More**.
     it, and another open tab goes to Sign in.
 
 ### Treasurer
-- **Money** — **Log a gift**; log enough to one donor to cross the annual
+- **Donations** — **Log a gift**; log enough to one donor to cross the annual
   limit (sample: *Arjun Mehta* is already over). Donor tiers on profiles:
   star ($1K+/yr or $100+/mo), superstar ($3K+/yr or $250+/mo).
 - **Donate page** (`/d/imagine-surrey`, in a private window): try without the
   eligibility boxes (refused), more than the annual limit (refused), then a
-  real pledge → it appears under **Money → Needs you** → *Mark paid* turns it
+  real pledge → it appears under **Donations → Needs you** → *Mark paid* turns it
   into a gift (cap-checked). Voiding that gift reopens the pledge; a monthly
   pledge stays open and is marked paid month by month.
-- **Money → More → Receipts** — every gift gets a numbered receipt
+- **Donations → More → Receipts** — every gift gets a numbered receipt
   (`2026-0001`, no gaps) the moment it's logged, marked paid, or paid by card;
-  open a gift on Money to see *Receipt 2026-0007 · Sent*. Without email
+  open a gift on Donations to see *Receipt 2026-0007 · Sent*. Without email
   connected each one says *Not sent — email isn't connected* (or *No email on
   file*) — tap it, then **Print**. With email connected it goes to the donor
   once by itself a minute after the gift (the toast says *receipt emails in a
@@ -357,20 +357,20 @@ one tap away under **More**.
   **Email 3 receipts** (the yellow button) sends the *Not sent* ones with an
   email, never one already *Sending*. A donor with no street address: Log
   a gift asks for it under *More details*; left blank, the receipt says
-  **Needs address**, shows under **Money → Needs you** (type it right there)
+  **Needs address**, shows under **Donations → Needs you** (type it right there)
   and its email waits until the address is saved. Voiding a gift marks its
   receipt **VOID** (the number is kept); if the receipt was already emailed,
-  Money asks *Receipt already emailed — send a void notice?* Set the
+  Donations asks *Receipt already emailed — send a void notice?* Set the
   financial agent, the minimum gift and the footer under **More →
   Settings** (the campaign's dates under *More details*); **More →
   Disclosure** picks a period (this campaign, or a calendar year) and
   downloads contributors over $100 for a spreadsheet, with an *Over limit*
   column. Sample gifts are never in it.
-- **Today → More → Verify my books** replays the tamper-evident log;
+- **Today → More → Verify the records** replays the tamper-evident log;
   **Export all data** downloads everything.
-- **Money and People with no signal** read only in the same browser tab
+- **Donations and People with no signal** read only in the same browser tab
   (money and donor lists are never kept past the tab): close the tab, reopen
-  with no signal, and Money says *No signal*. Make a volunteer a treasurer
+  with no signal, and Donations says *No signal*. Make a volunteer a treasurer
   while their app is open: Today's money stays in their tab; make them a
   volunteer again and, after a reload, nothing a treasurer saw is kept.
 
@@ -444,8 +444,7 @@ latest).
 - Offline covers **field work** (knocks, new people and doors, pins, sign
   requests, shift sign-ups, *My people*) and **reading the desk**; on a
   profile, ratings, notes and tags save offline. Gifts, imports, outreach
-  and other edits need signal. Receipts and Filings aren't kept offline
-  (Filings says *No signal* and its buttons are off).
+  and other edits need signal. Receipts aren't kept offline.
 - The BC municipal contribution limit is seeded at Elections BC's 2026
   figure, **$1,429.70** per contributor for the calendar year — one limit
   shared by an elector organization and its endorsed candidates (2022:

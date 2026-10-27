@@ -1,5 +1,5 @@
 // App chrome. The nav is the handful of things each role actually does:
-//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Money · Signs · Outreach · Website
+//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Donations · Signs · Outreach · Website
 //   volunteer:                        Today · Map · Calls · Shifts
 // A navy sidebar on desktop, a top bar plus a big-label tab bar on phones
 // (field mode lives on /map): every label whole at 360px, never cut off.
@@ -63,7 +63,7 @@ const NAV_DESK = [
   { to: '/map',      label: 'Map',      icon: 'map', area: 'map' },
   { to: '/people',   label: 'People',   icon: 'people', area: 'people' },
   { to: '/shifts',   label: 'Shifts',   icon: 'shifts', area: 'shifts' },
-  { to: '/money',    label: 'Money',    icon: 'money', area: 'money' },
+  { to: '/money',    label: 'Donations', icon: 'money', area: 'money' },
   { to: '/signs',    label: 'Signs',    icon: 'signs', area: 'signs' },
   { to: '/outreach', label: 'Outreach', icon: 'outreach', area: 'outreach' },
   { to: '/imagineu', label: 'ImagineU', icon: 'learn', area: 'learn' },

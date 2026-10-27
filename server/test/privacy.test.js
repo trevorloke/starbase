@@ -42,12 +42,11 @@ test('volunteer sees the profile for canvassing but no gifts, totals, or donor t
   assert.equal(deskView.json.donor.tier, 'star');
 });
 
-test('volunteer brief carries field stats but no money, flags, or filings', async () => {
+test('volunteer brief carries field stats but no money or flags', async () => {
   const b = await vol.get('/api/brief');
   assert.equal(b.status, 200);
   assert.equal(b.json.money, null);
   assert.deepEqual(b.json.flagged, []);
-  assert.deepEqual(b.json.filings, []);
   assert.ok(b.json.field, 'field stats still present');
   assert.deepEqual(Object.keys(b.json.field.mine).sort(), ['calls', 'doors', 'texts'], 'their own counts, numbers only');
   const d = await desk.get('/api/brief');
@@ -87,7 +86,7 @@ test('volunteer brief never carries flagged gifts or their numbers', async () =>
 test('volunteer is refused the money ledger, exports, event log, audit, and supporter lists', async () => {
   const pet = (await desk.get('/api/petitions')).json.petitions[0];
   for (const path of [
-    '/api/records/gift', '/api/records/filing', '/api/export', '/api/events?since=0',
+    '/api/records/gift', '/api/export', '/api/events?since=0',
     '/api/audit/verify', '/api/subscriptions', '/api/blasts', `/api/petitions/${pet.id}/signatures`,
   ]) {
     const r = await vol.get(path);

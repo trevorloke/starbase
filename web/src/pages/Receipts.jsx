@@ -256,7 +256,7 @@ export default function Receipts() {
 
   return (
     <div className="ops-page rc-page">
-      <Link to="/money" className="ops-back">← Money</Link>
+      <Link to="/money" className="ops-back">← Donations</Link>
       <div className="ops-head">
         <h1>Receipts</h1>
         {!showSettings && emailOn && sendable > 0 && !confirm && (

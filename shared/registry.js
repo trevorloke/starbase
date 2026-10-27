@@ -29,18 +29,6 @@ export const RECORD_TYPES = {
       { key: 'note',         label: 'Note',   type: 'text' },
     ],
   },
-  filing: {
-    label: 'Filing',
-    plural: 'Filings',
-    table: 'filings',
-    fields: [
-      { key: 'name',     label: 'Filing',   type: 'text',   required: true },
-      { key: 'due_date', label: 'Due',      type: 'date',   required: true },
-      { key: 'status',   label: 'Status',   type: 'select', required: true,
-        options: ['upcoming', 'filed'], default: 'upcoming' },
-      { key: 'note',     label: 'Note',     type: 'text' },
-    ],
-  },
 };
 
 const SQL_TYPES = {

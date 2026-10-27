@@ -551,7 +551,7 @@ siteApp.get('*', async (c) => {
 // and the public routes). Everything else single-segment is the site's.
 const APP_PATHS = new Set([
   'api', 'assets', 'site', 'site-assets', 'media', 'login', 'signup', 'join', 'map', 'calls', 'people', 'shifts', 'turfs',
-  'signs', 'inbox', 'my-people', 'money', 'outreach', 'filings', 'team', 'ladders', 'follow-ups', 'surveys', 'rating-scale',
+  'signs', 'inbox', 'my-people', 'money', 'outreach', 'team', 'ladders', 'follow-ups', 'surveys', 'rating-scale',
   'website', 'website-admin', 'admin', 'fonts', 'tiles', 'imagineu', 'banks', 'learn', 'learn-files', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c',
 ]);
 const SITE_PATH = /^\/(?:news|events|our-team|store|cart)(?:\/|$)|^\/(?:sitemap\.xml|robots\.txt)$/;

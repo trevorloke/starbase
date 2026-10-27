@@ -136,7 +136,7 @@ the website* in the app's account menu) and sign in with the same account:
   `/v/imagine-surrey` load over https with the campaign's header and footer.
 - A test newsletter reaches a real inbox with a working unsubscribe link.
 - A test donation (live key, a real card, refunded in Stripe afterwards)
-  lands under **Money** with a receipt emailed.
+  lands under **Donations** with a receipt emailed.
 - Backups: Render's managed Postgres keeps daily backups; **Today → Export
   all data** (managers) downloads everything (site pictures are not in it).
 - Keys: every key above is in Render only, never in the repo or a chat.
@@ -153,5 +153,5 @@ the website* in the app's account menu) and sign in with the same account:
 - Email: every newsletter carries the reader's own unsubscribe link and the
   headers mail apps use for their Unsubscribe button; an unsubscribed
   address cannot be added back by the desk.
-- Money: contributions are checked against the Elections BC limit per
+- Donations: contributions are checked against the Elections BC limit per
   contributor (confirm the seeded figure with Elections BC before filing).

@@ -19,7 +19,6 @@ export { httpError };
 
 const MONEY_ROLES = ['manager', 'treasurer', 'staff'];
 const PEOPLE_ROLES = ['manager', 'treasurer', 'staff'];
-const FILING_ROLES = ['manager', 'treasurer'];
 
 const personInput = z.object({
   kind: z.enum(['person', 'org']).default('person'),
@@ -128,48 +127,6 @@ export const ACTIONS = {
     roles: MONEY_ROLES,
     input: z.object({ id: z.uuid() }),
     handler: (tx, ctx, input, emit) => restoreGift(tx, ctx.workspace, input.id, emit),
-  },
-
-  'filing.create': {
-    roles: FILING_ROLES,
-    input: zodFor('filing'),
-    handler: async (tx, ctx, input, emit) => {
-      const id = newId();
-      await tx.query(
-        `insert into filings (id, workspace_id, name, due_date, status, note)
-         values ($1, $2, $3, $4, $5, $6)`,
-        [id, ctx.workspaceId, input.name, input.due_date, input.status, input.note || null],
-      );
-      const payload = { id, ...input };
-      emit('filing', id, 'create', payload);
-      return { filing: payload };
-    },
-  },
-
-  'filing.update': {
-    roles: FILING_ROLES,
-    input: zodFor('filing').partial().extend({ id: z.uuid() }),
-    handler: async (tx, ctx, input, emit) => {
-      const { id, ...patch } = input;
-      const cur = (await tx.query(
-        'select name, due_date, status, note from filings where id = $1 and workspace_id = $2 and deleted_at is null',
-        [id, ctx.workspaceId],
-      )).rows[0];
-      if (!cur) throw httpError(404, 'filing not found');
-      const next = {
-        name: patch.name ?? cur.name,
-        due_date: patch.due_date ?? isoDate(cur.due_date),
-        status: patch.status ?? cur.status,
-        note: patch.note ?? cur.note,
-      };
-      await tx.query(
-        `update filings set name = $3, due_date = $4, status = $5, note = $6, updated_at = now()
-         where id = $1 and workspace_id = $2`,
-        [id, ctx.workspaceId, next.name, next.due_date, next.status, next.note || null],
-      );
-      emit('filing', id, 'update', patch);
-      return { filing: { id, ...next } };
-    },
   },
 
   ...FIELD_ACTIONS,

@@ -1,4 +1,4 @@
-// Money — what came in, and what needs the desk.
+// Donations (the /money screen) — what came in, and what needs the desk.
 //   Top: one big "Raised this year" number, then "Needs you": pledges from the
 //   donate page ("Pledge" chip) to "Mark paid" (→ a gift, cap-checked) or
 //   "Cancel pledge" — a monthly one says "Mark this month paid" (it logs that
@@ -752,7 +752,7 @@ export default function Money() {
   if (!canMoney) {
     return (
       <div className="ops-page">
-        <div className="ops-head"><h1>Money</h1></div>
+        <div className="ops-head"><h1>Donations</h1></div>
         <p className="ops-empty">Handed a donation? Tell the campaign desk.</p>
       </div>
     );
@@ -763,9 +763,8 @@ export default function Money() {
   return (
     <div className="ops-page">
       <div className="ops-head">
-        <h1>Money</h1>
+        <h1>Donations</h1>
         <div className="ops-head__actions">
-          <Link className="btn btn-quiet ops-tap" to="/filings">Filings</Link>
           {!showNew && (
             <button type="button" className="btn btn-primary ops-tap" disabled={!online} onClick={() => setParams({ new: '1' })}>
               Log a gift

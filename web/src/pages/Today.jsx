@@ -18,13 +18,13 @@
 //     role, three big numbers (doors this week · support · total raised). Doors
 //     and money are taps to their screens (›); support opens its breakdown in
 //     place (+), opposed by candidate ("McCallum 3 · Locke 2"). Then "Needs
-//     you" (gifts over the limit, open pledges, filings due, new volunteers
+//     you" (gifts over the limit, open pledges, new volunteers
 //     from the public form, short shifts, signs to put up, new texts — replies
 //     and texts from numbers nobody texted, → the Inbox) — name first, the
 //     amount on the right, every row a tap to where it's fixed — then the
 //     next shift and event. Getting started shows only the steps not done,
-//     and only while the campaign is new. Walk lists, filings, team (managers),
-//     providers, "Verify my books", the export and "Clear sample data" sit
+//     and only while the campaign is new. Walk lists, team (managers),
+//     providers, "Verify the records", the export and "Clear sample data" sit
 //     under a quiet "More" at the bottom.
 // A nearly empty campaign gets a one-click sample dataset (managers); a quiet
 // "Sample data is loaded" line stays at the top while it's there. Volunteers
@@ -50,13 +50,12 @@ const greeting = () => {
   return 'Good evening';
 };
 
-const STEP_ROUTES = { person: '/people?new=1', gift: '/money?new=1', filing: '/filings?new=1' };
+const STEP_ROUTES = { person: '/people?new=1', gift: '/money?new=1' };
 // Who may do each getting-started step (server/actions/index.js: person.create
-// and gift.log are desk roles, filing.create is manager + treasurer only).
+// and gift.log are desk roles).
 const STEP_ROLES = {
   person: ['manager', 'treasurer', 'staff'],
   gift: ['manager', 'treasurer', 'staff'],
-  filing: ['manager', 'treasurer'],
 };
 
 const plural = (n, word, many = `${word}s`) => (n === 1 ? word : many);
@@ -364,12 +363,6 @@ const FROM_TODAY = { from: { to: '/', label: 'Today' } };
 // "5 spots left" — the same words as the Shifts screen.
 const spotsLeft = (n) => `${n} ${plural(n, 'spot')} left`;
 
-function filingChip(n) {
-  if (n < 0) return { chip: `${-n}d overdue`, chipCls: 'chip chip-danger' };
-  if (n === 0) return { chip: 'Due today', chipCls: 'chip chip-warn' };
-  return { chip: `${n}d left`, chipCls: 'chip' };
-}
-
 function NeedsYou({ b, me }) {
   // New volunteers from the public form. Under ['persons'], so the People
   // screen's edits (taking the tag off) refresh the count.
@@ -383,14 +376,13 @@ function NeedsYou({ b, me }) {
   const newTexts = Number(useTextingStatus(me).data?.unread) || 0;
   const flagged = b.flagged ?? [];
   const pledges = Number(b.pledges?.n) || 0;
-  const filings = (b.filings ?? []).filter((f) => Number(f.days_left) <= 7);
   const shortShifts = (b.shifts ?? [])
     .filter((s) => s.capacity && (Number(s.filled) || 0) < s.capacity && withinDays(s.starts_at, 7))
     .slice(0, 2);
   const signs = Number(b.signs?.requested) || 0;
   const shownFlags = flagged.length > 3 ? flagged.slice(0, 2) : flagged;
   const moreFlags = flagged.length - shownFlags.length;
-  const empty = !flagged.length && !pledges && !filings.length && !newVols && !shortShifts.length && !signs && !followups.n && !newTexts;
+  const empty = !flagged.length && !pledges && !newVols && !shortShifts.length && !signs && !followups.n && !newTexts;
 
   return (
     <section className="today-section" aria-labelledby="today-needs-h">
@@ -414,7 +406,6 @@ function NeedsYou({ b, me }) {
               main={<><strong className="mono">{pledges}</strong> open {plural(pledges, 'pledge')}</>}
               end={fmtMoney(b.pledges.cents)} />
           )}
-          {filings.map((f) => <LinkRow key={f.id} to="/filings" main={f.name} {...filingChip(Number(f.days_left))} />)}
           {newVols > 0 && (
             <LinkRow to={`/people?tag=${PROSPECT_TAG}`}
               main={<><strong className="mono">{newVols >= PROSPECT_MAX ? `${PROSPECT_MAX}+` : newVols}</strong> new {plural(newVols, 'volunteer')}</>} />
@@ -790,10 +781,10 @@ function DeskToday({ b, me, toast }) {
   const statsById = useTurfStats(myTurfs.length > 0);
   const f = b.field ?? {};
 
-  // Only the steps left; the card goes once only the filing is left, or the
-  // campaign has five people (it's past the first day by then).
+  // Only the steps left; the card goes once they're done, or the campaign
+  // has five people (it's past the first day by then).
   const stepsLeft = (b.activation?.steps ?? []).filter((s) => !s.done);
-  const showSteps = !b.activation?.complete && peopleTotal < 5 && stepsLeft.some((s) => s.key !== 'filing');
+  const showSteps = !b.activation?.complete && peopleTotal < 5 && stepsLeft.length > 0;
 
   const onVerify = async () => {
     setVerify({ busy: true });
@@ -849,7 +840,6 @@ function DeskToday({ b, me, toast }) {
         )}
         <ul className="today-rows">
           <LinkRow to="/banks" main="Phone banks" />
-          <LinkRow to="/filings" main="Filings" />
           <LinkRow to="/surveys" main="Surveys" />
           {isManager && <LinkRow to="/settings" main={<>Settings <span className="muted">· members, teams, permissions</span></>} />}
           {b.providers && (!b.providers.email || !b.providers.text) && (
@@ -857,7 +847,7 @@ function DeskToday({ b, me, toast }) {
           )}
         </ul>
         <div className="today-actions today-morebox__tools">
-          <button type="button" className="btn today-tap" onClick={onVerify} disabled={verify?.busy}>Verify my books</button>
+          <button type="button" className="btn today-tap" onClick={onVerify} disabled={verify?.busy}>Verify the records</button>
           <a className="btn today-tap" href="/api/export">Export all data</a>
         </div>
         {verify?.ok && <p className="mono ok-text" role="status">✓ {verify.checked} entries check out</p>}
