@@ -101,7 +101,9 @@ than a week after they came off is refused. Contacts are door, phone, text or
   **House number** column the same way, **Latitude
   / Longitude** (a pin, only where there is none), and **Volunteer / Donor**
   1/0 columns (the tags); yes/no fields and the flags read 1 and 0, yes and
-  no, true and false, and a database export's t and f; dates come in as
+  no, true and false, and a database export's t and f; a rating column
+  rated some other way (a 1–5) is mapped value by value under *What each
+  rating means on your scale* (a 5 there can be a 1 here); dates come in as
   spreadsheets write them (10/21/2026, 21 Oct 2026).
 - **The dashboard** (managers, at the top of Today): contacts today, in the
   last 7 or 30 days or in all — how many, doors, calls & texts, people

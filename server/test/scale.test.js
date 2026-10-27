@@ -91,7 +91,7 @@ test('words change; the codes and bands stay', async () => {
   // Volunteers see the same on their next read.
   assert.equal((await scaleOf(vol)).steps[0].word, 'Definitely');
   // Refused: empty, too long, two steps the same, a step called "Not sure".
-  for (const words of [{ 2: '   ' }, { 2: 'Very very likely yes' }, { 2: 'Definitely' }, { 4: 'not sure' }]) {
+  for (const words of [{ 2: '   ' }, { 2: 'Very very very very likely yes, honestly' }, { 2: 'Definitely' }, { 4: 'not sure' }]) {
     const bad = await mgr.action('scale.save', { words });
     assert.equal(bad.status, 400, JSON.stringify(words));
   }

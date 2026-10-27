@@ -99,6 +99,31 @@
 .imp-source p { margin: 0; overflow-wrap: anywhere; }
 
 /* ── 2. Match columns ── */
+/* What each rating means: the rating column's values, one row each. */
+.imp-rmap { margin: 0 0 var(--s-4); padding: var(--s-3); background: var(--paper-0); border: var(--border); border-radius: var(--r-card); }
+.imp-rmap__h { margin: 0 0 var(--s-1); font-size: 15px; }
+.imp-rmap__list { list-style: none; margin: 0; padding: 0; }
+.imp-rmap__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(180px, 300px) auto;
+  gap: var(--s-1) var(--s-3);
+  align-items: center;
+  min-height: 48px;
+  padding: 4px 0;
+  border-top: 1px solid var(--rule);
+}
+.imp-rmap__val { min-width: 0; display: flex; align-items: baseline; gap: var(--s-2); color: var(--text-2); }
+.imp-rmap__row.is-used .imp-rmap__val { color: var(--text-1); }
+.imp-rmap__word { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.imp-rmap__select { min-height: 44px; }
+.imp-rmap__row:not(.is-used) .imp-rmap__select { color: var(--text-3); }
+.imp-rmap__own { font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-3); }
+.imp-rmap__reset { margin-top: var(--s-2); }
+@media (max-width: 560px) {
+  .imp-rmap__row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .imp-rmap__own { display: none; }
+}
+
 .imp-map { list-style: none; margin: 0 0 var(--s-4); padding: 0; border-top: 1px solid var(--rule-2); }
 .imp-map__row {
   display: grid;

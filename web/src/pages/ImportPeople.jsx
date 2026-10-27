@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { matchRating, offeredCodes } from '@starbase/shared/scale';
+import { matchRating, offeredCandidates, offeredCodes } from '@starbase/shared/scale';
 import { apiPost } from '../api.js';
 import GeocodeButton from '../components/GeocodeButton.jsx';
 import { RatingChip, useScale } from '../components/RatingButtons.jsx';
@@ -285,7 +285,6 @@ const PHONE_RE = /^\+?1?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(\s*(x|ext\.?)
 // The campaign's scale (its codes and words, any case): "4d " → 4D, "4 D" →
 // 4D, "1.0" → 1 (spreadsheets love a trailing .0), "Strong yes" → 1,
 // "locke" → 4B. A new rating must be on the list (off it: comes in unrated).
-const isRating = (scale, v) => { const m = matchRating(scale, v); return Boolean(m && !m.off); };
 // share: a "Support" column may hold the odd typo; a bare "ID" column must be all ratings.
 const looksLikeRatings = (scale, values, share = 1) =>
   values.length > 0 && values.filter((v) => matchRating(scale, v)).length / values.length >= share;
@@ -348,10 +347,37 @@ function guessMapping(scale, headers, records, noHeader = false, custom = []) {
   return out;
 }
 
+// What a value in the rating column means: what the person picked for it
+// under "What each rating means" (ratingMap: the value, lower-cased → a
+// code, or '' for unrated), else the scale's own reading, else nothing.
+// A list's 5 can be this campaign's 1 — the scale has no way to know.
+const resolveRating = (scale, ratingMap, v) => {
+  const k = v.toLowerCase();
+  if (ratingMap && Object.hasOwn(ratingMap, k)) return ratingMap[k] || null;
+  const m = matchRating(scale, v);
+  return m && !m.off ? m.code : null;
+};
+// The rating column's distinct values, most common first (capped: a column
+// that is really free text would list thousands).
+const RATING_VALUES_MAX = 40;
+const ratingValuesOf = (records, col) => {
+  const counts = new Map();
+  if (col === -1) return { values: [], more: 0 };
+  for (const r of records) {
+    const v = String(r.cells[col] ?? '').trim();
+    if (!v) continue;
+    const k = v.toLowerCase();
+    const cur = counts.get(k);
+    if (cur) cur.n += 1; else counts.set(k, { value: v, n: 1 });
+  }
+  const all = [...counts.values()].sort((a, b) => b.n - a.n || a.value.localeCompare(b.value));
+  return { values: all.slice(0, RATING_VALUES_MAX), more: Math.max(0, all.length - RATING_VALUES_MAX) };
+};
+
 // One CSV record → the server's row shape (only filled fields are sent).
 // A rating that isn't on the scale is left off: the server rejects the whole
 // row for it, and losing the person is worse than losing a bad rating.
-function toRow(scale, cells, mapping) {
+function toRow(scale, cells, mapping, ratingMap) {
   const row = {};
   mapping.forEach((key, i) => {
     if (!key) return;
@@ -359,7 +385,7 @@ function toRow(scale, cells, mapping) {
     if (!v) return;
     if (key.startsWith(FIELD_KEY)) { fieldCell(row, key, v); return; }
     if (key === 'tags') row.tags = row.tags ? `${row.tags};${v}` : v;
-    else if (key === 'rating') { const m = matchRating(scale, v); if (m && !m.off) row.rating = m.code; }
+    else if (key === 'rating') { const code = resolveRating(scale, ratingMap, v); if (code) row.rating = code; }
     else row[key] = v;
   });
   return row;
@@ -525,6 +551,7 @@ function ImportFlow() {
 
   // Step 2 — mapping, then the check (a dry run). Any mapping/tag change throws the check away.
   const [mapping, setMapping] = useState([]);
+  const [ratingMap, setRatingMap] = useState({}); // the rating column's values → codes ('' unrated), by choice
   const [bumped, setBumped] = useState(null); // { col, key } — a column switched off by a pick
   const [tag, setTag] = useState('');
   const [check, setCheck] = useState(null); // { phase, done, total, created, merged, unchanged, invalid, matches, parts, error }
@@ -557,6 +584,7 @@ function ImportFlow() {
     setLoadError(null);
     setSource({ name, ...t, ...shaped });
     setMapping(guessMapping(scale, shaped.headers, shaped.records, !t.header, custom));
+    setRatingMap({});
     setTag('');
     resetAfterSource();
   };
@@ -620,6 +648,7 @@ function ImportFlow() {
   const startOver = () => {
     setSource(null);
     setMapping([]);
+    setRatingMap({});
     setTag('');
     setLoadError(null);
     setPasteText('');
@@ -645,10 +674,10 @@ function ImportFlow() {
   const records = source?.records || [];
   const total = records.length;
   const partAt = (start, size) => records.slice(start, start + size)
-    .map((r) => ({ data: toRow(scale, r.cells, mapping), row: r.row }));
+    .map((r) => ({ data: toRow(scale, r.cells, mapping, ratingMap), row: r.row }));
   const preview = useMemo(
-    () => (source ? source.records.slice(0, 5).map((r) => ({ data: toRow(scale, r.cells, mapping), row: r.row, cells: r.cells })) : []),
-    [source, mapping, scale],
+    () => (source ? source.records.slice(0, 5).map((r) => ({ data: toRow(scale, r.cells, mapping, ratingMap), row: r.row, cells: r.cells })) : []),
+    [source, mapping, scale, ratingMap],
   );
   const ratingCol = mapping.indexOf('rating');
   const hasName = mapping.some((k) => k === 'name' || k === 'first' || k === 'last');
@@ -663,6 +692,7 @@ function ImportFlow() {
   );
   // A column mapped to Rating whose values aren't on the scale (or are off
   // the list): those people come in unrated. Which values, said once each.
+  const ratingValues = useMemo(() => ratingValuesOf(source?.records || [], ratingCol), [source, ratingCol]);
   const { badRatings, badValues } = useMemo(() => {
     const col = ratingCol;
     const seen = new Map();
@@ -670,14 +700,18 @@ function ImportFlow() {
     if (source && col !== -1) {
       for (const r of source.records) {
         const v = String(r.cells[col] ?? '').trim();
-        if (!v || isRating(scale, v)) continue;
+        if (!v || resolveRating(scale, ratingMap, v)) continue;
         n += 1;
         if (!seen.has(v.toLowerCase())) seen.set(v.toLowerCase(), `“${v}”${matchRating(scale, v)?.off ? ' (off the list)' : ''}`);
       }
     }
     const vals = [...seen.values()];
     return { badRatings: n, badValues: vals.length > 3 ? `${vals.slice(0, 3).join(', ')}…` : vals.join(', ') };
-  }, [source, ratingCol, scale]);
+  }, [source, ratingCol, scale, ratingMap]);
+  const setRatingMeaning = (value, code) => {
+    setRatingMap((m) => ({ ...m, [value.toLowerCase()]: code }));
+    setCheck(null);
+  };
 
   const previewCols = [
     hasName && ['name', 'Name'],
@@ -885,13 +919,52 @@ function ImportFlow() {
                     )}
                     {mapping[i] === 'rating' && badRatings > 0 && (
                       <p className="imp-map__note is-warn">
-                        {plural(badRatings, 'rating isn’t', 'ratings aren’t')} on the scale ({badValues}) — {badRatings === 1 ? 'comes' : 'they come'} in unrated.
+                        {plural(badRatings, 'rating isn’t', 'ratings aren’t')} on the scale ({badValues}) — {badRatings === 1 ? 'comes' : 'they come'} in unrated unless you say what {badRatings === 1 ? 'it means' : 'they mean'} below.
                       </p>
                     )}
                   </li>
                 );
               })}
             </ul>
+            {ratingCol !== -1 && ratingValues.values.length > 0 && (
+              <section className="imp-rmap" aria-labelledby="imp-rmap-h">
+                <h3 id="imp-rmap-h" className="imp-rmap__h">What each rating means on your scale</h3>
+                <p className="imp-hint imp-hint--sm">
+                  The list’s own values, most common first, read as your scale reads them. Change any — a 5 on the list can be a 1 here — or leave it unrated.
+                </p>
+                <ul className="imp-rmap__list">
+                  {ratingValues.values.map(({ value, n }) => {
+                    const cur = resolveRating(scale, ratingMap, value) || '';
+                    const own = Object.hasOwn(ratingMap, value.toLowerCase());
+                    return (
+                      <li key={value.toLowerCase()} className={`imp-rmap__row${cur ? ' is-used' : ''}`}>
+                        <span className="imp-rmap__val"><span className="imp-rmap__word">{value}</span> <span className="mono muted">{n.toLocaleString('en-CA')} {plural(n, 'row')}</span></span>
+                        <span className="imp-map__arrow" aria-hidden="true">→</span>
+                        <select className="input imp-rmap__select" value={cur} disabled={locked}
+                          aria-label={`What “${value}” means`} onChange={(e) => setRatingMeaning(value, e.target.value)}>
+                          <option value="">Leave unrated</option>
+                          <optgroup label="Steps">
+                            {scale.steps.map((st) => <option key={st.code} value={st.code}>{st.code} · {st.word}</option>)}
+                          </optgroup>
+                          {offeredCandidates(scale).length > 0 && (
+                            <optgroup label="Voting for">
+                              {offeredCandidates(scale).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                            </optgroup>
+                          )}
+                        </select>
+                        {own && <span className="imp-rmap__own mono" aria-hidden="true">yours</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {ratingValues.more > 0 && (
+                  <p className="imp-hint imp-hint--sm">…and {ratingValues.more.toLocaleString('en-CA')} rarer {plural(ratingValues.more, 'value')}, read as the scale reads them (unrated otherwise).</p>
+                )}
+                {Object.keys(ratingMap).length > 0 && !locked && (
+                  <button type="button" className="btn btn-quiet imp-rmap__reset" onClick={() => { setRatingMap({}); setCheck(null); }}>Back to the scale’s own reading</button>
+                )}
+              </section>
+            )}
             {!hasName && (
               <p className="imp-need" role="alert">
                 Match a column to <strong>Full name</strong>, or <strong>First</strong> + <strong>Last name</strong>.

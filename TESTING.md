@@ -164,7 +164,8 @@ one tap away under **More**.
 - **Admin → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
 - **Admin → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
 - **Rating scale** (your initials → *Rating scale*) — change the words on 1
-  (e.g. *Definitely*), rename a candidate, **Add** one, move it with ↑ ↓,
+  (e.g. *Definitely*; up to 30 letters, a long one wraps on the buttons),
+  rename a candidate, **Add** one, move it with ↑ ↓,
   **Take off** one (*Take Locke off the list? Yes · No*). The preview shows
   the buttons as volunteers will see them; **Save**. Locke now sits under
   *Off the list* with how many people have that rating and *Put back*;
@@ -354,7 +355,12 @@ check step should report **9 new, 1 merged** (Jordan Lee appears twice with
 the same email) and **1 refused** (the row with no name); Robin Kaur's rating
 "7" isn't on the scale, so she comes in unrated and the check step says so.
 Ratings import as codes, words or candidate names in any case (*definitely*,
-*Locke*, *4b*). A column named like a profile field (any case, any script —
+*Locke*, *4b*). A list rated its own way (a 1–5, *Strong*, *Weak*) gets
+**What each rating means on your scale** under the columns once a column
+is matched to *Rating*: every value the column holds, most common first,
+with a pick for what it is here — a 5 on the list can be a 1, a 1 can be a
+candidate, and *Leave unrated* drops it; the check and the preview use your
+picks. A column named like a profile field (any case, any script —
 *语言*, *ਭਾਸ਼ਾ*) fills it; a bad cell (e.g. *Klingon* for *Language at home*, or
 *1 2 3* for a Number) is refused by row number. A field taken off before you
 tap Import is skipped; the row still comes in. The campaign's own list maps

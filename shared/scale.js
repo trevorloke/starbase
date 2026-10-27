@@ -25,8 +25,9 @@ export const RATING_CODE_RE = /^(?:[1-3]|4(?:[A-Z]{1,2})?)$/;
 export const CANDIDATE_CODE_RE = /^4[A-Z]{1,2}$/;
 export const UNSURE_WORD = 'Not sure';
 export const OFF_WORDS = 'off the list';
-// Field rule: a word must fit its button at 390px without being cut off.
-export const LIMITS = { word: 12, name: 16, offered: 12, total: 60 };
+// Field rule: a word must read whole on its button at 390px — a long one
+// wraps onto a second line (components/rating-words.css), never cut off.
+export const LIMITS = { word: 30, name: 30, offered: 12, total: 60 };
 
 // The band from the code alone (the steps are fixed): '1'/'2' support, '3'
 // undecided, '4…' opposed; anything else null.
