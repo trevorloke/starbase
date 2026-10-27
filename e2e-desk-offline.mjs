@@ -465,7 +465,7 @@ await page.waitForSelector('.pp-table tbody tr', { timeout: 8000 }).catch(() => 
 t = await D.main();
 check('server down (502): People shows the kept list, "No answer · from <time>" — not "No people yet", not "request failed"',
   (await countOf(page)) === countOnline && /No answer · from/i.test(await D.kept()) && !/No people yet|Import a list|request failed/i.test(t), `${await D.kept()} · ${t.slice(0, 160)}`);
-await page.evaluate((id) => { history.pushState({}, '', `/people/${id}`); window.dispatchEvent(new PopStateEvent('popstate')); }, dev.id);
+await page.evaluate((id) => { history.pushState({}, '', `/admin/people/${id}`); window.dispatchEvent(new PopStateEvent('popstate')); }, dev.id); // the desk lives in the admin
 await sleep(2500);
 t = await D.main();
 check('…a profile never opened: "No answer — check your signal", never "No one here — they may have been removed"',
