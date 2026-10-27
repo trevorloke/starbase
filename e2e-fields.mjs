@@ -410,7 +410,7 @@ const openSec = async (pg, title) => {
   return b;
 };
 const secBody = (title) => `.pf-sec:has(.pf-sec__btn:has-text("${title}")) .pf-sec__body`;
-const navIn = (pg, path) => pg.evaluate((u) => { history.pushState({}, '', u); dispatchEvent(new PopStateEvent('popstate')); }, path);
+const navIn = (pg, path0) => { const path = pg === vpage ? path0 : `/admin${path0}`; return (pg.evaluate((u) => { history.pushState({}, '', u); dispatchEvent(new PopStateEvent('popstate')); }, path)); };
 const swReady = (pg) => pg.evaluate(() => navigator.serviceWorker.ready.then(() => Boolean(navigator.serviceWorker.controller))).catch(() => false);
 const simple = async (pg, name, sel = null) => {
   const mm = await measure(pg, sel);
