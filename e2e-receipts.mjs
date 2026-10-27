@@ -127,7 +127,7 @@ const signup = async (page, base, { name, email, campaign }) => {
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
   await page.click('button[type="submit"]');
-  await page.waitForURL(`${base}/`, { timeout: 15000 });
+  await page.waitForURL(/\/admin\/?$/, { timeout: 15000 }); // a desk role lands in the admin
 };
 // Log a gift with Money's own form.
 const logGiftOnScreen = async (page, H, { donor, amount, method }) => {
@@ -196,7 +196,7 @@ const m1 = await simple(page, 'receipts list (desktop)');
 console.log(`      words on /money/receipts: ${m1.words}`);
 await D.shot('02-receipts-list');
 const connect = page.locator('main.page .rc-line a', { hasText: 'Connect' });
-check('email off: the line links to Connect (as Ladders and Outreach do)', (await connect.getAttribute('href').catch(() => null)) === '/outreach/website?connect=1');
+check('email off: the line links to Connect (as Ladders and Outreach do)', (await connect.getAttribute('href').catch(() => null)) === '/admin/outreach/website?connect=1');
 await connect.click();
 await page.waitForURL(`${ADMIN}/outreach/website?connect=1`, { timeout: 8000 }).catch(() => {});
 await sleep(700);

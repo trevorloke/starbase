@@ -76,6 +76,10 @@ const routeTiles = async (ctx) => {
   await ctx.route(/openstreetmap\.org/, (route) => { hits.osm += 1; route.abort(); });
 };
 
+// The sign-in lands in the admin with a full load, so the service worker
+// controls the desk from its first screen; the tiles it fetches are seen
+// (and answered) by the routes below only with this on.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const browser = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
@@ -163,7 +167,7 @@ check('map tiles come from STARBASE_TILE_URL (not OpenStreetMap)', hits.tiles > 
 const credit = await page.$eval('.leaflet-control-attribution', (el) => ({ text: el.innerText, html: el.innerHTML })).catch(() => ({ text: '', html: '' }));
 check('the provider’s credit shows, links kept, script stripped', /Example Tiles/.test(credit.text) && /href="https:\/\/tiles\.example\/about"/.test(credit.html) && !/script|alert/i.test(credit.html), credit.html.slice(0, 120));
 const kept = await page.evaluate(async () => {
-  const c = await caches.open('starbase-tiles-v1');
+  const c = await caches.open((await caches.keys()).find((k) => k.startsWith('starbase-tiles-')) || 'starbase-tiles-v2');
   const keys = (await c.keys()).map((r) => r.url).filter((u) => u.includes('tiles.example'));
   const body = keys.length ? await (await c.match(keys[0])).text() : '';
   return { n: keys.length, marked: body.includes('e2e-tile') };

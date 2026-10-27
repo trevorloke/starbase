@@ -389,7 +389,7 @@ await page.locator('a.today-row[href="/admin/inbox"]').click();
 await page.waitForURL(`${ADMIN}/inbox`, { timeout: 8000 }).catch(() => {});
 await page.waitForSelector('.pf-back', { timeout: 8000 }).catch(() => {});
 const backToday = page.locator('main.page .pf-back').first();
-check('Inbox from Today: "← Today", back to Today', /^← Today$/i.test((await backToday.innerText().catch(() => '')).trim()) && await backToday.getAttribute('href') === '/',
+check('Inbox from Today: "← Today", back to Today', /^← Today$/i.test((await backToday.innerText().catch(() => '')).trim()) && await backToday.getAttribute('href') === '/admin',
   await backToday.innerText().catch(() => ''));
 await D.go('/calls?channel=text&q=Harjit');
 await page.waitForSelector('.tx-replies', { timeout: 8000 }).catch(() => {});
@@ -409,7 +409,7 @@ t = await D.text();
 check('Inbox: Harjit, new, with his reply', (await page.locator('.tx-row.is-new').count()) === 1 && /Harjit Example/.test(t) && /Yes, put me down for a sign/.test(t), t.slice(0, 200));
 const backCalls = page.locator('main.page .pf-back').first();
 check('Inbox from Calls: "← Calls", back to the same list', /^← Calls$/i.test((await backCalls.innerText().catch(() => '')).trim())
-  && /^\/calls\?channel=text\b/.test(await backCalls.getAttribute('href').catch(() => '') || ''), `${await backCalls.innerText().catch(() => '')} ${await backCalls.getAttribute('href').catch(() => '')}`);
+  && /^\/admin\/calls\?channel=text\b/.test(await backCalls.getAttribute('href').catch(() => '') || ''), `${await backCalls.innerText().catch(() => '')} ${await backCalls.getAttribute('href').catch(() => '')}`);
 const when = await page.locator('.tx-row .tx-when').first().innerText().catch(() => '');
 check('Inbox: a text from today shows the time, not the date', /^\d{1,2}:\d{2}\s?[ap]\.m\.$/i.test(when.trim()), when);
 await simple(page, 'Inbox (desk)');
@@ -676,14 +676,14 @@ const pf = page.locator('.tx-pflink');
 check('profile: a Texts link with the count', /Texts\s*3/.test(await pf.innerText().catch(() => '')), await pf.innerText().catch(() => ''));
 await pf.click();
 await page.waitForURL(`${ADMIN}/inbox/${harjitConv}`, { timeout: 8000 }).catch(() => {});
-check('profile: the link opens Harjit\'s conversation', page.url() === `${BASE}/inbox/${harjitConv}`, page.url());
+check('profile: the link opens Harjit\'s conversation', page.url() === `${ADMIN}/inbox/${harjitConv}`, page.url());
 await D.go(`/map?person=${P.dev.id}`);
 await page.waitForSelector('aside.door-card', { timeout: 8000 }).catch(() => {});
 await page.click('aside.door-card .fk-more__btn').catch(() => {});
 const doorText = await page.locator('aside.door-card').getByRole('link', { name: 'Text', exact: true }).getAttribute('href').catch(() => '');
 const doorCall = await page.locator('aside.door-card').getByRole('link', { name: 'Call', exact: true }).getAttribute('href').catch(() => '');
-check('door card: More → Call / Text open the Calls card, never tel: / sms:', /^\/calls\?channel=text&.*person=/.test(doorText || '')
-  && /^\/calls\?channel=phone&/.test(doorCall || '') && (await page.locator('aside.door-card a[href^="sms:"], aside.door-card a[href^="tel:"]').count()) === 0,
+check('door card: More → Call / Text open the Calls card, never tel: / sms:', /^\/admin\/calls\?channel=text&.*person=/.test(doorText || '')
+  && /^\/admin\/calls\?channel=phone&/.test(doorCall || '') && (await page.locator('aside.door-card a[href^="sms:"], aside.door-card a[href^="tel:"]').count()) === 0,
   `${doorText} ${doorCall}`);
 await D.shot('16a-door-card-more');
 await D.go('/inbox/settings');

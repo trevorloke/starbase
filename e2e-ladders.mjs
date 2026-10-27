@@ -214,7 +214,11 @@ check('no code on the builder', !/\{\{|\}\}/.test(await D.text()), (await D.text
 const who = (await page.locator('.lad-step .lad-step__who').allInnerTexts()).map((x) => x.trim());
 const saidYes = `${L.emailYes} ${L.emailYes === 1 ? 'person' : 'people'} said yes`;
 check('the email card says who it reaches, the number with its noun (= server)', who.length === 1 && who[0] === `Goes only to people who said yes to email · ${saidYes}`, `${who.join(' | ')} vs ${L.emailYes}`);
-const back = async () => ({ text: ((await page.locator('.ops-back').first().textContent().catch(() => '')) || '').trim(), href: await page.locator('.ops-back').first().getAttribute('href').catch(() => null) });
+const backOrig = async () => ({ text: ((await page.locator('.ops-back').first().textContent().catch(() => '')) || '').trim(), href: await page.locator('.ops-back').first().getAttribute('href').catch(() => null) });
+// The desk lives in the admin: read its links without the base.
+const backRaw = backOrig;
+const backStripped = async () => { const b = await backRaw(); return b && b.href ? { ...b, href: b.href.replace(/^\/admin(?=\/|$)/, '') || '/' } : b; };
+const back = backStripped;
 let bk = await back();
 check('builder back: "← Ladders", like every screen', bk.text === '← Ladders' && bk.href === '/ladders', JSON.stringify(bk));
 check('the steps row says "Other steps", the page has one More',

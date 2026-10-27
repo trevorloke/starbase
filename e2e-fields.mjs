@@ -199,7 +199,7 @@ await sec.click();
 await sleep(300);
 const q = 'form[aria-label="More details"]';
 const labels = await spage.$$eval(`${q} .fd-q__label`, (els) => els.map((e) => e.textContent));
-check('each field, in order', labels.join('|') === 'Language at home|Union local|Strata council member', labels.join('|'));
+check('each field, in order', labels.filter((l) => !STANDARD.has(l)).join('|') === 'Language at home|Union local|Strata council member', labels.join('|'));
 check('Yes/No and Pick one are tap buttons, not selects', (await spage.$$(`${q} select`)).length === 0
   && (await spage.$$(`${q} .sv-q:has-text("Language at home") .sv-opt`)).length === 3 && (await spage.$$(`${q} .sv-q:has-text("Strata council member") .sv-opt`)).length === 2);
 m = await measure(spage, `${q} .sv-opt, ${q} input, ${q} .fd-save`);
