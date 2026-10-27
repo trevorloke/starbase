@@ -848,6 +848,7 @@ function DeskToday({ b, me, toast }) {
           </>
         )}
         <ul className="today-rows">
+          <LinkRow to="/banks" main="Phone banks" />
           <LinkRow to="/filings" main="Filings" />
           <LinkRow to="/surveys" main="Surveys" />
           {isManager && <LinkRow to="/admin" main={<>Admin <span className="muted">· members, teams, permissions</span></>} />}

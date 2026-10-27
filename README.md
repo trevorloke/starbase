@@ -18,10 +18,11 @@ button, no paragraphs, everything else one tap away.
 | **Money** | Gifts (one-time / monthly) with the entity-keyed cap engine; donor tiers; filings |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
 | **Outreach** | Newsletter + press-release blasts, petitions, and the Imagine Surrey website bridge |
+| **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
 | **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
 
-Volunteers get four tabs — **Today · Map · Calls · Shifts** — plus *Signs to
-put up* for sign crews; desk-only addresses send them back to Today.
+Volunteers get five tabs — **Today · Map · Calls · Shifts · ImagineU** — plus
+*Signs to put up* for sign crews; desk-only addresses send them back to Today.
 
 **Setup is one-time.** Starbase runs for Imagine Surrey only: the first
 person to open `/signup` sets it up (name, email, password) and becomes its
@@ -105,6 +106,22 @@ than a week after they came off is refused. Contacts are door, phone, text or
   rated some other way (a 1–5) is mapped value by value under *What each
   rating means on your scale* (a 5 there can be a 1 here); dates come in as
   spreadsheets write them (10/21/2026, 21 Oct 2026).
+- **Phone banks** (People → More, or Calls → Phone banks): a named list of
+  numbers to call, made from the people list (a rating, a tag, a search —
+  everyone with a phone who matches, never do-not-contact), with a script.
+  The desk hands numbers to a caller, or splits them across a team, takes
+  unfinished ones back, closes the bank. A caller's *Your call lists* (on
+  Calls) opens each bank on the Calls card, script and all; a phone call
+  they log crosses the number off, *Skip* crosses one off without a call.
+- **ImagineU** (a tab for every role): the campaign's training. Sections of
+  lessons; each lesson is a note, a document (PDF, Word, PowerPoint, Excel),
+  a video (a YouTube or Vimeo link, or a short MP4), audio (MP3, M4A, WAV),
+  a picture, contacts, or a procedure, with words in Markdown and a file
+  (12 MB at most) or a link behind it. Everyone ticks *Done*; the desk edits
+  in place, chooses who sees each lesson (everyone signed in · the desk ·
+  public — on the website at `/learn/<slug>`) and reads *Progress*: who has
+  done which. Files are served to those who may see the lesson and are not
+  in the export.
 - **The dashboard** (managers, at the top of Today): contacts today, in the
   last 7 or 30 days or in all — how many, doors, calls & texts, people
   reached, support, canvassers, who is out now; a bar per day (per week on

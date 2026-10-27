@@ -540,7 +540,7 @@ html:has(.auth-page) body { background: transparent; }
      tabs fit a 360px phone whole, with an 8px gutter at each end. */
   .tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
-    display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr));
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
     gap: 2px;
     background: var(--navy);
     padding: 6px var(--s-2) calc(6px + env(safe-area-inset-bottom));
@@ -556,7 +556,7 @@ html:has(.auth-page) body { background: transparent; }
   .tabbar .tab-icon { width: 22px; height: 22px; flex: none; }
   .tabbar .tab-iconwrap { position: relative; display: inline-flex; }
   .tabbar .tab-badge { position: absolute; top: -6px; right: -12px; margin: 0; }
-  .tabbar .tab-label { display: block; white-space: nowrap; }
+  .tabbar .tab-label { display: block; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
   .tabbar a.active { color: #fff; background: var(--navy-2); font-weight: 700; }
   .tabbar a.active .tab-icon { stroke-width: 2.2; color: var(--gold); }
   .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }

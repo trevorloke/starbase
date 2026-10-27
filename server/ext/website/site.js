@@ -552,7 +552,7 @@ siteApp.get('*', async (c) => {
 const APP_PATHS = new Set([
   'api', 'assets', 'site', 'site-assets', 'media', 'login', 'signup', 'join', 'map', 'calls', 'people', 'shifts', 'turfs',
   'signs', 'inbox', 'my-people', 'money', 'outreach', 'filings', 'team', 'ladders', 'follow-ups', 'surveys', 'rating-scale',
-  'website', 'website-admin', 'admin', 'fonts', 'tiles', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c',
+  'website', 'website-admin', 'admin', 'fonts', 'tiles', 'imagineu', 'banks', 'learn', 'learn-files', 'e', 'd', 'n', 'v', 'u', 'p', 'r', 'lu', 'o', 'c',
 ]);
 const SITE_PATH = /^\/(?:news|events|our-team|store|cart)(?:\/|$)|^\/(?:sitemap\.xml|robots\.txt)$/;
 

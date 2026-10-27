@@ -45,6 +45,7 @@ const ICONS = {
   money: <><circle cx="12" cy="12" r="8.5" /><path d="M14.8 9.2c-.5-.9-1.5-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2s1.2 1.6 2.8 1.9 2.8.8 2.8 2.1-1.2 2.1-2.8 2.1c-1.3 0-2.4-.5-2.9-1.5M12 6v12" /></>,
   signs: <><rect x="4" y="4" width="16" height="10" rx="1" /><path d="M12 14v7M9 21h6" /></>,
   outreach: <><path d="M4 10v4h3l7 4.5v-13L7 10H4z" /><path d="M17 9.5a3.5 3.5 0 0 1 0 5M19.2 7a7 7 0 0 1 0 10" /></>,
+  learn: <><path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5z" /><path d="M6.5 11.5v4.2c0 1.3 2.5 2.8 5.5 2.8s5.5-1.5 5.5-2.8v-4.2" /><path d="M21 9.5v5" /></>,
   website: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z" /></>,
 };
 const Icon = ({ name }) => (
@@ -64,6 +65,7 @@ const NAV_DESK = [
   { to: '/money',    label: 'Money',    icon: 'money', area: 'money' },
   { to: '/signs',    label: 'Signs',    icon: 'signs', area: 'signs' },
   { to: '/outreach', label: 'Outreach', icon: 'outreach', area: 'outreach' },
+  { to: '/imagineu', label: 'ImagineU', icon: 'learn', area: 'learn' },
 ];
 // The areas a person has: what the server said, else their role's usual ones.
 export const areasOf = (me) => (Array.isArray(me?.areas) ? me.areas : (isDesk(me) ? ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data'] : []));
@@ -74,6 +76,7 @@ const NAV_VOLUNTEER = [
   { to: '/map',    label: 'Map',    icon: 'map' },
   { to: '/calls',  label: 'Calls',  icon: 'calls' },
   { to: '/shifts', label: 'Shifts', icon: 'shifts' },
+  { to: '/imagineu', label: 'ImagineU', icon: 'learn' },
 ];
 
 // Everything sent field work can change (ratings, doors left, new people,
@@ -278,7 +281,7 @@ function SignedInShell({ me }) {
   // A volunteer given an area gets its tab after their own four.
   const nav = desk
     ? NAV_DESK.filter((t) => hasArea(me, t.area))
-    : [...NAV_VOLUNTEER, ...NAV_DESK.filter((t) => t.area && t.area !== 'map' && areasOf(me).includes(t.area))];
+    : [...NAV_VOLUNTEER, ...NAV_DESK.filter((t) => t.area && t.area !== 'map' && t.area !== 'learn' && areasOf(me).includes(t.area))];
   // New replies to your texts: a small count on Calls.
   const unread = Number(useTextingStatus(me).data?.unread) || 0;
   // "Share my location while I'm out" (the map's switch): pings while it's on.

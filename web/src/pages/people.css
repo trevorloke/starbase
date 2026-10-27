@@ -482,3 +482,10 @@ button.pf-back:focus-visible { outline: 2px solid var(--mark-deep); outline-offs
 .pf-status-row .pf-status { margin: 0; }
 .pf-status-row:has(.pf-status:empty) { display: none; }
 .pf-status-row { margin-top: var(--s-2); }
+
+/* Calls on a phone bank */
+.cl-bank { margin: 0 0 var(--s-3); }
+.cl-bank__line { margin: 0 0 var(--s-1); font-size: 14px; }
+.cl-bank__line a { color: var(--text-2); text-decoration: none; }
+.cl-bank__script { white-space: pre-wrap; font: inherit; font-size: 15px; line-height: 1.55; margin: var(--s-1) 0 0; padding: var(--s-3); background: var(--paper-0); border: var(--border); border-radius: var(--r-card); }
+.cl-lists { margin: 0 0 var(--s-2); font-size: 14px; }

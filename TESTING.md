@@ -160,6 +160,20 @@ one tap away under **More**.
   public volunteer page (`/v/imagine-surrey`), newsletter page
   (`/n/imagine-surrey`), petition, event, and donate (`/d/imagine-surrey`)
   links; *For your web developer* has the embed code for the site.
+- **ImagineU** (the tab) → *Edit* → add a section (*Start here*) and a few
+  lessons: a note (words), a video (paste a YouTube link), a document
+  (upload a PDF; set *Who sees it* to *Public* and open the link ImagineU
+  shows — the lesson is on the website), *Who to call*. *Done editing*;
+  open a lesson, *Mark as done*; *Progress* shows each member's count and,
+  tapped, which lessons. A volunteer sees the lessons, not *Edit*.
+- **Phone banks** (People → More → Phone banks, or Today → More) → *New
+  phone bank*: a name, *Undecided* under *Who to call* (the count updates as
+  you filter), a script, *Make the bank*. On the bank: *Hand out* three
+  numbers to a volunteer (or a team — split evenly), watch *Callers* fill;
+  *Take back* unfinished ones; *Close*. On the volunteer's phone, Calls
+  says *Your call lists 1*; tapping through opens the bank on the Calls
+  card with the script; each call they log crosses a number off, *Skip*
+  (on the bank page) crosses one off without a call.
 - **Admin → Members** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
 - **Admin → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
 - **Admin → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
@@ -197,6 +211,11 @@ one tap away under **More**.
   it means). **4** asks *Voting for?* — McCallum · Locke · Annis · van Vliet ·
   Randhawa · Not sure (or the list your manager set; *Not sure* is always
   last). A toast confirms; *Change* fixes a mis-tap.
+- **ImagineU** (the fifth tab) — the lessons the campaign put up; open one,
+  watch or read it, *Mark as done*. A manager can see what you've done.
+- **Calls → Your call lists** — the phone banks with numbers handed to you;
+  one opens on the Calls card with its script; each call you log crosses a
+  number off, and *All done* says so.
 - **Map → Show → Share my location while I'm out** — off until you turn it
   on; the phone asks for location once. While it's on, your manager's
   dashboard shows where you are, about once a minute (a green ring, *out

@@ -24,13 +24,14 @@ export const AREAS = [
   { key: 'website', label: 'Website', what: 'pages, news, the store and its orders' },
   { key: 'data', label: 'Data', what: 'the full export, the event log, records' },
   { key: 'admin', label: 'Admin', what: 'members, teams, permissions, the rating scale' },
+  { key: 'learn', label: 'ImagineU', what: 'training: the lessons, their files, who has done what' },
 ];
 export const AREA_KEYS = AREAS.map((a) => a.key);
 // What each role has with nothing granted or denied — the app's tabs.
 export const BASE = {
   manager: AREA_KEYS,
-  treasurer: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data'],
-  staff: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data'],
+  treasurer: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn'],
+  staff: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'learn'],
   volunteer: [],
 };
 
@@ -44,12 +45,14 @@ const ACTION_AREA = {
   ladder: 'outreach', text: 'outreach', texting: 'outreach', subscription: 'outreach',
   site: 'website', store: 'website',
   member: 'admin', team: 'admin', permission: 'admin', workspace: 'admin', scale: 'admin', field: 'admin',
+  bank: 'people',
+  learn: 'learn',
 };
 // field.values.set is a person's record; field.ping ("I'm here", from the
 // map) is nobody's area — anyone who canvasses may say where they are.
 export const areaOfAction = (name) => {
   if (name === 'field.values.set') return 'people';
-  if (name === 'field.ping') return null;
+  if (name === 'field.ping' || name === 'learn.done') return null;
   return ACTION_AREA[String(name).split('.')[0]] || null;
 };
 
@@ -64,6 +67,8 @@ const PATH_AREA = [
   [/^\/api\/turfs(\/|$)/, 'map'],
   [/^\/api\/(team|admin|invites)(\/|$)/, 'admin'],
   [/^\/api\/fields(\/|$)/, 'admin'],
+  [/^\/api\/learn\/progress$/, 'learn'],
+  [/^\/api\/banks(\/|$)/, 'people'],
   [/^\/api\/persons(\/|$)/, 'people'],
 ];
 export const areaOfPath = (path) => PATH_AREA.find(([re]) => re.test(path))?.[1] || null;

@@ -14,6 +14,8 @@ import Signup from './pages/Signup.jsx';
 import Today from './pages/Today.jsx';
 const MapPage = lazy(() => import('./pages/Map.jsx'));
 const TextingInbox = lazy(() => import('./pages/TextingInbox.jsx'));
+const ImagineU = lazy(() => import('./pages/ImagineU.jsx'));
+const Banks = lazy(() => import('./pages/Banks.jsx'));
 const TextingThread = lazy(() => import('./pages/TextingThread.jsx'));
 const TextingSettings = lazy(() => import('./pages/TextingSettings.jsx'));
 const People = lazy(() => import('./pages/People.jsx'));
@@ -99,6 +101,12 @@ export default function App() {
         <Route path="/inbox/:id" element={<TextingThread />} />
         {/* The people you know: every role (the server sends only your own). */}
         <Route path="/my-people" element={<MyPeople />} />
+        {/* ImagineU: training for every role (the desk edits in place). */}
+        <Route path="/imagineu" element={<ImagineU />} />
+        <Route path="/imagineu/:id" element={<ImagineU />} />
+        {/* Phone banks: the desk runs them; a volunteer sees their own lists. */}
+        <Route path="/banks" element={<Banks />} />
+        <Route path="/banks/:id" element={<Banks />} />
         <Route element={<DeskOnly />}>
           <Route path="/people/import" element={<ImportPeople />} />
           <Route path="/people/fields" element={<Fields />} />

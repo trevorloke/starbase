@@ -28,9 +28,9 @@ before(async () => {
 });
 
 test('each role starts with its usual areas; a manager has them all', async () => {
-  assert.deepEqual(await areasOf(mgr), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'admin']);
-  assert.deepEqual(await areasOf(staff), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data']);
-  assert.deepEqual(await areasOf(treas), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data']);
+  assert.deepEqual(await areasOf(mgr), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'admin', 'learn']);
+  assert.deepEqual(await areasOf(staff), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'learn']);
+  assert.deepEqual(await areasOf(treas), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn']);
   assert.deepEqual(await areasOf(vol), []);
   assert.equal((await staff.get('/api/admin/permissions')).status, 403, 'admin is the manager’s');
   assert.equal((await staff.action('team.create', { name: 'x' })).status, 403);

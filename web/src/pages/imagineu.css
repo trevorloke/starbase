@@ -1,0 +1,87 @@
+/* ImagineU (ImagineU.jsx). Everything is lu-*. */
+.lu { min-width: 0; }
+.lu-head { align-items: flex-start; }
+.lu-tools { display: flex; gap: var(--s-2); }
+.lu-back { margin: 0 0 var(--s-3); font-size: 14px; }
+.lu-back a { color: var(--text-2); text-decoration: none; }
+.lu-back a:hover { text-decoration: underline; }
+.lu-progress { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-4); font-size: 14px; color: var(--text-2); }
+.lu-bar { flex: 0 0 160px; height: 8px; border-radius: 999px; background: var(--paper-2); overflow: hidden; }
+.lu-bar > span { display: block; height: 100%; background: var(--ok); border-radius: 999px; }
+.lu-bar--sm { flex: 0 0 120px; height: 6px; }
+.lu-note { font-size: 13px; margin: var(--s-2) 0 0; }
+
+.lu-sec { margin: var(--s-4) 0 var(--s-5); }
+.lu-sec__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.lu-sec__h { font-size: 17px; margin: 0; }
+.lu-sec__note { font-weight: 400; font-size: 14px; }
+.lu-sec__tools { display: inline-flex; gap: var(--s-1); align-items: center; flex-wrap: wrap; }
+.lu-list { list-style: none; margin: 0; padding: 0; background: var(--paper-0); border: var(--border); border-radius: var(--r-card); overflow: hidden; }
+.lu-list > li + li { border-top: 1px solid var(--rule); }
+.lu-row { display: flex; align-items: center; gap: var(--s-3); min-height: 60px; padding: 8px 12px; color: var(--text-1); text-decoration: none; }
+@media (hover: hover) { .lu-row:hover { background: var(--paper); } }
+.lu-row.is-draft .lu-row__title { color: var(--text-3); }
+.lu-row__main { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+.lu-row__title { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lu-row__sub { font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lu-row__n { font-size: 12px; color: var(--text-3); }
+.lu-chip { font-size: 11px; min-height: 0; padding: 1px 7px; }
+.lu-mark {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px;
+  font-family: var(--font-display); font-weight: 700; font-size: 15px; color: #fff; background: var(--navy);
+}
+.lu-mark--document { background: #1f5fa8; }
+.lu-mark--video { background: #b91c1c; }
+.lu-mark--audio { background: #7b61ff; }
+.lu-mark--picture { background: #2a9d8f; }
+.lu-mark--contacts { background: #b97a00; }
+.lu-mark--procedure { background: var(--navy-2); }
+.lu-mark.is-done { background: var(--ok); }
+.lu-addrow, .lu-addsec { padding: 8px 12px; }
+.lu-addsec { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; padding: var(--s-3) 0; }
+
+/* Forms */
+.lu-form { display: flex; flex-direction: column; gap: var(--s-2); width: 100%; padding: var(--s-3); background: var(--paper-0); border: var(--border-2); border-radius: var(--r-card); }
+.lu-form--lesson { margin: var(--s-2) 0; }
+.lu-form__row { display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: flex-end; }
+.lu-form__row > div { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+.lu-form__grow { flex: 1 1 240px; }
+.lu-form__hint { margin: 0; font-size: 12.5px; }
+.lu-form__bar { margin-top: var(--s-2); }
+.lu-form__text { font: inherit; font-size: 15px; line-height: 1.5; resize: vertical; min-height: 120px; }
+.lu-form__acts { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-2); }
+.lu-form__remove { margin-left: auto; color: var(--danger); }
+.lu-check { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; font-size: 15px; }
+.lu-check input { width: 20px; height: 20px; accent-color: var(--ink); }
+.lu-file { display: flex; flex-direction: column; gap: 6px; padding: var(--s-2) var(--s-3); border: 1px dashed var(--rule-2); border-radius: var(--r-ctrl); }
+.lu-file__input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.lu-file__cur { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lu-file label.btn { align-self: flex-start; cursor: pointer; }
+.lu-file label.btn.is-busy { opacity: 0.6; }
+
+/* A lesson */
+.lu-lesson .lu-head { margin-bottom: var(--s-3); }
+.lu-media { margin: 0 0 var(--s-4); }
+.lu-media img { max-width: 100%; height: auto; border-radius: var(--r-card); border: var(--border); }
+.lu-media video { width: 100%; max-height: 70vh; border-radius: var(--r-card); background: #000; }
+.lu-media audio { width: 100%; display: block; margin-bottom: 6px; }
+.lu-video { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--r-card); overflow: hidden; background: #000; }
+.lu-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.lu-pdf { width: 100%; height: min(70vh, 720px); border: var(--border); border-radius: var(--r-card); background: var(--paper-1); }
+.lu-dl { font-size: 14px; margin-left: 8px; }
+.lu-prose { max-width: 70ch; }
+.lu-prose--procedure ol li, .lu-prose--contacts ul li { margin: 0.4em 0; }
+.lu-done { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-5) 0; flex-wrap: wrap; }
+.lu-public { font-size: 13px; }
+
+/* Progress */
+.lu-plist { list-style: none; margin: 0; padding: 0; background: var(--paper-0); border: var(--border); border-radius: var(--r-card); }
+.lu-plist > li + li { border-top: 1px solid var(--rule); }
+.lu-prow { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 56px; padding: 8px 12px; font: inherit; text-align: left; color: var(--text-1); background: transparent; border: 0; cursor: pointer; }
+.lu-prow__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lu-prow__name { font-weight: 600; }
+.lu-prow__n { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.lu-pdetail { list-style: none; margin: 0; padding: 0 12px 10px 56px; font-size: 14px; }
+.lu-pdetail li { padding: 3px 0; color: var(--text-3); }
+.lu-pdetail li.is-done { color: var(--text-1); }
+.lu-pdetail a { color: inherit; }

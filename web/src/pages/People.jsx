@@ -739,6 +739,7 @@ function PeopleList() {
               { to: `/calls${carry(f, { channel: 'phone' })}`, label: 'Call list', icon: 'phone' },
               { to: `/calls${carry(f, { channel: 'text' })}`, label: 'Text list', icon: 'text' },
               { to: '/inbox', label: 'Inbox', icon: 'text', state: { from: { to: '/people', label: 'People' } } },
+              desk && { to: '/banks', label: 'Phone banks', icon: 'phone' },
               desk && { to: '/people/import', label: 'Import', icon: 'upload' },
               desk && { to: '/surveys', label: 'Surveys' },
               desk && { to: '/people/connected', label: 'Most connected' },
@@ -896,6 +897,19 @@ const callOrder = (list, seed) => list
   .sort((a, b) => (a.t === b.t ? a.h - b.h : a.t - b.t))
   .map((x) => x.p);
 
+// "Your call lists · 2" when numbers are handed to you; the desk's way to the banks.
+function CallListsLink({ desk }) {
+  const q = useQuery({ queryKey: ['banks', 'mine'], queryFn: () => apiGet('/banks/mine'), staleTime: 30_000, retry: false });
+  const n = q.data?.banks?.length || 0;
+  if (!n && !desk) return null;
+  return (
+    <p className="cl-lists">
+      <Link to="/banks">{n ? <>Your call lists <strong className="mono">{n}</strong></> : 'Phone banks'}</Link>
+      {n > 0 && desk && <> · <Link to="/banks">Phone banks</Link></>}
+    </p>
+  );
+}
+
 function CallsScreen() {
   const { me } = useOutletContext() ?? {};
   const location = useLocation();
@@ -919,19 +933,24 @@ function CallsScreen() {
   const [textedHere, setTextedHere] = useState(() => new Set()); // sent from this card, this sitting
   const [sentId, setSentId] = useState(null); // the card just sent: "✓ Sent" and Next, nothing else
 
+  // A phone bank (?bank=): the numbers handed to you that are left, in the
+  // bank's order; a logged call crosses one off on the server.
+  const bankId = /^[0-9a-f-]{36}$/i.test(params.get('bank') || '') ? params.get('bank') : null;
   const qs = new URLSearchParams({ q: f.q, limit: String(LIMIT), has: 'phone' });
   if (f.tag) qs.set('tag', f.tag);
   if (f.rating) qs.set('rating', ratingQuery(scale, f.rating));
   if (f.role) qs.set('role', f.role);
   if (f.field) qs.set('field', f.field);
   // The list is kept on this phone, so losing signal mid-list loses nothing.
-  const copyName = `calls:${qs}`;
+  const copyName = bankId ? `bank:${bankId}` : `calls:${qs}`;
   const persons = useQuery({
-    queryKey: ['persons', 'list', qs.toString()],
-    queryFn: () => apiGet(`/persons?${qs}`),
+    queryKey: bankId ? ['banks', bankId, 'mine'] : ['persons', 'list', qs.toString()],
+    queryFn: () => (bankId ? apiGet(`/banks/${bankId}/mine`) : apiGet(`/persons?${qs}`)),
     placeholderData: keepPreviousData,
     ...phoneCopy(me, copyName),
   });
+  const bank = bankId ? persons.data?.bank : null;
+  const [scriptOpen, setScriptOpen] = useState(false);
   useKeepCopy(me, copyName, persons);
   const listCopy = showingCopy(persons);
   const seed = me?.user?.id || '';
@@ -943,12 +962,13 @@ function CallsScreen() {
   );
   const rows = useMemo(() => {
     const ok = reachable;
+    if (bankId) return ok; // a phone bank keeps its own order
     if (!smsOn) return callOrder(ok, seed);
     const awaySet = new Set(away ?? []);
     const repliedSet = new Set(replied ?? []);
     const open = callOrder(ok.filter((p) => repliedSet.has(p.id) || (!awaySet.has(p.id) && !textedHere.has(p.id))), seed);
     return [...open.filter((p) => repliedSet.has(p.id)), ...open.filter((p) => !repliedSet.has(p.id))];
-  }, [reachable, seed, smsOn, away, replied, textedHere]);
+  }, [reachable, seed, smsOn, away, replied, textedHere, bankId]);
   const offline = noSignal(persons) || (persons.isPlaceholderData && persons.fetchStatus === 'paused');
 
   const [done, setDone] = useState(readDone);
@@ -1105,20 +1125,38 @@ function CallsScreen() {
   return (
     <div className="cl-page">
       <div className="page-head cl-head">
-        <h1>{channel === 'text' ? 'Texts' : 'Calls'}</h1>
-        <div className="cl-toggle" role="group" aria-label="Call or text">
+        <h1>{bank ? bank.name : channel === 'text' ? 'Texts' : 'Calls'}</h1>
+        {!bankId && <div className="cl-toggle" role="group" aria-label="Call or text">
           <button type="button" aria-pressed={channel === 'phone'} onClick={() => setChannel('phone')}>
             <Icon name="phone" size={18} /> Phone
           </button>
           <button type="button" aria-pressed={channel === 'text'} onClick={() => setChannel('text')}>
             <Icon name="text" size={18} /> Text
           </button>
-        </div>
+        </div>}
       </div>
 
-      {filterChips}
-      <MyPeopleLink me={me} />
-      <TextingRepliesLink me={me} />
+      {bankId ? (
+        <div className="cl-bank">
+          <p className="cl-bank__line">
+            <Link to={desk ? '/banks' : '/banks'}>← {desk ? 'Phone banks' : 'Your call lists'}</Link>
+            {bank && <span className="muted"> · {bank.done} of {bank.total} done</span>}
+          </p>
+          {bank?.script && (
+            <>
+              <button type="button" className="btn btn-quiet disclose disclose--inline" aria-expanded={scriptOpen} onClick={() => setScriptOpen((v) => !v)}>Script</button>
+              {scriptOpen && <pre className="cl-bank__script">{bank.script}</pre>}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {filterChips}
+          <CallListsLink desk={desk} />
+          <MyPeopleLink me={me} />
+          <TextingRepliesLink me={me} />
+        </>
+      )}
 
       {listCopy && !offline && <p className="cl-copy"><span className="chip obx-copy">Offline copy</span></p>}
       {persons.isError && !offline && !listCopy && <p className="error">{noAnswer(persons.error) ? 'No answer — check your signal' : persons.error.message}</p>}
@@ -1130,8 +1168,8 @@ function CallsScreen() {
       ) : persons.isError && !list && !current ? null : rows.length === 0 && !current ? (
         <div className="pp-empty">
           {/* Everyone here has a text from the campaign: replies come to the Inbox. */}
-          <p>{reachable.length > 0 ? `No one left to ${noun}.` : `No one to ${noun} yet.`}</p>
-          {desk && <Link className="btn pp-btn" to="/people">Go to People</Link>}
+          <p>{bankId ? (bank?.total ? 'All done — every number on your list is called.' : 'No numbers on your list.') : reachable.length > 0 ? `No one left to ${noun}.` : `No one to ${noun} yet.`}</p>
+          {bankId ? <Link className="btn pp-btn" to="/banks">{desk ? 'Phone banks' : 'Your call lists'}</Link> : desk && <Link className="btn pp-btn" to="/people">Go to People</Link>}
         </div>
       ) : !current ? (
         <div className="pp-empty cl-alldone">
