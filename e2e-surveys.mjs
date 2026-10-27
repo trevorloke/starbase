@@ -61,7 +61,7 @@ const helpers = (page, who) => {
       try { json = JSON.parse(raw); } catch { /* csv */ }
       return { status: r.status, json, raw };
     }, [path, body]),
-    go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
+    go: async (path) => { await page.goto(`${/vol/.test(who) ? BASE : ADMIN}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
   };
 };
 // Simplicity: words on the screen (not the nav/tab bar), yellow buttons,

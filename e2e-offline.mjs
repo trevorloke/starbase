@@ -83,7 +83,7 @@ const browser = await chromium.launch({
 const errors = [];
 
 // ── helpers bound to one page ──
-const helpers = (page, ctx) => ({
+const helpers = (page, ctx, desk = false) => ({
   text: async () => ((await page.innerText('body').catch(() => '')) || '').replace(/\s+/g, ' '),
   // The API through the context's own cookies, outside the page's network —
   // works while the page is "offline" (the server's side of the story).
@@ -93,7 +93,7 @@ const helpers = (page, ctx) => ({
       : await ctx.request.post(`${BASE}/api${path}`, { data: body });
     return { status: r.status(), json: await r.json().catch(() => null) };
   },
-  go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1200); },
+  go: async (path) => { await page.goto(`${desk ? ADMIN : BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1200); },
   shot: (n) => page.screenshot({ path: `${SHOTS}/${n}.png` }),
   chip: () => page.$eval('.offline-strip__chip', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
   // SIMPLE.md's checks on what's on screen now (inside `sel`).
@@ -121,7 +121,7 @@ await routeTiles(ctx);
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(e.message));
 if (process.env.DEBUG) page.on('requestfailed', (r) => console.log('      [desk] failed', r.method(), r.url().replace(BASE, ''), r.failure()?.errorText));
-const D = helpers(page, ctx);
+const D = helpers(page, ctx, true);
 
 await D.go('/signup');
 await page.fill('#su-name', 'Riley Desk');

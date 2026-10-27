@@ -151,7 +151,7 @@ const helpers = (page, who) => {
       try { json = JSON.parse(raw); } catch { /* not json */ }
       return { status: r.status, json, raw };
     }, [path, body]),
-    go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
+    go: async (path) => { await page.goto(`${/vol/.test(who) ? BASE : ADMIN}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
   };
 };
 const measure = (page, sel = null) => page.evaluate((targets) => {

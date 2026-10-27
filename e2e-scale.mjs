@@ -61,7 +61,7 @@ const helpers = (page, ctx, who) => {
         : await ctx.request.post(`${BASE}/api${path}`, { data: body });
       return { status: r.status(), json: await r.json().catch(() => null) };
     },
-    go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1000); },
+    go: async (path) => { await page.goto(`${/vol/.test(who) ? BASE : ADMIN}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1000); },
     chip: () => page.$eval('.offline-strip__chip', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
     swReady: () => page.evaluate(() => navigator.serviceWorker.ready.then(() => Boolean(navigator.serviceWorker.controller))),
   };

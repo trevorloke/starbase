@@ -54,7 +54,7 @@ const browser = await chromium.launch({
 });
 const errors = [];
 
-const helpers = (page, ctx) => ({
+const helpers = (page, ctx, desk = false) => ({
   text: async () => ((await page.innerText('body').catch(() => '')) || '').replace(/\s+/g, ' '),
   api: async (path, body) => {
     const r = body === undefined
@@ -62,7 +62,7 @@ const helpers = (page, ctx) => ({
       : await ctx.request.post(`${BASE}/api${path}`, { data: body });
     return { status: r.status(), json: await r.json().catch(() => null) };
   },
-  go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1200); },
+  go: async (path) => { await page.goto(`${desk ? ADMIN : BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1200); },
   shot: (n) => page.screenshot({ path: `${SHOTS}/${n}.png` }),
   chip: () => page.$eval('.offline-strip__chip', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
   toast: () => page.$eval('.walk-toast', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
@@ -86,7 +86,7 @@ const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 }, t
 await routeTiles(ctx);
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(e.message));
-const D = helpers(page, ctx);
+const D = helpers(page, ctx, true);
 await D.go('/signup');
 await page.fill('#su-name', 'Riley Desk');
 await page.fill('#su-email', `desk+${tag}@example.org`);

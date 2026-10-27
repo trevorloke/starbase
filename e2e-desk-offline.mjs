@@ -83,7 +83,7 @@ const errors = [];
 const KEPT = /No signal · from (\d{1,2}:\d{2} (am|pm)|[A-Z][a-z]{2} \d{1,2})/i;
 const FIELDS = 'main.page input:not([type=checkbox]), main.page select, main.page textarea, main.page button, main.page a.btn';
 
-const helpers = (page, ctx) => ({
+const helpers = (page, ctx, desk = false) => ({
   text: async () => ((await page.innerText('body').catch(() => '')) || '').replace(/\s+/g, ' '),
   main: async () => ((await page.innerText('main.page').catch(() => '')) || '').replace(/\s+/g, ' '),
   // The server's side, through the context's own cookies (works while the page is offline).
@@ -93,7 +93,7 @@ const helpers = (page, ctx) => ({
       : await ctx.request.post(`${BASE}/api${path}`, { data: body });
     return { status: r.status(), json: await r.json().catch(() => null) };
   },
-  go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1300); },
+  go: async (path) => { await page.goto(`${desk ? ADMIN : BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(1300); },
   shot: (n) => page.screenshot({ path: `${SHOTS}/${n}.png` }),
   kept: () => page.$eval('.offline-strip__kept', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
   chip: () => page.$eval('.offline-strip__chip', (el) => el.innerText.replace(/\s+/g, ' ').trim()).catch(() => ''),
@@ -158,7 +158,7 @@ const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 }, t
 await routeTiles(ctx);
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(e.message));
-const D = helpers(page, ctx);
+const D = helpers(page, ctx, true);
 const mgrEmail = `desk.mgr+${tag}@example.org`;
 await signupAs(page, D, 'Riley Desk', mgrEmail);
 const meA = (await D.api('/auth/me')).json;
@@ -476,7 +476,7 @@ await page.unroute('**/api/**');
 {
   const p3 = await ctx.newPage();
   p3.on('pageerror', (e) => errors.push('[502 tab] ' + e.message));
-  const D3 = helpers(p3, ctx);
+  const D3 = helpers(p3, ctx, true);
   await D3.go('/');
   await p3.waitForSelector('.today-nums', { timeout: 8000 }).catch(() => {});
   await p3.route('**/api/**', (route) => route.fulfill({ status: 502, contentType: 'text/html', body: '<html><body>502 Bad Gateway</body></html>' }));
@@ -517,7 +517,7 @@ check('a note typed on a profile, then People tapped: the note is saved, once', 
 {
   const page2 = await ctx.newPage();
   page2.on('pageerror', (e) => errors.push('[tab 2] ' + e.message));
-  const D2t = helpers(page2, ctx);
+  const D2t = helpers(page2, ctx, true);
   await D.go(`/people/${tom.id}`);
   await page.waitForSelector('.pf-rate', { timeout: 8000 });
   await D2t.go(`/people/${maya.id}`);
@@ -558,7 +558,7 @@ const staffInv = (await D.api('/actions/member.invite', { email: `desk.staff+${t
 // A second tab left open on Money: its copies are kept for that tab only.
 const tabB = await ctx.newPage();
 tabB.on('pageerror', (e) => errors.push('[tab B] ' + e.message));
-const TB = helpers(tabB, ctx);
+const TB = helpers(tabB, ctx, true);
 await TB.go('/money');
 await tabB.waitForSelector('#gift-list, .ops-rows', { timeout: 8000 }).catch(() => {});
 await sleep(1200);
@@ -618,7 +618,7 @@ await sleep(800);
 // ════════════════════════════════════════════════════════════════════════════
 const D2 = D; // the desk's cookies are Sam's now; the manager's API is a fresh context
 const mctx = await browser.newContext();
-const M = helpers(await mctx.newPage(), mctx);
+const M = helpers(await mctx.newPage(), mctx, true);
 const login = await mctx.request.post(`${BASE}/api/auth/login`, { data: { email: mgrEmail, password: 'surrey-forward-2026' } });
 check('manager signs in again (API) to invite a volunteer', login.ok(), login.status());
 const volEmail = `desk.vol+${tag}@example.org`;
@@ -751,7 +751,7 @@ await pctx.addInitScript(() => {
 const pp = await pctx.newPage();
 const perrors = [];
 pp.on('pageerror', (e) => perrors.push(e.message));
-const PH = helpers(pp, pctx);
+const PH = helpers(pp, pctx, true);
 await PH.go('/login');
 await pp.fill('#login-email', mgrEmail);
 await pp.fill('#login-password', 'surrey-forward-2026');
@@ -776,7 +776,7 @@ void D2;
 
 // ── The books still verify ──
 const relog = await browser.newContext();
-const R = helpers(await relog.newPage(), relog);
+const R = helpers(await relog.newPage(), relog, true);
 await relog.request.post(`${BASE}/api/auth/login`, { data: { email: mgrEmail, password: 'surrey-forward-2026' } });
 const v = (await R.api('/audit/verify')).json;
 check('hash chain verifies after the whole journey', v?.ok === true && v.checked > 20, JSON.stringify(v));

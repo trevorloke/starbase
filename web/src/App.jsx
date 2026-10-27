@@ -124,6 +124,12 @@ export default function App({ mode = 'field' }) {
           <Route path="/" element={<Today />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/calls" element={<People key="calls" mode="calls" />} />
+          {/* Desk addresses that would otherwise read as an id. */}
+          <Route path="/people/import" element={<FieldFallback />} />
+          <Route path="/people/fields" element={<FieldFallback />} />
+          <Route path="/people/connected" element={<FieldFallback />} />
+          <Route path="/inbox/settings" element={<FieldFallback />} />
+          <Route path="/banks/new" element={<FieldFallback />} />
           <Route path="/people/:id" element={<Person />} />
           <Route path="/shifts" element={<Shifts />} />
           <Route path="/shifts/:id" element={<Shifts />} />

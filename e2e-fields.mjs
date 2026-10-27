@@ -73,7 +73,7 @@ const helpers = (page, who) => {
       try { json = JSON.parse(raw); } catch { /* not json */ }
       return { status: r.status, json, raw };
     }, [path, body]),
-    go: async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
+    go: async (path) => { await page.goto(`${/vol/.test(who) ? BASE : ADMIN}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); },
   };
 };
 // Simplicity: words on the screen (not the nav/tab bar), yellow buttons,
@@ -122,8 +122,12 @@ await link.click();
 await page.waitForURL(`${ADMIN}/people/fields`);
 await sleep(600);
 let m = await measure(page);
-check('empty: one line, one yellow "Add a field"', /No fields yet\./.test(await D.text()) && m.yellow === 1 && /Add a field/i.test(await page.innerText('.btn-primary')), JSON.stringify(m));
-console.log(`      words on /people/fields (empty): ${m.words}`);
+// A new campaign starts with the standard fields (server/ext/fields/people.js);
+// the suite's own three sit after them.
+const STANDARD = new Set(['Home phone', 'Province', 'House notes', 'Building notes', 'Access type', 'Dwelling type', 'Interaction status', 'Interaction date', 'Organizer', 'Email opt-in', 'SMS opt-in', 'Sign', 'Support', 'Voted']);
+const own = (fs) => fs.filter((f) => !STANDARD.has(f.name));
+check('a new campaign: the standard fields, one yellow "Add a field"', /Home phone/.test(await D.text()) && /Voted/.test(await D.text()) && m.yellow === 1 && /Add a field/i.test(await page.innerText('.btn-primary')), JSON.stringify(m));
+console.log(`      words on /people/fields (standard fields): ${m.words}`);
 await D.shot('01-fields-empty');
 
 const addField = async ({ name, kind, choices = [], volunteers = false }) => {
@@ -155,19 +159,19 @@ await addField({ name: 'Language at home', kind: 'Pick one', choices: ['English'
 await addField({ name: 'Strata council member', kind: 'Yes/No' });
 await addField({ name: 'Union local', kind: 'Text' });
 let list = (await D.api('/fields')).json.fields;
-check('three fields saved as typed', list.map((f) => `${f.name}:${f.kind}:${f.volunteers}`).join('|')
-  === 'Language at home:choice:true|Strata council member:yesno:false|Union local:text:false', list.map((f) => `${f.name}:${f.kind}:${f.volunteers}`).join('|'));
-check('choices saved in order', JSON.stringify(list[0].choices) === '["English","Punjabi","Mandarin"]', JSON.stringify(list[0].choices));
+check('three fields saved as typed', own(list).map((f) => `${f.name}:${f.kind}:${f.volunteers}`).join('|')
+  === 'Language at home:choice:true|Strata council member:yesno:false|Union local:text:false', own(list).map((f) => `${f.name}:${f.kind}:${f.volunteers}`).join('|'));
+check('choices saved in order', JSON.stringify(own(list)[0].choices) === '["English","Punjabi","Mandarin"]', JSON.stringify(own(list)[0].choices));
 const rowNames = await page.$$eval('ol[aria-label="Fields"] .ops-row__name', (els) => els.map((e) => e.textContent));
 check('the list shows them in the API’s order', rowNames.join('|') === list.map((f) => f.name).join('|'), rowNames.join('|'));
-check('row says the type and "Volunteers see it"', /Pick one · 0 filled in · Volunteers see it/.test(await page.innerText('ol[aria-label="Fields"] .ops-item:nth-child(1) .ops-row__sub')));
+check('row says the type and "Volunteers see it"', /Pick one · 0 filled in · Volunteers see it/.test(await page.innerText('ol[aria-label="Fields"] .ops-item:has-text("Language at home") .ops-row__sub')));
 
 // Reorder: Union local up one.
 await page.click('ol[aria-label="Fields"] .ops-row:has-text("Union local")');
 await page.click('.fd-item[data-open] button:has-text("Move up")');
 await sleep(700);
 list = (await D.api('/fields')).json.fields;
-check('Move up reorders on the server', list.map((f) => f.name).join('|') === 'Language at home|Union local|Strata council member', list.map((f) => f.name).join('|'));
+check('Move up reorders on the server', own(list).map((f) => f.name).join('|') === 'Language at home|Union local|Strata council member', own(list).map((f) => f.name).join('|'));
 const F = Object.fromEntries(list.map((f) => [f.name, f]));
 m = await measure(page);
 check('fields screen: one yellow button', m.yellow === 1, JSON.stringify(m));
@@ -208,7 +212,7 @@ await spage.click(`${q} .fd-save`);
 await sleep(900);
 const saidLine = await spage.innerText(`${q} .fd-said`).catch(() => '');
 let vals = (await S.api(`/persons/${P.harjit.id}/fields`)).json.fields;
-const byName = (list2) => Object.fromEntries(list2.map((f) => [f.name, f.value]));
+const byName = (list2) => Object.fromEntries(list2.filter((f) => !STANDARD.has(f.name)).map((f) => [f.name, f.value]));
 check('"✓ Saved" — and the server has exactly that', saidLine.trim() === '✓ Saved'
   && JSON.stringify(byName(vals)) === JSON.stringify({ 'Language at home': 'Punjabi', 'Union local': 'CUPE 402', 'Strata council member': true }), `${saidLine} ${JSON.stringify(byName(vals))}`);
 check('the section counts what’s filled in: 3', (await spage.innerText('.pf-sec__btn:has-text("More details") .pf-sec__count')).trim() === '3');
@@ -306,7 +310,7 @@ await inputs[inputs.length - 1].fill('Tagalog');
 await page.click(`${open} button[type="submit"]`);
 await sleep(800);
 list = (await D.api('/fields')).json.fields;
-check('a choice added: "✓ Saved", in order', JSON.stringify(list[0].choices) === '["English","Punjabi","Mandarin","Tagalog"]' && /✓ Saved/.test(await D.text()), JSON.stringify(list[0].choices));
+check('a choice added: "✓ Saved", in order', JSON.stringify(own(list)[0].choices) === '["English","Punjabi","Mandarin","Tagalog"]' && /✓ Saved/.test(await D.text()), JSON.stringify(own(list)[0].choices));
 // Rename.
 await page.click('ol[aria-label="Fields"] .ops-row:has-text("Union local")');
 await page.fill(`${open} input[placeholder="Language at home"]`, 'Union local #');
