@@ -242,8 +242,8 @@ console.log(`      words on the screen at 390: ${m.words}`);
 await M.full('03-scale-phone');
 // The longest words the screen takes still read whole on a phone's buttons.
 await mp.fill('input[aria-label="Words for 2"]', 'Probably yes'.padEnd(12, 'x').slice(0, 12));
-await mp.fill('.sc-add input', 'Abcdefghij Klmnop');
-check('a name is held to 16 letters', (await mp.inputValue('.sc-add input')).length === 16);
+await mp.fill('.sc-add input', 'Abcdefghij Klmnopqrstuvwxyz Abcd');
+check('a name is held to 30 letters', (await mp.inputValue('.sc-add input')).length === 30);
 await mp.click('.sc-add button:has-text("Add")');
 m = await measure(mp);
 check('longest words at 390: wrapped, never cut off, no sideways scroll', m.cut.length === 0 && m.overflow <= 0, JSON.stringify({ cut: m.cut, o: m.overflow }));
@@ -287,7 +287,7 @@ check('server: Tom 4BA', (await D.api(`/persons/${P.tom.id}`)).json.person.ratin
 await V.go(`/map?person=${P.maya.id}`);
 await vp.waitForSelector('aside.door-card .rb-btn', { timeout: 10000 }).catch(() => {});
 b = await buttonsText(vp, 'aside.door-card');
-check('Maya’s door: 4 shows her old pick, Locke', b?.row[3] === '4 Locke', JSON.stringify(b?.row));
+check('Maya’s door: 4 shows her old pick, Locke', b?.row[3] === '4 Locke', `${JSON.stringify(b?.row)} · ${vp.url()} · ${(await V.text()).slice(0, 200)}`);
 await V.go(`/people/${P.maya.id}`);
 await vp.waitForSelector('.pf-meta .rb-chip', { timeout: 8000 }).catch(() => {});
 t = await vp.innerText('.pf-meta').catch(() => '');
@@ -334,7 +334,8 @@ await sleep(800);
 await page.click('.pp-sheet__head button:has-text("Done")');
 await sleep(500);
 const UUID_LINK = /^\/people\/[0-9a-f-]{36}$/;
-const listed = () => page.$$eval('main.page a[href^="/people/"]', (els) => els.map((e) => e.getAttribute('href'))).then((h) => [...new Set(h.filter((x) => UUID_LINK.test(x)))]);
+// The desk's links carry the admin's base; read them without it.
+const listed = () => page.$$eval('main.page a[href^="/admin/people/"]', (els) => els.map((e) => e.getAttribute('href').replace(/^\/admin/, ''))).then((h) => [...new Set(h.filter((x) => UUID_LINK.test(x)))]);
 const rows = await listed();
 check('…finds the two people who backed Locke', rows.length === 2 && rows.includes(`/people/${P.lena.id}`) && rows.includes(`/people/${P.maya.id}`), rows.join(' '));
 await page.click('.pp-filterbtn');
@@ -554,7 +555,7 @@ await D.go('/people');
 await page.waitForSelector('.pp-table, .pp-list', { timeout: 8000 }).catch(() => {});
 await sleep(1500); // kept a moment after it loads
 await dctx.setOffline(true);
-const inApp = (url) => page.evaluate((u) => { history.pushState({}, '', u); dispatchEvent(new PopStateEvent('popstate')); }, url);
+const inApp = (url) => page.evaluate((u) => { history.pushState({}, '', u); dispatchEvent(new PopStateEvent('popstate')); }, `/admin${url}`); // the desk lives in the admin
 await inApp(`/people?field=${encodeURIComponent(`${fld.id}:yes`)}`);
 await sleep(2500);
 t = await D.text();
