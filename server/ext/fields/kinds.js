@@ -30,8 +30,10 @@ export const choicesOf = (f) => { const c = parseJ(f?.choices, []); return Array
 export const nameKey = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 export const cleanName = (s) => String(s ?? '').trim().replace(/\s+/g, ' ');
 
-const YES = new Set(['yes', 'y', 'true', '1', 'x', '✓']);
-const NO = new Set(['no', 'n', 'false', '0']);
+// Yes and no as spreadsheets and databases write them: yes · y · true ·
+// t · 1 · x · ✓, and no · n · false · f · 0 (a Postgres export writes t/f).
+const YES = new Set(['yes', 'y', 'true', 't', '1', 'x', '✓']);
+const NO = new Set(['no', 'n', 'false', 'f', '0']);
 const NUMBER_RE = /^[-+]?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$|^[-+]?\.\d+$/;
 const SPACED_RE = /^[-+]?\d{1,3}(\s\d{3})+(\.\d+)?$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;

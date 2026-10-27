@@ -98,8 +98,8 @@ test('the desk fills them in: each kind checked, cleared, a no-change save logs 
   }, 'stored as each kind stores it: the choice’s own words, a real yes, a number, a day');
   assert.ok(fields.every((f) => f.by_name), 'the desk sees who filled it in');
 
-  // Yes/no reads yes · no · y · n · true · false and real booleans.
-  for (const [given, want] of [['no', false], ['Y', true], ['n', false], ['TRUE', true], [true, true], ['false', false]]) {
+  // Yes/no reads yes · no · y · n · true · false · t · f (a database export) and real booleans.
+  for (const [given, want] of [['no', false], ['Y', true], ['n', false], ['TRUE', true], [true, true], ['false', false], ['t', true], ['F', false]]) {
     ok(await setValues(staff, P.ben.id, { strata: given }));
     assert.equal(await valueOf(staff, P.ben.id, F.strata.id), want, `yes/no reads ${given}`);
   }

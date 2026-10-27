@@ -444,11 +444,13 @@ test('import: the campaign’s list — house number + street, latitude/longitud
       volunteer: '1', donor: '0', phone: '604-555-0199',
       fields: { 'Home phone': '604-555-0100', Support: '5', 'Interaction date': '10/21/2026', 'Email opt-in': '1', Voted: '0', 'Access type': 'Buzzer', Province: 'BC' } },
     { name: 'Eli Import', house_number: 12, address: '12 72 Ave', lat: 'n/a', lng: '', donor: 'yes', fields: { 'Interaction date': '21 Oct 2026', 'SMS opt-in': 'Y' } },
+    // A database export writes booleans as t and f.
+    { name: 'Tia Import', volunteer: 't', donor: 'f', fields: { 'Email opt-in': 't', 'SMS opt-in': 'f', Voted: 'T' } },
   ];
   const r = await mgr.post('/api/data/import', { rows });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   assert.deepEqual(r.json.invalid, []);
-  assert.equal(r.json.created, 2);
+  assert.equal(r.json.created, 3);
   const dara = (await mgr.get('/api/persons?q=Dara%20Import')).json.persons[0];
   assert.equal(dara.address, '13450 104 Ave', 'the number and the street become one address');
   assert.equal(dara.lat, 49.19); assert.equal(dara.lng, -122.85);
@@ -468,6 +470,12 @@ test('import: the campaign’s list — house number + street, latitude/longitud
   const ev = Object.fromEntries((await mgr.get(`/api/persons/${eli.id}/fields`)).json.fields.map((f) => [f.id, f.value]));
   assert.equal(ev[byName['Interaction date']], '2026-10-21');
   assert.equal(ev[byName['SMS opt-in']], true);
+  const tia = (await mgr.get(`/api/persons?q=Tia%20Import`)).json.persons[0];
+  assert.ok(tia.tags.includes('volunteer') && !tia.tags.includes('donor'), 't/f flags become tags');
+  const tv = Object.fromEntries((await mgr.get(`/api/persons/${tia.id}/fields`)).json.fields.map((f) => [f.id, f.value]));
+  assert.equal(tv[byName['Email opt-in']], true, 't reads yes');
+  assert.equal(tv[byName['SMS opt-in']], false, 'f reads no');
+  assert.equal(tv[byName['Voted']], true, 'T reads yes');
   // A pin from a later list goes on only where there is none.
   const again = await mgr.post('/api/data/import', { rows: [{ name: 'Eli Import', address: '12 72 Ave', lat: 49.1, lng: -122.8 },
     { name: 'Dara Import', phone: '604-555-0199', lat: '0', lng: '0' }] });

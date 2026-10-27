@@ -68,7 +68,8 @@ const importInput = z.object({
 });
 
 // A 1/0 column: 1, yes, y, true, x (any case) say yes.
-const yes = (v) => v === true || v === 1 || /^(1|yes|y|true|x)$/i.test(norm(v == null ? '' : String(v)));
+// 1 · yes · y · true · t · x (a Postgres export writes t/f); anything else is no.
+const yes = (v) => v === true || v === 1 || /^(1|yes|y|true|t|x)$/i.test(norm(v == null ? '' : String(v)));
 // A coordinate in range, or null (blank, words, a 0 that means "none").
 const coord = (v, max) => {
   if (v === null || v === undefined || v === '') return null;

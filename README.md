@@ -100,7 +100,8 @@ than a week after they came off is refused. Contacts are door, phone, text or
   Ave, and a number typed into the street is split out). The import takes a
   **House number** column the same way, **Latitude
   / Longitude** (a pin, only where there is none), and **Volunteer / Donor**
-  1/0 columns (the tags); yes/no fields read 1 and 0, and dates come in as
+  1/0 columns (the tags); yes/no fields and the flags read 1 and 0, yes and
+  no, true and false, and a database export's t and f; dates come in as
   spreadsheets write them (10/21/2026, 21 Oct 2026).
 - **The dashboard** (managers, at the top of Today): contacts today, in the
   last 7 or 30 days or in all — how many, doors, calls & texts, people
