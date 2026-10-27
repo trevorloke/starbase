@@ -7,4 +7,4 @@
 .qd__error { margin: 0; }
 .qd__acts { display: flex; gap: var(--s-2); margin-top: 4px; }
 .qd__acts .btn { min-height: 44px; }
-.btn.qd-open { align-self: flex-start; padding-left: 0; color: var(--text-2); font-size: 14px; min-height: 40px; }
+.btn.qd-open { align-self: flex-start; padding-left: 0; color: var(--text-2); font-size: 14px; min-height: 48px; }
