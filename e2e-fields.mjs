@@ -422,7 +422,7 @@ const simple = async (pg, name, sel = null) => {
 const mkAt = async (name, phone) => (await D.api('/actions/person.create', { name, phone, address: '12345 72 Ave', city: 'Surrey' })).json.person;
 P.alpha = await mkAt('Alpha Example', '604-555-0161');
 P.bravo = await mkAt('Bravo Example', '604-555-0162');
-const follow = async (pg, id) => { await openSec(pg, 'Details'); await pg.click(`${secBody('Details')} a[href="${pg === page || pg === spage ? '/admin' : ''}/people/${id}"]`); await sleep(1300); };
+const follow = async (pg, id) => { await openSec(pg, 'Details'); await pg.click(`${secBody('Details')} a[href="${pg === vpage ? '' : '/admin'}/people/${id}"]`); await sleep(1300); };
 const unionIn = `${q} .sv-q:has-text("Union local #") input`;
 const saveOff = (pg) => pg.$eval(`${q} .fd-save`, (b) => b.disabled).catch(() => null);
 const saidOn = async (pg) => ((await pg.innerText(`${q} .fd-said`).catch(() => '')) || '').trim();

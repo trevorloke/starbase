@@ -89,6 +89,12 @@
 .obx-foot { padding: var(--s-3) var(--s-4); display: flex; justify-content: flex-end; }
 .obx-hint { margin: 0; font-size: 14px; font-style: italic; color: var(--text-3); }
 
+/* Desks: the strip sits at the foot of the sidebar, so the sheet opens
+   upward from it, to the right — on the screen, never below it. */
+@media (min-width: 721px) {
+  .nav .obx-sheet { top: auto; bottom: calc(100% + 4px); left: var(--s-3); right: auto; }
+}
+
 /* Phones: a bottom sheet over the tab bar, in thumb reach. */
 @media (max-width: 720px) {
   .obx-sheet {
