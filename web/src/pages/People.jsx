@@ -23,6 +23,7 @@ import { apiGet, action, noAnswer } from '../api.js';
 import { noSignal, useOnline, NeedsSignalLine } from '../components/NoSignal.jsx';
 import { keptPartial } from '../components/KeptCopies.js';
 import { FieldFilterChip, FieldFilterGroups } from '../components/FieldsBits.jsx';
+import QuickDetails from '../components/QuickDetails.jsx';
 import './people.css';
 import {
   TextingCallButton, TextingRepliesLink, noTexts, textingOn, useTextingStatus, useTextQueue, useTextingPerson,
@@ -163,7 +164,7 @@ export function Icon({ name, size = 20 }) {
 // signal they're off (busy) and say "Needs signal".
 // Knocks and a profile's tags always go through the offline outbox (saved,
 // sent once).
-const OUTBOX = ['contact.log', 'person.tag'];
+const OUTBOX = ['contact.log', 'person.tag', 'person.details'];
 export function useAction(onDone, { needsSignal = false } = {}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -1206,6 +1207,12 @@ function CallsScreen() {
                     <span className="pp-sr">Their note: </span>“{theirNote.split('\n')[0]}”
                   </span>
                 )}
+                <QuickDetails key={`qd-${current.id}`} person={current} me={me} toast={(m) => showToast(m, current)}
+                  onSaved={(next) => {
+                    queryClient.setQueryData(bankId ? ['banks', bankId, 'mine'] : ['persons', 'list', qs.toString()], (d) => (d?.persons ? { ...d, persons: d.persons.map((p) => (p.id === next.id ? { ...p, ...next } : p)) } : d));
+                    if (held?.id === next.id) setHeld({ ...held, ...next });
+                    invalidatePersonData(queryClient);
+                  }} />
               </div>
             </div>
 

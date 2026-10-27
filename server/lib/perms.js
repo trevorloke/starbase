@@ -52,7 +52,7 @@ const ACTION_AREA = {
 // map) is nobody's area — anyone who canvasses may say where they are.
 export const areaOfAction = (name) => {
   if (name === 'field.values.set') return 'people';
-  if (name === 'field.ping' || name === 'learn.done') return null;
+  if (name === 'field.ping' || name === 'learn.done' || name === 'person.details') return null;
   return ACTION_AREA[String(name).split('.')[0]] || null;
 };
 

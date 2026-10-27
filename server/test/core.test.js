@@ -183,3 +183,30 @@ test('the export holds every campaign table — receipts, answers, opt-outs, lad
   assert.ok(!JSON.stringify(x).includes('+16045550108'), 'a caller’s own phone is not exported');
   assert.equal((await vol.get('/api/export')).status, 403, 'still desk-only');
 });
+
+test('the basics, fixed where you meet them: a phone and a name by anyone; an email by a volunteer only where there is none', async () => {
+  const p = (await mgr.createPerson('Fix Me', { address: home.address, lat: home.lat, lng: home.lng })).id;
+  const r = await vol.action('person.details', { person_id: p, phone: '604-555-0177', name: 'Fixed Name' });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.deepEqual(r.json.changed.sort(), ['name', 'phone']);
+  assert.equal((await vol.action('person.details', { person_id: p })).status, 400, 'nothing to change');
+  const e = await vol.action('person.details', { person_id: p, email: 'Fixed@Example.org' });
+  assert.equal(e.status, 200, JSON.stringify(e.json));
+  assert.equal(e.json.person.email, 'fixed@example.org', 'what they just typed comes back');
+  const seen = (await vol.get(`/api/persons/${p}`)).json.person;
+  assert.equal(seen.email, null, 'but never read back');
+  assert.equal(seen.has_email, undefined, 'and nothing says one is on file');
+  assert.equal(seen.phone, '604-555-0177');
+  assert.equal(seen.name, 'Fixed Name');
+  assert.equal((await vol.action('person.details', { person_id: p, email: 'other@example.org' })).status, 409, 'the office changes an email on file');
+  assert.equal((await vol.action('person.details', { person_id: p, email: 'fixed@example.org' })).status, 409, 'the same again too — a guess is never confirmed');
+  assert.equal((await vol.action('person.details', { person_id: p, email: 'not-an-email' })).status, 400);
+  const m = await mgr.action('person.details', { person_id: p, email: 'office@example.org', phone: '' });
+  assert.equal(m.status, 200, JSON.stringify(m.json));
+  const desk = (await mgr.get(`/api/persons/${p}`)).json.person;
+  assert.equal(desk.email, 'office@example.org');
+  assert.equal(desk.phone, null, 'an empty phone clears it');
+  const d = await mgr.action('person.details', { person_id: p, email: '' });
+  assert.equal(d.status, 200);
+  assert.equal((await mgr.get(`/api/persons/${p}`)).json.person.email, null, 'the desk may clear an email');
+});

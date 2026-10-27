@@ -40,6 +40,50 @@ const inMyTurf = async (tx, ctx, lat, lng) => {
 };
 
 export const actions = {
+  // The basics, fixed where you meet them — the door card, the Calls card,
+  // the profile: a name, a phone, an email. Any role. A volunteer may add an
+  // email where there is none (they never see the one on file, so they
+  // can't be asked to change it — and never learn it); the desk may change any.
+  'person.details': {
+    roles: ALL_ROLES,
+    input: z.object({
+      person_id: z.uuid(),
+      name: z.string().trim().min(1).max(300).optional(),
+      phone: z.string().trim().max(40).nullish(),
+      email: z.union([z.string().trim().email().max(320), z.literal('')]).nullish(),
+    }).refine((v) => v.name !== undefined || v.phone !== undefined || v.email !== undefined, 'nothing to change'),
+    handler: async (tx, ctx, input, emit) => {
+      const cur = (await tx.query(
+        'select * from persons where id = $1 and workspace_id = $2 and deleted_at is null', [input.person_id, ctx.workspaceId],
+      )).rows[0];
+      if (!cur) throw httpError(404, 'person not found');
+      const patch = {};
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.phone !== undefined) patch.phone = input.phone || null;
+      if (input.email !== undefined) {
+        const email = input.email ? input.email.toLowerCase() : null;
+        // Always 409 while one is on file — even for the same email — so a
+        // guess at it is never confirmed (see relationships.test.js).
+        if (ctx.role === 'volunteer') {
+          if (cur.email) throw httpError(409, 'an email is on file — the office can change it');
+          if (!email) throw httpError(400, 'add an email');
+        }
+        patch.email = email;
+      }
+      if (!Object.keys(patch).length) throw httpError(400, 'nothing to change');
+      const next = { ...cur, ...patch };
+      await tx.query(
+        'update persons set name = $3, phone = $4, email = $5, updated_at = now() where id = $1 and workspace_id = $2',
+        [cur.id, ctx.workspaceId, next.name, next.phone, next.email],
+      );
+      emit('person', cur.id, 'update', patch);
+      // What the caller gets back: a volunteer never reads another's email
+      // (lib/viewer.js), only that it is on file.
+      const out = { id: cur.id, name: next.name, phone: next.phone, email: ctx.role === 'volunteer' && !('email' in patch) ? null : next.email };
+      return { person: out, changed: Object.keys(patch) };
+    },
+  },
+
   'person.addAtDoor': {
     roles: ALL_ROLES,
     input: z.object({

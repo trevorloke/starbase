@@ -30,6 +30,7 @@ import {
   TagEditor, Icon, useAction, fmtWhen, fmtShort, telHref, smsHref, textBody,
   canDesk, invalidatePersonData, isDnc, tagWord, RatingTag, noSignal,
 } from './People.jsx';
+import QuickDetails from '../components/QuickDetails.jsx';
 import './people.css';
 import {
   TextingPersonLink, callsCard, noTexts, textingOn, useTextingPerson, useTextingStatus,
@@ -520,6 +521,12 @@ function Details({ person, household, refresh, desk, me }) {
           <li>
             <span className="k">Email</span>
             <span className="v">{person.email ? <a href={`mailto:${person.email}`}>{person.email}</a> : none}</span>
+          </li>
+        )}
+        {!desk && (
+          <li className="contact-lines__fix">
+            <span className="k" />
+            <span className="v"><QuickDetails person={person} me={me} onSaved={() => refresh()} /></span>
           </li>
         )}
         <li>

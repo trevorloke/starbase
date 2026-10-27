@@ -106,6 +106,11 @@ than a week after they came off is refused. Contacts are door, phone, text or
   rated some other way (a 1–5) is mapped value by value under *What each
   rating means on your scale* (a 5 there can be a 1 here); dates come in as
   spreadsheets write them (10/21/2026, 21 Oct 2026).
+- **Fix details** wherever you meet someone — under the phone on the door
+  card, on the Calls card and on the profile: a name, a phone, an email,
+  saved through the offline outbox like a knock. Any role; a volunteer may
+  add an email only where there is none (they never see one on file — the
+  card says *On file*), the desk may change any.
 - **Phone banks** (People → More, or Calls → Phone banks): a named list of
   numbers to call, made from the people list (a rating, a tag, a search —
   everyone with a phone who matches, never do-not-contact), with a script.
@@ -126,8 +131,11 @@ than a week after they came off is refused. Contacts are door, phone, text or
   last 7 or 30 days or in all — how many, doors, calls & texts, people
   reached, support, canvassers, who is out now; a bar per day (per week on
   *All time*) stacked by outcome, Grouped and Table views; **In the field**,
-  a map of the period's contacts (a dot at the door, coloured by outcome)
-  and everyone who has canvassed as their initials — a ring and *out now*
+  a map of the period's contacts (a dot at the door, coloured by outcome;
+  tap one for who, the outcome, who logged it and when, with the profile
+  and the map a tap away; tap a turf for its name and the map) and everyone
+  who has canvassed as their initials (tap one for their day and *Only
+  their contacts*) — a ring and *out now*
   while they share their location, grey at their last door otherwise — pick
   a person for their trail (today) and their numbers; **By team**, each
   team's contacts and outcomes and how many of its members are out; the

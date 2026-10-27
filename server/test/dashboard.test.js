@@ -74,6 +74,8 @@ test('every team’s contacts, by outcome, and the people behind them', async ()
   assert.equal(vic.where.from, 'contact', 'last known place: the last door they knocked');
   assert.equal(vic.where.lat, 49.191);
   assert.equal(d.pins.length, 3);
+  assert.equal(d.pins[0].name, 'Door B', 'a pin says who, for a tap on the map');
+  assert.equal(d.pins[0].address, '13460 104 Ave');
   assert.equal(d.recent.length, 3);
   assert.equal(d.recent[0].who, 'Wen');
   assert.equal(d.recent[0].person, 'Door B');

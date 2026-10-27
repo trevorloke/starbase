@@ -114,3 +114,15 @@
 .dash-recent__i + .dash-recent__i { border-top: 1px solid var(--rule); }
 .dash-recent__main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-recent__when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+/* Taps on the field map */
+.dash-sec__links { display: inline-flex; align-items: center; gap: var(--s-2); }
+.dash-sec__btn { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.dash-tt { font-family: var(--font-sans); font-size: 12.5px; }
+.dash-pop { font-family: var(--font-sans); font-size: 13.5px; line-height: 1.5; color: #141a26; min-width: 160px; }
+.dash-pop a { color: #003979; }
+.dash-pop__sub { color: #5b6472; font-size: 12.5px; }
+.dash-pop__dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; vertical-align: -1px; }
+.dash-pop__live { color: #1f7a4d; font-weight: 600; }
+.dash-pop__btn { margin-top: 6px; font: inherit; font-size: 13px; min-height: 32px; padding: 0 10px; border: 1px solid #bfc8d6; border-radius: 8px; background: #fff; color: #141a26; cursor: pointer; }
+.dash-map .leaflet-popup-content-wrapper { border-radius: 12px; }

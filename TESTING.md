@@ -118,6 +118,9 @@ Every screen has one yellow button: that's the main job. Everything else is
 one tap away under **More**.
 
 ### Manager (you)
+- **Today → Dashboard → In the field** — tap a dot: who, the outcome, who
+  logged it and when, with *Profile* and *On the map* links; tap a person's
+  initials for their day and *Only their contacts*; tap a turf for its name.
 - **Today → Dashboard** — with the sample loaded: the figures (contacts,
   doors, calls & texts, people reached, support, canvassers, out now), each
   with today's and all-time numbers; *Today · 7 days · 30 days · All time*
@@ -216,6 +219,10 @@ one tap away under **More**.
 - **Calls → Your call lists** — the phone banks with numbers handed to you;
   one opens on the Calls card with its script; each call you log crosses a
   number off, and *All done* says so.
+- **Fix details** — on a door card (under *More*) or a Calls card, tap *Fix
+  details*: correct the name, add a phone, add an email, *Save*. It saves
+  with no signal too and sends later. An email already on file shows as *On
+  file* — only the office can change it.
 - **Map → Show → Share my location while I'm out** — off until you turn it
   on; the phone asks for location once. While it's on, your manager's
   dashboard shows where you are, about once a minute (a green ring, *out

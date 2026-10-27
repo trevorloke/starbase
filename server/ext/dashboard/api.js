@@ -208,7 +208,7 @@ api.get('/dashboard', async (c) => {
     .sort((a, b) => (b.out_now - a.out_now) || (new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0)));
 
   const pins = (await db.query(
-    `select c.id, c.person_id, c.created_by as user_id, c.outcome, c.channel, c.created_at as at, p.lat, p.lng
+    `select c.id, c.person_id, c.created_by as user_id, c.outcome, c.channel, c.rating, c.created_at as at, p.lat, p.lng, p.name, p.address
        from contacts c join persons p on p.id = c.person_id
       where c.workspace_id = $1 and ${inPeriod} and p.lat is not null and p.lng is not null
       order by c.created_at desc limit 2000`, P,

@@ -47,6 +47,7 @@ import { holdNote, logContact, queueAction, undoQueued, useOutbox } from '../off
 import { isOffline, queuedChip, queuedSaid, queuedText } from './queued.js';
 import { SIGN_KINDS } from '@starbase/shared/canvass';
 import RatingButtons, { More, OutcomeButtons, OUTCOME_LABEL, PersonTabs, focusRating, ratingText, useScale } from './RatingButtons.jsx';
+import QuickDetails from './QuickDetails.jsx';
 import SurveyQuestions, { answersSaid, answersTail, answersWord, useSurvey } from './SurveyQuestions.jsx';
 import { callsCard, noTexts, textingOn, useTextingStatus } from './TextingCard.jsx';
 import '../pages/map.css';
@@ -643,6 +644,13 @@ export default function DoorCard({ door, selectedId, onSelect, onClose, toast, m
               <span className="muted door-more__phone">No phone</span>
             )}
           </div>
+          {!sel.pending && (
+            <QuickDetails key={`qd-${sel.id}`} person={sel} me={me} toast={toast}
+              onSaved={(next) => {
+                patchDoors(queryClient, (d) => ({ ...d, persons: d.persons.map((p) => (p.id === next.id ? { ...p, name: next.name, phone: next.phone, email: next.email ?? p.email } : p)) }));
+                refresh();
+              }} />
+          )}
           {pending?.id === sel.id && (
             <div className="door-loglink" role="group" aria-label={`Log this ${pending.channel === 'phone' ? 'call' : 'text'}`}>
               <span className="door-loglink__label">Log this {pending.channel === 'phone' ? 'call' : 'text'}</span>

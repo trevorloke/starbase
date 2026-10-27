@@ -7,11 +7,14 @@
 //                   access — in that fixed order and colour; Grouped lays
 //                   the outcomes side by side; Table shows the numbers
 //   In the field    the map: every contact in the period as a dot (its
-//                   outcome's colour), everyone who has canvassed as their
+//                   outcome's colour; tap one for who, what, by whom, when,
+//                   and the profile), everyone who has canvassed as their
 //                   initials — a ring and "out now" while they share their
 //                   location (the map's switch), grey at their last door
-//                   otherwise — the turfs' outlines; pick a person to see
-//                   their trail (today), their contacts and their numbers
+//                   otherwise; tap one for their day and "only theirs" —
+//                   the turfs' outlines (tap for the turf on the map); pick
+//                   a person to see their trail (today), their contacts
+//                   and their numbers
 //   By team         each team's contacts and outcomes, how many of its
 //                   members are out; "No team" for the rest
 //   Latest          the last twenty contacts, who logged what where
@@ -304,7 +307,7 @@ function Field({ d, tiles, sel, onSel, period }) {
   useEffect(() => {
     const el = boxRef.current;
     if (!el || mapRef.current) return undefined;
-    const map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView(SURREY, 11);
+    const map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView(SURREY, 11);
     const layers = { turfs: L.layerGroup().addTo(map), pins: L.layerGroup().addTo(map), trail: L.layerGroup().addTo(map), people: L.layerGroup().addTo(map) };
     mapRef.current = map; layersRef.current = layers;
     return () => { map.remove(); mapRef.current = null; layersRef.current = null; };
@@ -320,13 +323,25 @@ function Field({ d, tiles, sel, onSel, period }) {
     const map = mapRef.current; const ly = layersRef.current;
     if (!map || !ly) return;
     ly.turfs.clearLayers(); ly.pins.clearLayers(); ly.trail.clearLayers(); ly.people.clearLayers();
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const nameOf = new Map(d.people.map((p) => [p.id, p.name]));
     for (const t of d.turfs) {
       if (!Array.isArray(t.polygon) || t.polygon.length < 3) continue;
-      L.polygon(t.polygon.map(([a, b]) => [Number(a), Number(b)]), { color: t.color || '#003979', weight: 1.5, fillOpacity: 0.05, interactive: false }).addTo(ly.turfs);
+      const poly = L.polygon(t.polygon.map(([a, b]) => [Number(a), Number(b)]), { color: t.color || '#003979', weight: 1.5, fillOpacity: 0.05 }).addTo(ly.turfs);
+      poly.bindTooltip(t.name, { sticky: true, className: 'dash-tt' });
+      poly.bindPopup(`<div class="dash-pop"><strong>${esc(t.name)}</strong><br><a href="/map?turf=${esc(t.id)}">Open on the map ›</a></div>`);
     }
     const pins = sel ? d.pins.filter((p) => p.user_id === sel) : d.pins;
     for (const p of pins) {
-      L.circleMarker([p.lat, p.lng], { radius: 4, color: '#fff', weight: 1, fillColor: COLOR[p.outcome] || '#5b6472', fillOpacity: 0.9, interactive: false }).addTo(ly.pins);
+      const dot = L.circleMarker([p.lat, p.lng], { radius: 5, color: '#fff', weight: 1, fillColor: COLOR[p.outcome] || '#5b6472', fillOpacity: 0.9, bubblingMouseEvents: false }).addTo(ly.pins);
+      const label = OUTCOME_LABEL[p.outcome] || p.outcome;
+      dot.bindTooltip(`${p.name} · ${label}`, { direction: 'top', offset: [0, -6], className: 'dash-tt' });
+      dot.bindPopup(`<div class="dash-pop">
+        <strong>${esc(p.name)}</strong>${p.address ? `<br><span class="dash-pop__sub">${esc(p.address)}</span>` : ''}
+        <br><span class="dash-pop__dot" style="background:${COLOR[p.outcome] || '#5b6472'}"></span> ${esc(label)}${p.rating ? ` · rated ${esc(p.rating)}` : ''}${p.channel !== 'door' ? ` · by ${esc(p.channel)}` : ''}
+        <br><span class="dash-pop__sub">${esc(nameOf.get(p.user_id) || 'someone')} · ${esc(new Date(p.at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</span>
+        <br><a href="/people/${esc(p.person_id)}">Profile ›</a> · <a href="/map?person=${esc(p.person_id)}">On the map ›</a>
+      </div>`);
     }
     if (selected?.trail?.length > 1) {
       L.polyline(selected.trail.map(([a, b]) => [a, b]), { color: '#003979', weight: 3, opacity: 0.7, dashArray: '2 6', interactive: false }).addTo(ly.trail);
@@ -338,7 +353,17 @@ function Field({ d, tiles, sel, onSel, period }) {
       pts.push(ll);
       if (p.out_now && p.where.accuracy) L.circle(ll, { radius: p.where.accuracy, className: 'dash-acc', interactive: false }).addTo(ly.people);
       const m = L.marker(ll, { icon: personIcon(p, p.id === sel), keyboard: false, zIndexOffset: p.out_now ? 2000 : 1000 }).addTo(ly.people);
-      m.on('click', () => onSel(p.id === sel ? null : p.id));
+      m.bindTooltip(`${p.name}${p.out_now ? ' · out now' : ''}`, { direction: 'top', offset: [0, -18], className: 'dash-tt' });
+      m.bindPopup(`<div class="dash-pop">
+        <strong>${esc(p.name)}</strong> <span class="dash-pop__sub">${esc(p.teams.length ? p.teams.join(', ') : p.role)}</span>
+        <br>${p.out_now ? `<span class="dash-pop__live">Out now</span> · last fix ${esc(clock(p.where.at))}` : `Last ${esc(p.where.from === 'position' ? 'seen' : 'knocked')} ${esc(timeAgo(p.where.at))}`}
+        <br>${num(p.contacts)} ${num(p.contacts) === '1' ? 'contact' : 'contacts'} ${esc(PERIOD_WORD[period])}
+        <br><button type="button" class="dash-pop__btn" data-sel="${esc(p.id)}">${p.id === sel ? 'Show everyone' : 'Only their contacts'}</button>
+      </div>`);
+      m.on('popupopen', (e) => {
+        const btn = e.popup.getElement()?.querySelector('[data-sel]');
+        if (btn) btn.addEventListener('click', () => { onSel(p.id === sel ? null : p.id); map.closePopup(); });
+      });
     }
     if (selected?.where) {
       map.setView([selected.where.lat, selected.where.lng], Math.max(map.getZoom(), 15));
@@ -346,14 +371,17 @@ function Field({ d, tiles, sel, onSel, period }) {
       const all = [...pts, ...pins.map((p) => [p.lat, p.lng])];
       if (all.length) { map.fitBounds(L.latLngBounds(all).pad(0.2), { maxZoom: 15 }); fittedRef.current = true; }
     }
-  }, [d, sel, selected, onSel]);
+  }, [d, sel, selected, onSel, period]);
 
   const now = Date.now();
   return (
     <section className="dash-sec" aria-labelledby={headId}>
       <header className="dash-sec__head">
         <h3 className="dash-sec__h" id={headId}>In the field <span className="muted">· {d.out_now ? `${num(d.out_now)} out now` : 'nobody out now'}</span></h3>
-        <Link className="dash-sec__link" to="/map">The map ›</Link>
+        <span className="dash-sec__links">
+          {sel && <button type="button" className="btn btn-quiet dash-sec__btn" onClick={() => onSel(null)}>Show everyone</button>}
+          <Link className="dash-sec__link" to="/map">The map ›</Link>
+        </span>
       </header>
       <div className="dash-field">
         <div className="dash-map" ref={boxRef} role="region" aria-label="Where everyone is" />
@@ -391,7 +419,7 @@ function Field({ d, tiles, sel, onSel, period }) {
           </ul>
         </div>
       </div>
-      <p className="dash-note">Dots are the period’s contacts at the person’s door. Volunteers share their location from the map (Show → Share my location while I’m out); a position is kept while they share it, a trail for the day.</p>
+      <p className="dash-note">Dots are the period’s contacts at the person’s door — tap one for who, what and by whom. Volunteers share their location from the map (Show → Share my location while I’m out); a position is kept while they share it, a trail for the day.</p>
     </section>
   );
 }

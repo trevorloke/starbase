@@ -62,7 +62,7 @@ import { action, ApiError } from './api.js';
 // are made on the phone, so a replay is the same link).
 // person.tag: tags put on or taken off on a profile at the desk (desk roles;
 // the server dedupes it on client_id, server/ext/deskoffline).
-export const FIELD_ACTIONS = ['contact.log', 'person.create', 'person.addAtDoor', 'person.locate', 'sign.place', 'sign.cancel', 'shift.join', 'shift.leave', 'relationship.add', 'person.tag'];
+export const FIELD_ACTIONS = ['contact.log', 'person.create', 'person.addAtDoor', 'person.locate', 'sign.place', 'sign.cancel', 'shift.join', 'shift.leave', 'relationship.add', 'person.tag', 'person.details'];
 // Keyed by a client_id the server dedupes on.
 const CLIENT_KEYED = ['contact.log', 'sign.place', 'person.tag'];
 // The writes that add a person, on an id made here.
