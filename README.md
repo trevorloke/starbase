@@ -144,7 +144,8 @@ than a week after they came off is refused. Contacts are door, phone, text or
   last 7 or 30 days or in all — how many, doors, calls & texts, people
   reached, support, canvassers, who is out now; a bar per day (per week on
   *All time*) stacked by outcome, Grouped and Table views; **In the field**,
-  a map of the period's contacts (a dot at the door, coloured by outcome;
+  a map that stands portrait, as Surrey does, and opens on the whole city
+  (the Fraser to the border, Delta to Langley) — the period's contacts (a dot at the door, coloured by outcome;
   tap one for who, the outcome, who logged it and when, with the profile
   and the map a tap away; tap a turf for its name and the map) and everyone
   who has canvassed as their initials (tap one for their day and *Only

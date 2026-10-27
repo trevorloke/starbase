@@ -26,7 +26,7 @@ import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiGet, initials } from '../api.js';
-import { DEFAULT_TILES, SURREY, safeAttribution } from '../components/tiles.js';
+import { DEFAULT_TILES, SURREY_BOUNDS, safeAttribution } from '../components/tiles.js';
 import { OUTCOME_LABEL } from '../components/RatingButtons.jsx';
 import './dashboard.css';
 
@@ -300,17 +300,27 @@ function Field({ d, tiles, sel, onSel, period }) {
   const boxRef = useRef(null);
   const mapRef = useRef(null);
   const layersRef = useRef(null);
-  const fittedRef = useRef(false);
+  // The whole city, every time nobody is picked (the map stands portrait,
+  // as Surrey does — dashboard.css); a resize refits it.
+  const fitCity = (map) => map.fitBounds(SURREY_BOUNDS, { padding: [6, 6] });
   const selected = d.people.find((p) => p.id === sel) || null;
+  const selRef = useRef(sel);
+  const wasSelRef = useRef(false);
   const headId = useId();
 
   useEffect(() => {
     const el = boxRef.current;
     if (!el || mapRef.current) return undefined;
-    const map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView(SURREY, 11);
+    const map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true, zoomSnap: 0.25 });
+    fitCity(map);
     const layers = { turfs: L.layerGroup().addTo(map), pins: L.layerGroup().addTo(map), trail: L.layerGroup().addTo(map), people: L.layerGroup().addTo(map) };
     mapRef.current = map; layersRef.current = layers;
-    return () => { map.remove(); mapRef.current = null; layersRef.current = null; };
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => { map.invalidateSize(); if (!selRef.current) fitCity(map); });
+      ro.observe(el);
+    }
+    return () => { ro?.disconnect(); map.remove(); mapRef.current = null; layersRef.current = null; };
   }, []);
   useEffect(() => {
     const map = mapRef.current;
@@ -346,11 +356,9 @@ function Field({ d, tiles, sel, onSel, period }) {
     if (selected?.trail?.length > 1) {
       L.polyline(selected.trail.map(([a, b]) => [a, b]), { color: '#003979', weight: 3, opacity: 0.7, dashArray: '2 6', interactive: false }).addTo(ly.trail);
     }
-    const pts = [];
     for (const p of d.people) {
       if (!p.where) continue;
       const ll = [p.where.lat, p.where.lng];
-      pts.push(ll);
       if (p.out_now && p.where.accuracy) L.circle(ll, { radius: p.where.accuracy, className: 'dash-acc', interactive: false }).addTo(ly.people);
       const m = L.marker(ll, { icon: personIcon(p, p.id === sel), keyboard: false, zIndexOffset: p.out_now ? 2000 : 1000 }).addTo(ly.people);
       m.bindTooltip(`${p.name}${p.out_now ? ' · out now' : ''}`, { direction: 'top', offset: [0, -18], className: 'dash-tt' });
@@ -367,10 +375,11 @@ function Field({ d, tiles, sel, onSel, period }) {
     }
     if (selected?.where) {
       map.setView([selected.where.lat, selected.where.lng], Math.max(map.getZoom(), 15));
-    } else if (!fittedRef.current) {
-      const all = [...pts, ...pins.map((p) => [p.lat, p.lng])];
-      if (all.length) { map.fitBounds(L.latLngBounds(all).pad(0.2), { maxZoom: 15 }); fittedRef.current = true; }
+    } else if (wasSelRef.current) {
+      fitCity(map); // back from one person to the whole city
     }
+    wasSelRef.current = !!selected;
+    selRef.current = sel;
   }, [d, sel, selected, onSel, period]);
 
   const now = Date.now();

@@ -71,11 +71,14 @@
 .dash-table tbody tr:last-child th, .dash-table tbody tr:last-child td { border-bottom: 0; }
 
 /* In the field: the map beside the people (stacked on a phone). */
-.dash-field { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: var(--s-3); align-items: stretch; }
+/* The map stands portrait (3:4), as Surrey does — the Fraser to the border
+   is longer than Delta to Langley — so the whole city fits in it; the people
+   sit beside it, as tall as the map. */
+.dash-field { display: grid; grid-template-columns: minmax(300px, 3fr) minmax(260px, 4fr); gap: var(--s-3); align-items: start; }
 @media (max-width: 720px) { .dash-field { grid-template-columns: minmax(0, 1fr); } }
-.dash-map { min-height: 360px; height: 100%; border: var(--border); border-radius: var(--r-card); overflow: hidden; background: var(--paper-1); }
-.dash-people { min-width: 0; max-height: 480px; overflow-y: auto; border: var(--border); border-radius: var(--r-card); background: var(--paper-0); }
-@media (max-width: 720px) { .dash-map { height: 320px; } .dash-people { max-height: none; } }
+.dash-map { aspect-ratio: 3 / 4; width: 100%; max-height: 78vh; border: var(--border); border-radius: var(--r-card); overflow: hidden; background: var(--paper-1); }
+.dash-people { min-width: 0; align-self: stretch; max-height: min(78vh, calc(100% - 0px)); overflow-y: auto; border: var(--border); border-radius: var(--r-card); background: var(--paper-0); }
+@media (max-width: 720px) { .dash-map { max-height: 80vh; } .dash-people { max-height: none; } }
 .dash-plist { list-style: none; margin: 0; padding: 0; }
 .dash-plist > li + li { border-top: 1px solid var(--rule); }
 .dash-prow {

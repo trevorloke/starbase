@@ -6,6 +6,10 @@ export const DEFAULT_TILES = {
   maxZoom: 19,
 };
 export const SURREY = [49.1913, -122.849];
+// The city's limits: the Fraser to the north, the border to the south, Delta
+// and Langley either side — taller than it is wide, so a map that shows it
+// whole stands portrait.
+export const SURREY_BOUNDS = [[49.0, -122.93], [49.22, -122.68]];
 
 // The provider's credit line, kept to text and http(s) links.
 export function safeAttribution(html) {
