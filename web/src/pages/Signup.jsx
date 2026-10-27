@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../api.js';
+import { landing } from '../mode.js';
 
 // Big, thumb-sized controls (auth pages load before any page stylesheet).
 const AUTH_INPUT = { minHeight: 48, fontSize: 16 };
@@ -21,7 +22,7 @@ const missingLine = (el) => {
   return MISSING[el.id] || 'Fill in every box';
 };
 
-export default function Signup() {
+export default function Signup({ mode = 'field' }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setup = useQuery({ queryKey: ['auth-setup'], queryFn: () => apiGet('/auth/setup'), retry: false });
@@ -50,7 +51,8 @@ export default function Signup() {
       const me = await apiPost('/auth/signup', form);
       queryClient.setQueryData(['me'], me);
       queryClient.invalidateQueries({ queryKey: ['auth-setup'] });
-      navigate('/');
+      const go = landing(me, mode);
+      if (go.href) window.location.assign(go.href); else navigate(go.to);
     } catch (err) {
       // Someone else finished setup first: show the closed page.
       if (err.status === 403) queryClient.invalidateQueries({ queryKey: ['auth-setup'] });

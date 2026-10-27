@@ -20,6 +20,7 @@ import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE || 'http://localhost:3200';
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-relationships';
 mkdirSync(SHOTS, { recursive: true });
 const results = [];
@@ -120,7 +121,7 @@ await page.fill('#su-name', 'Riley Manager');
 await page.fill('#su-email', `riley+${tag}@relationships.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 await page.click('button:has-text("Load sample data")');
 await until(async () => (await D.api('/brief')).json?.sampleLoaded);
 check('sample loaded', (await D.api('/brief')).json.sampleLoaded === true);
@@ -129,10 +130,10 @@ const byName = async (name) => (await D.api(`/persons?q=${encodeURIComponent(nam
 // ── 2. People → More → Most connected ──
 await D.go('/people');
 await page.click('.pp-menu button:has-text("More")');
-const mc = await page.$('.pp-menu__panel a[href="/people/connected"]');
+const mc = await page.$('.pp-menu__panel a[href="/admin/people/connected"]');
 check('People → More lists "Most connected"', !!mc && /Most connected/.test(await mc.textContent()));
 await mc.click();
-await page.waitForURL(`${BASE}/people/connected`);
+await page.waitForURL(`${ADMIN}/people/connected`);
 await page.waitForSelector('.ops-row', { timeout: 8000 }).catch(() => {});
 const apiConnected = (await D.api('/relationships/connected')).json.people;
 const shown = await page.$$eval('.ops-row', (els) => els.map((e) => ({

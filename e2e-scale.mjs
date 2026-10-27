@@ -18,6 +18,7 @@ import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE || 'http://localhost:3200';
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-scale';
 mkdirSync(SHOTS, { recursive: true });
 const results = [];
@@ -100,7 +101,7 @@ await page.fill('#su-name', 'Riley Manager');
 await page.fill('#su-email', `riley+${tag}@scale.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 
 const P = {};
 const mk = async (key, data) => { P[key] = (await D.api('/actions/person.create', data)).json.person; };
@@ -172,10 +173,10 @@ check('offline: "Rated 4 · Locke · Saved offline"', /Rated 4 · Locke · Saved
 // ════════════════════════════════════════════════════════════════════════════
 await D.go('/');
 await page.click('.acct-btn');
-const link = await page.$('.acct-panel a[href="/rating-scale"]');
-check('manager’s account menu: Rating scale, beside Team', !!link && !!(await page.$('.acct-panel a[href="/team"]')));
+const link = await page.$('.acct-panel a[href="/admin/rating-scale"]');
+check('manager’s account menu: Rating scale, beside Team', !!link && !!(await page.$('.acct-panel a[href="/admin/settings"]')));
 await link.click();
-await page.waitForURL(`${BASE}/rating-scale`);
+await page.waitForURL(`${ADMIN}/rating-scale`);
 await page.waitForSelector('.sc-page .rb-btn', { timeout: 8000 }).catch(() => {});
 await sleep(500);
 let m = await measure(page);

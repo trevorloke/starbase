@@ -4,6 +4,19 @@ The campaign OS built for **Imagine Surrey**. Field-first: a map with every
 door on it, a one-tap rating scale at the door, phone, and by text — with
 signs, volunteers, shifts, money, compliance, and outreach around it.
 
+## Two apps: the field app and the admin
+
+One build, two apps, told apart by the address:
+
+| | Address | Who | What |
+|---|---|---|---|
+| **Field app** | `/` | everyone — it is what a volunteer sees and uses | Today · Map · Calls · Shifts · ImagineU, the door card, walk lists, your call lists, your people, your texts. A manager who opens it gets exactly a volunteer's screens (and *Admin ↗* in the account menu). |
+| **Admin** | `/admin/` | managers, staff, treasurers — and a volunteer given an area under Permissions | everything: the dashboard, the map with turfs, People and imports, Shifts, Money, Signs, Outreach, ImagineU's editor and Progress, phone banks, **Settings** (members, teams, permissions), the rating scale, the website's admin. A plain volunteer who opens it is told it isn't theirs. |
+
+Signing in sends each person to their app: a desk role to the admin, a
+volunteer to the field app. A desk address typed into the field app
+(`/people`, `/money`, an old bookmark) goes to the admin.
+
 ## The seven things a campaign does (the whole tab bar)
 
 Every screen is built to [SIMPLE.md](SIMPLE.md): one job per screen, one yellow

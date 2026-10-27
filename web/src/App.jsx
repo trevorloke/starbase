@@ -1,14 +1,22 @@
-// Routes + auth gate. Real URLs are the point: every screen, form-open state,
-// selected door, and preselected donor lives in the address bar. Screens past
-// Today load on demand — the map (Leaflet) is the heaviest and phones in the
-// field shouldn't pay for it until they open it.
-// Desk-only screens sit under one role guard: a volunteer who types one of
-// those URLs lands back on Today (the server refuses their data anyway).
+// Routes + auth gate, for two apps (mode.js):
+//   field  (/)        Today · Map · Calls · Shifts · ImagineU — a volunteer's
+//                     screens, for every role (a manager sees them as a
+//                     volunteer would). A desk address typed here goes to
+//                     the admin.
+//   admin  (/admin/…) the desk: everything, for desk roles and volunteers
+//                     given an area; a plain volunteer is told it's not theirs.
+// Real URLs are the point: every screen, form-open state, selected door, and
+// preselected donor lives in the address bar. Screens past Today load on
+// demand — the map (Leaflet) is the heaviest and phones in the field
+// shouldn't pay for it until they open it.
+// Desk-only screens sit under one area guard: someone without the area lands
+// back on Today (the server refuses their data anyway).
 import { lazy } from 'react';
 import { Routes, Route, Navigate, Outlet, useOutletContext, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet, noAnswer } from './api.js';
 import Shell, { isDesk, hasArea } from './Shell.jsx';
+import { ADMIN_BASE, fieldView, mayAdmin } from './mode.js';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 import Today from './pages/Today.jsx';
@@ -47,7 +55,7 @@ import Join from './pages/Join.jsx';
 // kept for them, and asks again every 15 s. Only a refusal goes to Sign in.
 const askAgain = (q) => ((q.state.data !== undefined && q.state.dataUpdatedAt === 0)
   || (q.state.status === 'error' && noAnswer(q.state.error)) ? 15_000 : false);
-function RequireAuth() {
+function RequireAuth({ mode }) {
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => apiGet('/auth/me'),
@@ -57,7 +65,34 @@ function RequireAuth() {
   });
   if (me.isLoading) return null;
   if (me.isError && !(noAnswer(me.error) && me.data)) return <Navigate to="/login" replace />;
-  return <Shell me={me.data} />;
+  if (mode === 'admin' && me.data?.user && !mayAdmin(me.data)) return <NotForYou me={me.data} />;
+  return <Shell me={me.data} mode={mode} />;
+}
+
+// The admin, opened by a volunteer: not theirs — the field app is.
+function NotForYou({ me }) {
+  return (
+    <div className="auth-page">
+      <span className="brand">Starbase Admin</span>
+      <span className="brand-org">{me?.workspace?.name}</span>
+      <h1>Not for your role</h1>
+      <p className="muted">The admin is the campaign office’s. You are signed in as {me?.user?.name} (volunteer) — your app is the field app.</p>
+      <p><a className="btn btn-primary" href="/">Open the field app</a></p>
+    </div>
+  );
+}
+
+// A desk address typed into the field app (an old bookmark, a link in an
+// email): the admin has it. Volunteers go home, as before.
+const DESK_PATHS = /^\/(people(\/(import|fields|connected))?|money|outreach|filings|ladders|follow-ups|surveys|rating-scale|settings|team|admin|inbox\/settings|banks\/new)(\/|$)/;
+function FieldFallback() {
+  const ctx = useOutletContext();
+  const { pathname, search } = useLocation();
+  if (DESK_PATHS.test(pathname) && mayAdmin({ ...ctx?.me, role: ctx?.me?.admin_role || ctx?.me?.role, areas: ctx?.me?.admin_areas || ctx?.me?.areas })) {
+    window.location.replace(`${ADMIN_BASE}${pathname}${search}`);
+    return null;
+  }
+  return <Navigate to="/" replace />;
 }
 
 // Staff, treasurers and managers only. The Shell's outlet context is passed
@@ -67,7 +102,7 @@ function RequireAuth() {
 const ROUTE_AREA = [
   [/^\/people\/(import|connected)/, 'people'], [/^\/people\/fields/, 'admin'],
   [/^\/money|^\/filings/, 'money'], [/^\/outreach|^\/ladders|^\/follow-ups|^\/surveys|^\/inbox\/settings/, 'outreach'],
-  [/^\/team|^\/admin|^\/rating-scale/, 'admin'],
+  [/^\/team|^\/settings|^\/rating-scale/, 'admin'],
 ];
 function DeskOnly() {
   const ctx = useOutletContext();
@@ -78,13 +113,42 @@ function DeskOnly() {
   return <Outlet context={ctx} />;
 }
 
-export default function App() {
+export default function App({ mode = 'field' }) {
+  if (mode === 'field') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login mode={mode} />} />
+        <Route path="/signup" element={<Signup mode={mode} />} />
+        <Route path="/join/:token" element={<Join mode={mode} />} />
+        <Route element={<RequireAuth mode={mode} />}>
+          <Route path="/" element={<Today />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/calls" element={<People key="calls" mode="calls" />} />
+          <Route path="/people/:id" element={<Person />} />
+          <Route path="/shifts" element={<Shifts />} />
+          <Route path="/shifts/:id" element={<Shifts />} />
+          <Route path="/turfs" element={<Turfs />} />
+          <Route path="/turfs/:id" element={<Turfs />} />
+          <Route path="/signs" element={<Signs />} />
+          <Route path="/inbox" element={<TextingInbox />} />
+          <Route path="/inbox/:id" element={<TextingThread />} />
+          <Route path="/my-people" element={<MyPeople />} />
+          <Route path="/imagineu" element={<ImagineU />} />
+          <Route path="/imagineu/:id" element={<ImagineU />} />
+          <Route path="/banks" element={<Banks />} />
+          <Route path="/banks/:id" element={<Banks />} />
+          <Route path="*" element={<FieldFallback />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/join/:token" element={<Join />} />
-      <Route element={<RequireAuth />}>
+      <Route path="/login" element={<Login mode={mode} />} />
+      <Route path="/signup" element={<Signup mode={mode} />} />
+      <Route path="/join/:token" element={<Join mode={mode} />} />
+      <Route element={<RequireAuth mode={mode} />}>
         <Route path="/" element={<Today />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/calls" element={<People key="calls" mode="calls" />} />
@@ -94,17 +158,12 @@ export default function App() {
         <Route path="/shifts/:id" element={<Shifts />} />
         <Route path="/turfs" element={<Turfs />} />
         <Route path="/turfs/:id" element={<Turfs />} />
-        {/* Volunteers get the sign crew's "Signs to put up" view. */}
         <Route path="/signs" element={<Signs />} />
-        {/* Texts: volunteers see the conversations they started; the desk sees all. */}
         <Route path="/inbox" element={<TextingInbox />} />
         <Route path="/inbox/:id" element={<TextingThread />} />
-        {/* The people you know: every role (the server sends only your own). */}
         <Route path="/my-people" element={<MyPeople />} />
-        {/* ImagineU: training for every role (the desk edits in place). */}
         <Route path="/imagineu" element={<ImagineU />} />
         <Route path="/imagineu/:id" element={<ImagineU />} />
-        {/* Phone banks: the desk runs them; a volunteer sees their own lists. */}
         <Route path="/banks" element={<Banks />} />
         <Route path="/banks/:id" element={<Banks />} />
         <Route element={<DeskOnly />}>
@@ -118,9 +177,12 @@ export default function App() {
           <Route path="/outreach" element={<Outreach />} />
           <Route path="/outreach/:tab" element={<Outreach />} />
           <Route path="/filings" element={<Filings />} />
-          <Route path="/team" element={<Navigate to="/admin" replace />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/:tab" element={<Admin />} />
+          {/* Settings: members, teams, permissions (the old /admin and /team). */}
+          <Route path="/team" element={<Navigate to="/settings" replace />} />
+          <Route path="/admin" element={<Navigate to="/settings" replace />} />
+          <Route path="/admin/:tab" element={<SettingsRedirect />} />
+          <Route path="/settings" element={<Admin />} />
+          <Route path="/settings/:tab" element={<Admin />} />
           <Route path="/ladders" element={<Ladders />} />
           <Route path="/ladders/:id" element={<LaddersEdit />} />
           <Route path="/follow-ups" element={<LaddersFollowups />} />
@@ -128,10 +190,14 @@ export default function App() {
           <Route path="/surveys/:id" element={<SurveysEdit />} />
           <Route path="/surveys/:id/results" element={<SurveysResults />} />
           <Route path="/rating-scale" element={<RatingScale />} />
-          {/* The public website and store (managers, staff; treasurers see Orders). */}
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function SettingsRedirect() {
+  const { pathname } = useLocation();
+  return <Navigate to={pathname.replace(/^\/admin/, '/settings')} replace />;
 }

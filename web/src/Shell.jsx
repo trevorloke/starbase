@@ -27,6 +27,7 @@ import { forgetPhoneCopies, keepOnlyMine } from './components/OfflineCache.js';
 import { useKeptTime } from './components/KeptCopies.js';
 import { useTextingStatus } from './components/TextingStatus.js';
 import { useShareLocation } from './components/ShareLocation.js';
+import { adminHref, fieldView, mayAdmin } from './mode.js';
 import './pages/offline.css';
 
 // Staff, treasurers and managers. App.jsx guards the desk-only routes with it.
@@ -188,7 +189,7 @@ function WaitingForSignal() {
 // ── Account menu: avatar → name, campaign, Team (managers), Sign out ──
 // A disclosure (button + panel), not a full ARIA menu: Tab moves through it,
 // Escape or a tap outside closes it, and a new screen closes it too.
-function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }) {
+function AccountMenu({ me, mode, signingOut, confirmLeft, onSignOut, onCancelSignOut }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const wrapRef = useRef(null);
@@ -225,7 +226,7 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
         {/* Name and role beside the avatar in the desktop sidebar (hidden on phones). */}
         <span className="acct-btn__who" aria-hidden="true">
           <span className="acct-btn__name">{me.user.name}</span>
-          <span className="acct-btn__role">{me.role}</span>
+          <span className="acct-btn__role">{me.admin_role ? `${me.admin_role} · field` : me.role}</span>
         </span>
       </button>
       <div className="acct-panel" id={panelId} hidden={!open}>
@@ -233,11 +234,15 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
           <span className="acct-name">{me.user.name}</span>
           <span className="acct-ws">{me.workspace.name}</span>
         </div>
-        {me.role === 'manager' && <NavLink to="/admin" ref={firstRef} className="acct-item">Admin</NavLink>}
-        {(hasArea(me, 'website') || me.role === 'treasurer') && me.site_admin_url && (
+        {mode === 'field' && mayAdmin({ ...me, role: me.admin_role || me.role, areas: me.admin_areas || me.areas }) && (
+          <a href={adminHref('/')} ref={firstRef} className="acct-item">Admin ↗</a>
+        )}
+        {mode === 'admin' && <a href="/" className="acct-item">Field app ↗</a>}
+        {mode === 'admin' && me.role === 'manager' && <NavLink to="/settings" ref={firstRef} className="acct-item">Settings</NavLink>}
+        {mode === 'admin' && (hasArea(me, 'website') || me.role === 'treasurer') && me.site_admin_url && (
           <a href={me.site_admin_url} className="acct-item" target="_blank" rel="noopener">Edit the website ↗</a>
         )}
-        {me.role === 'manager' && <NavLink to="/rating-scale" className="acct-item">Rating scale</NavLink>}
+        {mode === 'admin' && me.role === 'manager' && <NavLink to="/rating-scale" className="acct-item">Rating scale</NavLink>}
         {confirmLeft > 0 ? (
           <div className="acct-confirm" role="group" aria-label="Sign out">
             <p>{confirmLeft} not sent yet. Sign out and delete {confirmLeft === 1 ? 'it' : 'them'}?</p>
@@ -249,7 +254,7 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
             </div>
           </div>
         ) : (
-          <button type="button" ref={me.role === 'manager' ? undefined : firstRef} className="acct-item"
+          <button type="button" ref={(mode === 'admin' && me.role === 'manager') || (mode === 'field' && mayAdmin({ ...me, role: me.admin_role || me.role, areas: me.admin_areas || me.areas })) ? undefined : firstRef} className="acct-item"
             onClick={() => onSignOut(false)} disabled={signingOut}>
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
@@ -259,29 +264,31 @@ function AccountMenu({ me, signingOut, confirmLeft, onSignOut, onCancelSignOut }
   );
 }
 
-export default function Shell({ me }) {
-  if (!me?.user || !me?.workspace) return <WaitingForSignal />;
-  return <SignedInShell me={me} />;
+export default function Shell({ me: who, mode = 'field' }) {
+  if (!who?.user || !who?.workspace) return <WaitingForSignal />;
+  return <SignedInShell who={who} mode={mode} />;
 }
 
-function SignedInShell({ me }) {
+function SignedInShell({ who, mode }) {
   // What this phone saved belongs to whoever saved it: only their own items
   // are listed and sent while they're signed in (idempotent, so here, before
   // any screen reads the outbox).
-  setOutboxOwner(me);
+  setOutboxOwner(who);
   // Phone copies (components/OfflineCache.js) of anyone else who signed in
   // on this phone go, and any this person kept under another role or more
   // than a day ago; the rest stay for the screens (once per sign-in and
   // role, before any screen reads one).
-  keepOnlyMine(me);
+  keepOnlyMine(who);
+  // The field app shows everyone a volunteer's screens (mode.js).
+  const me = mode === 'field' ? fieldView(who) : who;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const desk = isDesk(me);
-  // A volunteer given an area gets its tab after their own four.
-  const nav = desk
-    ? NAV_DESK.filter((t) => hasArea(me, t.area))
-    : [...NAV_VOLUNTEER, ...NAV_DESK.filter((t) => t.area && t.area !== 'map' && t.area !== 'learn' && areasOf(me).includes(t.area))];
+  // The admin: the tabs of the areas they have. The field app: a volunteer's five.
+  const nav = mode === 'admin'
+    ? (desk ? NAV_DESK.filter((t) => hasArea(me, t.area)) : NAV_DESK.filter((t) => t.area && areasOf(me).includes(t.area)))
+    : NAV_VOLUNTEER;
   // New replies to your texts: a small count on Calls.
   const unread = Number(useTextingStatus(me).data?.unread) || 0;
   // "Share my location while I'm out" (the map's switch): pings while it's on.
@@ -441,10 +448,10 @@ function SignedInShell({ me }) {
     <>
       <header className="nav" ref={headerRef}>
         <div className="nav-inner">
-          <NavLink to="/" className="brand" aria-label={`Starbase — ${me.workspace.name}`}>
+          <NavLink to="/" className="brand" aria-label={`${mode === 'admin' ? 'Starbase Admin' : 'Starbase'} — ${me.workspace.name}`}>
             <img className="brand-mark" src="/star.png" alt="" height="32" />
             <span className="brand-text">
-              <span className="brand-name">Starbase</span>
+              <span className="brand-name">Starbase{mode === 'admin' && <span className="brand-admin"> Admin</span>}</span>
               <span className="brand-org">{me.workspace.name}</span>
             </span>
           </NavLink>
@@ -452,7 +459,7 @@ function SignedInShell({ me }) {
             {nav.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{badge(n)}</NavLink>)}
           </nav>
           <span className="spacer" />
-          <AccountMenu me={me} signingOut={signingOut} confirmLeft={confirmLeft}
+          <AccountMenu me={me} mode={mode} signingOut={signingOut} confirmLeft={confirmLeft}
             onSignOut={signOut} onCancelSignOut={cancelSignOut} />
         </div>
         <OfflineBanner

@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../api.js';
+import { landing } from '../mode.js';
 
 // Big, thumb-sized controls (auth pages load before any page stylesheet).
 const AUTH_INPUT = { minHeight: 48, fontSize: 16 };
 const AUTH_BUTTON = { width: '100%', minHeight: 52, fontSize: 13, marginTop: 'var(--s-2)' };
 
-export default function Login() {
+export default function Login({ mode = 'field' }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setup = useQuery({ queryKey: ['auth-setup'], queryFn: () => apiGet('/auth/setup'), retry: false });
@@ -25,7 +26,8 @@ export default function Login() {
     try {
       const me = await apiPost('/auth/login', { email, password });
       queryClient.setQueryData(['me'], me);
-      navigate('/');
+      const go = landing(me, mode);
+      if (go.href) window.location.assign(go.href); else navigate(go.to);
     } catch (err) {
       setError(err.message);
     } finally {

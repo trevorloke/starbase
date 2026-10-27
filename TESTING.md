@@ -22,7 +22,7 @@ npm start                 # → http://localhost:3200
    Surrey: your name, email and password. You become its manager (the
    workspace is *Imagine Surrey*, **BC — Municipal**). Setup works once:
    after that `/signup` says it's already set up, and everyone else joins
-   by invite from **Admin → Members**. (To start over, delete `data/`.)
+   by invite from **Settings → Members**. (To start over, delete `data/`.)
 2. On **Today**, press **Load sample data**: 52 Surrey voters across Newton,
    Whalley, Guildford, Fleetwood, Cloverdale, and South Surrey — with ratings,
    signs, donors, a shift, an event, a petition, and a Newton turf.
@@ -110,7 +110,7 @@ People tagged `store`.
 
 ## 3 · What to test, by role
 
-Invite real people from **Admin → Members** (tap your initials, top right — managers
+Invite real people from **Settings → Members** (tap your initials, top right — managers
 only). Each invite is a one-time link — emailed if email is connected,
 otherwise copy and text it.
 
@@ -118,6 +118,11 @@ Every screen has one yellow button: that's the main job. Everything else is
 one tap away under **More**.
 
 ### Manager (you)
+- **Two apps.** Sign in at `/login` and you land in the **admin** at
+  `/admin/` (the brand reads *Starbase Admin*): every screen below. Your
+  account menu has *Field app ↗* — open it and you see exactly what a
+  volunteer sees (Today · Map · Calls · Shifts · ImagineU), with *Admin ↗*
+  to come back. A volunteer who opens `/admin/` is told it isn't theirs.
 - **Today → Dashboard → In the field** — tap a dot: who, the outcome, who
   logged it and when, with *Profile* and *On the map* links; tap a person's
   initials for their day and *Only their contacts*; tap a turf for its name.
@@ -129,7 +134,7 @@ one tap away under **More**.
   numbers. **In the field**: tap a volunteer in the list — the map goes to
   them, their contacts stay, their trail shows (today); *out now* and a
   green ring mean they're sharing their location this minute. **By team**
-  is each team's contacts (make teams under *Admin → Teams* to see it fill).
+  is each team's contacts (make teams under *Settings → Teams* to see it fill).
   Have a volunteer turn on *Share my location while I'm out* on their map
   (below) and watch them appear within a minute.
 - **Today** — three big numbers (doors this week · support · raised); tap
@@ -169,7 +174,7 @@ one tap away under **More**.
   shows — the lesson is on the website), *Who to call*. *Done editing*;
   open a lesson, *Mark as done*; *Progress* shows each member's count and,
   tapped, which lessons. A volunteer sees the lessons, not *Edit*.
-- **Phone banks** (People → More → Phone banks, or Today → More) → *New
+- **Phone banks** (People → More → Phone banks, or Today → More — in the admin) → *New
   phone bank*: a name, *Undecided* under *Who to call* (the count updates as
   you filter), a script, *Make the bank*. On the bank: *Hand out* three
   numbers to a volunteer (or a team — split evenly), watch *Callers* fill;
@@ -177,9 +182,9 @@ one tap away under **More**.
   says *Your call lists 1*; tapping through opens the bank on the Calls
   card with the script; each call they log crosses a number off, *Skip*
   (on the bank page) crosses one off without a call.
-- **Admin → Members** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
-- **Admin → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
-- **Admin → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
+- **Settings → Members** — invite a volunteer and a staff member; change a role; remove one (their phone is signed out at once).
+- **Settings → Teams** — make a team, put two people on it, name a lead; on the map, add the whole team to a turf.
+- **Settings → Permissions** — untick Money for Staff and watch a staffer's Money tab go; tick Outreach for one volunteer and watch them get it.
 - **Rating scale** (your initials → *Rating scale*) — change the words on 1
   (e.g. *Definitely*; up to 30 letters, a long one wraps on the buttons),
   rename a candidate, **Add** one, move it with ↑ ↓,

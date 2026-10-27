@@ -42,6 +42,7 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const BASE = process.env.BASE || 'http://localhost:3200';
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-receipts';
 const MAIL_PORT = Number(process.env.MAIL_PORT) || Number(new URL(BASE).port || 3200) + 50;
 const MAIL_BASE = `http://127.0.0.1:${MAIL_PORT}`;
@@ -182,7 +183,7 @@ check('second gift: next number, "No email on file"', rB.number === `${year}-000
 await page.getByRole('button', { name: 'More', exact: true }).click();
 await D.shot('01b-money-more');
 await page.getByRole('link', { name: 'Receipts' }).click();
-await page.waitForURL(`${BASE}/money/receipts`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/money/receipts`, { timeout: 8000 }).catch(() => {});
 await sleep(700);
 let t = await D.text();
 let L = (await D.api('/receipts')).json;
@@ -197,7 +198,7 @@ await D.shot('02-receipts-list');
 const connect = page.locator('main.page .rc-line a', { hasText: 'Connect' });
 check('email off: the line links to Connect (as Ladders and Outreach do)', (await connect.getAttribute('href').catch(() => null)) === '/outreach/website?connect=1');
 await connect.click();
-await page.waitForURL(`${BASE}/outreach/website?connect=1`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/outreach/website?connect=1`, { timeout: 8000 }).catch(() => {});
 await sleep(700);
 check('Connect lands on Email & texting: "Email not connected"', /Email not connected/.test(await D.text()), page.url());
 await D.go('/money/receipts');
@@ -230,7 +231,7 @@ const st = (await page.locator('.rc-status').innerText()).trim();
 check('row opens on what happened: "Not sent — email isn’t connected"', st === rA.status.line, st);
 check('no Send while email is off', !(await page.locator('#rc-list').getByRole('button', { name: /^Send/ }).count()));
 await page.locator('#rc-list').getByRole('link', { name: 'Print' }).click();
-await page.waitForURL(`${BASE}/money/receipts/${rA.id}`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/money/receipts/${rA.id}`, { timeout: 8000 }).catch(() => {});
 await sleep(800);
 const one = (await D.api(`/receipts/${rA.id}`)).json;
 t = await D.text();
@@ -412,8 +413,8 @@ await page.locator('.rc-giftline').waitFor({ timeout: 8000 }).catch(() => {});
 await simple(page, 'Money with a gift open (phone)');
 await D.shot('11-money-gift-phone');
 await page.locator('.rc-giftline').click();
-await page.waitForURL(`${BASE}/money/receipts/${rA.id}`, { timeout: 8000 }).catch(() => {});
-check('the gift’s receipt line opens that receipt', new URL(page.url()).pathname === `/money/receipts/${rA.id}`, page.url());
+await page.waitForURL(`${ADMIN}/money/receipts/${rA.id}`, { timeout: 8000 }).catch(() => {});
+check('the gift’s receipt line opens that receipt', new URL(page.url()).pathname === `/admin/money/receipts/${rA.id}`, page.url());
 await page.setViewportSize({ width: 1360, height: 900 });
 
 // ── 10. A volunteer on a phone: none of it ──

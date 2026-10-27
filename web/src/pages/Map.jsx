@@ -595,7 +595,7 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
           {membersQ.data && !options.length ? (
             <p className="turf-everyone">
               Everyone is on it
-              {invite && <> · <Link className="turf-invite" to="/admin">Invite someone</Link></>}
+              {invite && <> · <Link className="turf-invite" to="/settings">Invite someone</Link></>}
             </p>
           ) : (
             <>
@@ -624,7 +624,7 @@ function TurfSheet({ turf, me, desk, onClose, onDeleted, toast }) {
                 <button type="submit" className="btn turf-act" disabled={busy || !pick}>Add</button>
               </form>
               {/* A new campaign's team is just the manager: the way to more people is right here. */}
-              {invite && <Link className="fk-link turf-invite-link" to="/admin">Invite someone</Link>}
+              {invite && <Link className="fk-link turf-invite-link" to="/settings">Invite someone</Link>}
             </>
           )}
           {membersQ.isError && <p className="error">{membersQ.error.message}</p>}

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // the shared primitives so single-class page rules can override them.
 import './app.css';
 import App from './App.jsx';
+import { ADMIN_BASE, appMode } from './mode.js';
 import { ME_KEY, NoSignalError, noAnswer, savedSignIn } from './api.js';
 import { keptPersister, watchKeptCopies } from './components/KeptCopies.js';
 import { forgetPhoneCopies, keepOnlyMine } from './components/OfflineCache.js';
@@ -101,15 +102,17 @@ if (typeof window !== 'undefined') {
       closeOutbox(); // nothing more is saved here under the sign-in that ended
       queryClient.clear();
       if (next) keepOnlyMine(next); else forgetPhoneCopies();
-      window.location.assign(next ? '/' : '/login');
+      window.location.assign(appMode() === 'admin' ? (next ? `${ADMIN_BASE}/` : `${ADMIN_BASE}/login`) : (next ? '/' : '/login'));
     }, 60);
   });
 }
 
+// /admin/… is the admin (the desk), everything else the field app (mode.js).
+const mode = appMode();
 createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <App />
+    <BrowserRouter basename={mode === 'admin' ? ADMIN_BASE : undefined}>
+      <App mode={mode} />
     </BrowserRouter>
   </QueryClientProvider>,
 );

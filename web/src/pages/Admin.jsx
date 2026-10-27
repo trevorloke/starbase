@@ -1,4 +1,4 @@
-// Admin (managers): Members · Teams · Permissions.
+// Settings (managers, in the admin): Members · Teams · Permissions.
 //   Members      invite, roles, remove — the Team screen (Team.jsx), as it was
 //   Teams        groups of members (a neighbourhood crew, the phone bank):
 //                make one, put people on it, name a lead; a team can be put
@@ -22,13 +22,13 @@ export default function Admin() {
   const { me } = useOutletContext();
   const { tab = 'members' } = useParams();
   if (me.role !== 'manager') return <Navigate to="/" replace />;
-  if (!TABS.some(([t]) => t === tab)) return <Navigate to="/admin" replace />;
+  if (!TABS.some(([t]) => t === tab)) return <Navigate to="/settings" replace />;
   return (
     <div className="ws-page">
-      <div className="ops-head"><h1>Admin</h1></div>
-      <nav className="ws-tabs" aria-label="Admin">
+      <div className="ops-head"><h1>Settings</h1></div>
+      <nav className="ws-tabs" aria-label="Settings">
         {TABS.map(([t, label]) => (
-          <NavLink key={t} to={t === 'members' ? '/admin' : `/admin/${t}`} end className="ws-tab">{label}</NavLink>
+          <NavLink key={t} to={t === 'members' ? '/settings' : `/settings/${t}`} end className="ws-tab">{label}</NavLink>
         ))}
       </nav>
       {tab === 'members' && <Team embedded />}

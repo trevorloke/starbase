@@ -29,6 +29,7 @@ const TILE_URL = 'https://tiles.example/{z}/{x}/{y}.png';
 
 let server = null;
 let BASE = process.env.BASE;
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 if (!BASE) {
   server = spawn(process.execPath, ['server/index.js'], {
     env: {
@@ -127,7 +128,7 @@ await page.fill('#su-name', 'Riley Desk');
 await page.fill('#su-email', `desk+${tag}@example.org`);
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 
 const P = {};
 const mk = async (key, data) => { P[key] = (await D.api('/actions/person.create', data)).json.person; };
@@ -399,7 +400,7 @@ await D.go('/map');
   const asked = [];
   const onReq = (r) => { if (r.url().includes('/api/map/doors')) asked.push(r.url()); };
   page.on('request', onReq);
-  await page.goto(`${BASE}/map?person=${who.id}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${ADMIN}/map?person=${who.id}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('aside.door-card', { timeout: 8000 }).catch(() => {});
   await sleep(1500);
   const pressed = await page.$$eval('aside.door-card button[aria-pressed="true"]', (els) => els.map((e) => e.getAttribute('aria-label') || '')).catch(() => []);

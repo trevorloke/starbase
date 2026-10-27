@@ -39,7 +39,7 @@ function Frame({ me }) {
     queryClient.clear();
     navigate('/login', { replace: true });
   };
-  const appUrl = me.site_admin_url && me.site_admin_url.startsWith('http') ? null : '/';
+  const appUrl = me.site_admin_url && me.site_admin_url.startsWith('http') ? null : '/admin/';
   return (
     <>
       <header className="sa-head">

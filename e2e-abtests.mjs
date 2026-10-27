@@ -25,6 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const PORT = Number(process.env.PORT) || 4104;
 const CONTROL = PORT + 10000;
 const BASE = `http://127.0.0.1:${PORT}`;
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-abtests';
 mkdirSync(SHOTS, { recursive: true });
 const MAILBOX = `${SHOTS}/mailbox.jsonl`;
@@ -115,7 +116,7 @@ const apiOn = (p) => (path, body) => p.evaluate(async ([pp, b]) => {
 }, [path, body]);
 const api = apiOn(page);
 const act = (name, input) => api(`/actions/${name}`, input);
-const go = async (p, path) => { await p.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); };
+const go = async (p, path) => { await p.goto(`${p === page ? ADMIN : BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); };
 const pct = (n, of) => (of > 0 ? Math.round((100 * n) / of) : 0);
 const statOf = async (id) => (await api('/blasts/stats')).json.stats.find((s) => s.id === id);
 
@@ -137,7 +138,7 @@ await page.fill('#su-name', 'Avery Desk');
 await page.fill('#su-email', 'avery@abtests.example');
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 for (let i = 0; i < 60; i += 1) await act('subscription.add', { email: `reader${i}@example.org`, name: `Reader ${i}` });
 await act('person.create', { name: 'Lin Reporter', email: 'lin@surreynow.example', tags: ['media'] });
 const subs = (await api('/subscriptions')).json.subscribed;

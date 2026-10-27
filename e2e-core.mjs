@@ -23,6 +23,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 let server = null;
 let BASE = process.env.BASE;
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 if (!BASE) {
   server = spawn(process.execPath, ['server/index.js'], {
     env: { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' },
@@ -91,7 +92,7 @@ await page.fill('#su-name', 'Riley Desk');
 await page.fill('#su-email', `desk+${tag}@example.org`);
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 
 const P = {};
 const mk = async (key, data) => { P[key] = (await D.api('/actions/person.create', data)).json.person; };

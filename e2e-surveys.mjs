@@ -12,6 +12,7 @@ import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE || 'http://localhost:3200';
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-surveys';
 mkdirSync(SHOTS, { recursive: true });
 const results = [];
@@ -92,7 +93,7 @@ await page.fill('#su-name', 'Riley Desk');
 await page.fill('#su-email', `riley+${tag}@surveys.example`);
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 const P = {};
 const mk = async (key, data) => { P[key] = (await D.api('/actions/person.create', data)).json.person; };
 await mk('harjit', { name: 'Harjit Example', phone: '604-555-0121', email: 'harjit@example.org', address: '12345 72 Ave', city: 'Surrey', lat: 49.1330, lng: -122.8510 });
@@ -111,10 +112,10 @@ check('two turfs drawn', turf?.id && farTurf?.id);
 // ── 2. People → More → Surveys; the list ──
 await D.go('/people');
 await page.click('.pp-menu button:has-text("More")');
-const link = await page.$('.pp-menu__panel a[href="/surveys"]');
+const link = await page.$('.pp-menu__panel a[href="/admin/surveys"]');
 check('People → More lists Surveys', !!link);
 await link.click();
-await page.waitForURL(`${BASE}/surveys`);
+await page.waitForURL(`${ADMIN}/surveys`);
 await sleep(600);
 let m = await measure(page);
 check('Surveys: empty list, one yellow "New survey"', /No surveys yet/.test(await D.text()) && m.yellow === 1 && /New survey/i.test(await page.innerText('.btn-primary')), JSON.stringify(m));

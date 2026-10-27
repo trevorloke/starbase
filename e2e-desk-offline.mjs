@@ -41,6 +41,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 let server = null;
 let BASE = process.env.BASE;
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 if (!BASE) {
   server = spawn(process.execPath, ['server/index.js'], {
     env: { ...process.env, STARBASE_OPEN_SIGNUP: '1', STARBASE_DATA: 'memory', PORT: String(PORT), STARBASE_JOBS: 'off' },
@@ -134,7 +135,7 @@ const signupAs = async (page, D, name, email) => {
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
   await page.click('button[type="submit"]');
-  await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+  await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 };
 const join = async (page, url, name) => {
   await page.goto(url.replace(/^https?:\/\/[^/]+/, BASE), { waitUntil: 'domcontentloaded' });
@@ -217,7 +218,7 @@ const tagEventsBefore = (await D.api('/events?since=0&limit=5000')).json.events.
 // ════════════════════════════════════════════════════════════════════════════
 await ctx.setOffline(true);
 // In the app, no reload: a screen not opened since this page loaded starts from its copy.
-await page.click('nav.links a[href="/signs"]');
+await page.click('nav.links a[href="/admin/signs"]');
 await page.waitForSelector('.ops-rows li', { timeout: 6000 }).catch(() => {});
 check('no signal, in the app: Signs opens from its copy at once', (await page.locator('.ops-rows li').count()) > 0 && KEPT.test(await D.kept()), await D.kept());
 await D.go('/');
@@ -479,7 +480,7 @@ await page.unroute('**/api/**');
   await D3.go('/');
   await p3.waitForSelector('.today-nums', { timeout: 8000 }).catch(() => {});
   await p3.route('**/api/**', (route) => route.fulfill({ status: 502, contentType: 'text/html', body: '<html><body>502 Bad Gateway</body></html>' }));
-  await p3.click('nav.links a[href="/people"]');
+  await p3.click('nav.links a[href="/admin/people"]');
   await until(async () => /No answer — check your signal/.test(await D3.main()), 8000);
   let t3 = await D3.main();
   check('server down (502), no list kept in this tab: "No answer — check your signal" — no "0 people", no empty table, no "No people yet"',
@@ -504,7 +505,7 @@ await D.go(`/people/${harjit.id}`);
 await page.waitForSelector('.pf-rate', { timeout: 8000 });
 await page.click('.pf-rate button:has-text("+ Add a note")');
 await page.fill('#contact-note', leftNote);
-await page.click('nav.links a[href="/people"]');
+await page.click('nav.links a[href="/admin/people"]');
 await sleep(1500);
 const harjitNow = (await D.api(`/persons/${harjit.id}`)).json.contacts;
 check('a note typed on a profile, then People tapped: the note is saved, once', harjitNow.length === harjitBefore + 1
@@ -572,7 +573,7 @@ await page.click('.pf-rate button:has-text("+ Add a note")');
 await page.fill('#contact-note', byeNote);
 await page.click('.acct-btn');
 await page.click('.acct-panel button:has-text("Sign out")');
-await page.waitForURL(`${BASE}/login`, { timeout: 10000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/login`, { timeout: 10000 }).catch(() => {});
 await sleep(1200);
 const byeOutbox = await D.outbox();
 let left = await D.stored();
@@ -580,7 +581,7 @@ check('signed out: no copies left in this browser or this tab', Object.keys(left
   JSON.stringify([...Object.keys(left.local), ...Object.keys(left.session)]).slice(0, 200));
 check('…a note typed on the profile was sent before signing out, and nothing is left in the outbox',
   byeOutbox.length === 0 && (await D.outbox()).length === 0, JSON.stringify(byeOutbox).slice(0, 200));
-await tabB.waitForURL(`${BASE}/login`, { timeout: 8000 }).catch(() => {});
+await tabB.waitForURL(`${ADMIN}/login`, { timeout: 8000 }).catch(() => {});
 const tabBLeft = await TB.stored();
 check('…the other open tab is told: it goes to Sign in, and its tab-only copies (the ledger) are gone',
   tabBHad.some((k) => k.endsWith(':q:manager:gifts')) && /\/login$/.test(tabB.url()) && Object.keys(tabBLeft.session).length === 0,
@@ -757,13 +758,13 @@ await pp.fill('#login-password', 'surrey-forward-2026');
 await pp.click('button[type="submit"]');
 await pp.waitForURL(`${BASE}/`, { timeout: 15000 }).catch(() => {});
 await pp.waitForSelector('.today-nums', { timeout: 8000 }).catch(() => {});
-await pp.click('nav.links a[href="/people"]').catch(() => {});
+await pp.click('nav.links a[href="/admin/people"]').catch(() => {});
 await pp.waitForSelector('.pp-table tbody tr', { timeout: 8000 }).catch(() => {});
 await sleep(1200);
 await PH.shot('08-storage-blocked-online');
 check('storage blocked: the desk still works with signal', (await pp.locator('.pp-table tbody tr').count()) > 20 && Number(await countOf(pp)) > 50, `${pp.url()} ${(await PH.text()).slice(0, 160)}`);
 await pctx.setOffline(true);
-await pp.click('nav.links a[href="/signs"]');
+await pp.click('nav.links a[href="/admin/signs"]');
 await sleep(1500);
 t = await PH.text();
 check('storage blocked, no signal: a screen not loaded yet says No signal, as before', /No signal — this loads when you’re back online/.test(t), t.slice(0, 160));

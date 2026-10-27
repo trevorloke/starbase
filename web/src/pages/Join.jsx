@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../api.js';
+import { landing } from '../mode.js';
 
 const ROLE_LABEL = { manager: 'a manager', treasurer: 'the treasurer', staff: 'staff', volunteer: 'a volunteer' };
 
@@ -12,7 +13,7 @@ const ROLE_LABEL = { manager: 'a manager', treasurer: 'the treasurer', staff: 's
 const AUTH_INPUT = { minHeight: 48, fontSize: 16 };
 const AUTH_BUTTON = { width: '100%', minHeight: 52, fontSize: 13, marginTop: 'var(--s-2)' };
 
-export default function Join() {
+export default function Join({ mode = 'field' }) {
   const { token } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -36,7 +37,8 @@ export default function Join() {
       // invite, which this screen still shows until Today takes over.
       queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'invite' });
       queryClient.setQueryData(['me'], me);
-      navigate('/');
+      const go = landing(me, mode);
+      if (go.href) window.location.assign(go.href); else navigate(go.to);
     } catch (err) {
       setError(err.message);
     } finally {

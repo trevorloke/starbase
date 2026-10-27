@@ -9,6 +9,7 @@
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.BASE || 'http://localhost:3200';
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-shots';
 const results = [];
 const check = (name, ok, extra = '') => {
@@ -53,7 +54,7 @@ const api = (path, body) => page.evaluate(async ([p, b]) => {
   return { status: r.status, json: await r.json().catch(() => null) };
 }, [path, body]);
 const act = (name, input) => api(`/actions/${name}`, input);
-const go = async (path) => { await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); };
+const go = async (path) => { await page.goto(`${ADMIN}${path}`, { waitUntil: 'domcontentloaded' }); await sleep(900); };
 
 // ── 1. First-run setup: always Imagine Surrey, BC municipal ──
 await go('/signup');
@@ -61,7 +62,7 @@ await page.fill('#su-name', 'Trevor Loke');
 await page.fill('#su-email', 'trevor@imaginesurrey.example');
 await page.fill('#su-password', 'surrey-forward-2026');
 await page.click('button[type="submit"]');
-await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
 const me = (await api('/auth/me')).json;
 check('workspace created with slug', me.workspace.slug === 'imagine-surrey', me.workspace.slug);
 check('setup is BC municipal', me.workspace.jurisdiction === 'bc-municipal', me.workspace.jurisdiction);
@@ -141,7 +142,7 @@ t = await text();
 check('media tag filter', /Lin Reporter/.test(t) && !/Harjit Gill/.test(t));
 // The old phone-bank link still works: it lands on Calls.
 await go('/people?bank=phone&has=phone');
-check('old phone-bank link redirects to Calls', new URL(page.url()).pathname === '/calls' && !/channel=text/.test(page.url()), page.url());
+check('old phone-bank link redirects to Calls', new URL(page.url()).pathname === '/admin/calls' && !/channel=text/.test(page.url()), page.url());
 await page.waitForSelector('section.cl-card', { timeout: 8000 }).catch(() => {});
 const current = await page.$eval('section.cl-card', (el) => el.getAttribute('aria-label')).catch(() => '');
 if (current !== 'Grace Kim') {

@@ -431,7 +431,7 @@ function Teams({ d, period }) {
     return (
       <section className="dash-sec" aria-labelledby={headId}>
         <h3 className="dash-sec__h" id={headId}>By team</h3>
-        <p className="today-empty">No teams yet — <Link to="/admin/teams">make one under Admin</Link> and put people on it.</p>
+        <p className="today-empty">No teams yet — <Link to="/settings/teams">make one under Settings</Link> and put people on it.</p>
       </section>
     );
   }
@@ -439,7 +439,7 @@ function Teams({ d, period }) {
     <section className="dash-sec" aria-labelledby={headId}>
       <header className="dash-sec__head">
         <h3 className="dash-sec__h" id={headId}>By team <span className="muted">· {PERIOD_WORD[period]}</span></h3>
-        <Link className="dash-sec__link" to="/admin/teams">Teams ›</Link>
+        <Link className="dash-sec__link" to="/settings/teams">Teams ›</Link>
       </header>
       <div className="dash-tablewrap">
         <table className="dash-table">

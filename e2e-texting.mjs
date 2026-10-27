@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT) || 4105;
 const BASE = `http://127.0.0.1:${PORT}`;
+const ADMIN = { toString() { return `${BASE}/admin`; } }; // the desk's pages live in the admin (web/src/mode.js)
 const SHOTS = process.env.SHOTS || '/tmp/starbase-texting';
 mkdirSync(SHOTS, { recursive: true });
 const results = [];
@@ -199,7 +200,7 @@ const signup = async (page, D, name, email) => {
   await page.fill('#su-email', email);
   await page.fill('#su-password', 'surrey-forward-2026');
   await page.click('button[type="submit"]');
-  await page.waitForURL(`${BASE}/`, { timeout: 15000 });
+  await page.waitForURL(/\/admin\/?$/, { timeout: 15000 });
   return (await D.api('/auth/me')).json;
 };
 
@@ -220,7 +221,7 @@ let server = await startServer({ TWILIO_API_BASE: STUB });
   const sms = await page.locator('.cl-card a.cl-call[href^="sms:"]').count();
   check('not connected: Text keeps the phone\'s own Messages (sms: link)', sms === 1 && (await page.locator('.tx-send').count()) === 0, `sms links=${sms}`);
   check('not connected: says "Texting isn’t connected · Connect" once, Connect to the Website tab', count(t, 'Texting isn’t connected · Connect') === 1
-    && (await page.locator('main.page a[href="/outreach/website?connect=1"]').count()) === 1 && !/Twilio/.test(t), t.slice(0, 200));
+    && (await page.locator('main.page a[href="/admin/outreach/website?connect=1"]').count()) === 1 && !/Twilio/.test(t), t.slice(0, 200));
   const status = (await D.api('/texting/status')).json;
   check('not connected: the server agrees (no texts, no calls)', status?.sms === false && status?.voice === false, JSON.stringify(status));
   const refused = await D.api('/actions/text.send', { person_id: harjit.id, body: `Hi Harjit, it's Riley with ${CAMPAIGN}.` });
@@ -276,7 +277,7 @@ const [qFrom, qUntil] = vanHour + 2 <= 24 ? [vanHour + 1, vanHour + 2] : [0, 1];
 await D.go('/inbox');
 await page.locator('main.page').getByRole('button', { name: 'More' }).click();
 await page.getByRole('link', { name: 'Texting settings' }).click();
-await page.waitForURL(`${BASE}/inbox/settings`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/inbox/settings`, { timeout: 8000 }).catch(() => {});
 await sleep(600);
 let t = await D.text();
 check('settings: says what is connected', /Texts\s*On · 604-555-0100/i.test(t) && /Calls\s*Through the campaign/i.test(t), t.slice(0, 200));
@@ -383,9 +384,9 @@ await D.go('/');
 await page.waitForSelector('.today-rows', { timeout: 8000 }).catch(() => {});
 t = await D.text();
 check('Today: "1 new text" under Needs you, a tap to the Inbox', /1 new text\b/.test(t)
-  && await page.locator('a.today-row[href="/inbox"]').count() === 1, t.slice(0, 300));
-await page.locator('a.today-row[href="/inbox"]').click();
-await page.waitForURL(`${BASE}/inbox`, { timeout: 8000 }).catch(() => {});
+  && await page.locator('a.today-row[href="/admin/inbox"]').count() === 1, t.slice(0, 300));
+await page.locator('a.today-row[href="/admin/inbox"]').click();
+await page.waitForURL(`${ADMIN}/inbox`, { timeout: 8000 }).catch(() => {});
 await page.waitForSelector('.pf-back', { timeout: 8000 }).catch(() => {});
 const backToday = page.locator('main.page .pf-back').first();
 check('Inbox from Today: "← Today", back to Today', /^← Today$/i.test((await backToday.innerText().catch(() => '')).trim()) && await backToday.getAttribute('href') === '/',
@@ -402,7 +403,7 @@ check('card: a blank reply — no first-text wording, no STOP line, no "No reply
   && !/No reply/.test(await D.text()) && (await page.locator('.cl-rate button').count()) >= 4);
 await D.shot('05b-calls-text-replied');
 await page.locator('.tx-replies').click();
-await page.waitForURL(`${BASE}/inbox`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/inbox`, { timeout: 8000 }).catch(() => {});
 await page.waitForSelector('.tx-row', { timeout: 8000 }).catch(() => {});
 t = await D.text();
 check('Inbox: Harjit, new, with his reply', (await page.locator('.tx-row.is-new').count()) === 1 && /Harjit Example/.test(t) && /Yes, put me down for a sign/.test(t), t.slice(0, 200));
@@ -414,7 +415,7 @@ check('Inbox: a text from today shows the time, not the date', /^\d{1,2}:\d{2}\s
 await simple(page, 'Inbox (desk)');
 await D.shot('06-inbox-desk');
 await page.locator('.tx-row').first().click();
-await page.waitForURL(`${BASE}/inbox/${harjitConv}`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/inbox/${harjitConv}`, { timeout: 8000 }).catch(() => {});
 await page.waitForSelector('.tx-bubble', { timeout: 8000 }).catch(() => {});
 await sleep(800);
 t = await D.text();
@@ -674,7 +675,7 @@ await D.go(`/people/${P.harjit.id}`);
 const pf = page.locator('.tx-pflink');
 check('profile: a Texts link with the count', /Texts\s*3/.test(await pf.innerText().catch(() => '')), await pf.innerText().catch(() => ''));
 await pf.click();
-await page.waitForURL(`${BASE}/inbox/${harjitConv}`, { timeout: 8000 }).catch(() => {});
+await page.waitForURL(`${ADMIN}/inbox/${harjitConv}`, { timeout: 8000 }).catch(() => {});
 check('profile: the link opens Harjit\'s conversation', page.url() === `${BASE}/inbox/${harjitConv}`, page.url());
 await D.go(`/map?person=${P.dev.id}`);
 await page.waitForSelector('aside.door-card', { timeout: 8000 }).catch(() => {});

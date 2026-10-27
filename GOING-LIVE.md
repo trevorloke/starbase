@@ -71,6 +71,9 @@ Twilio: set the number's incoming-message webhook to
 
 ## 4 · First sign-in
 
+The first sign-in lands in the **admin** (`/admin/`); the field app at `/` is
+what volunteers get, and what you see under *Field app ↗* in your account menu.
+
 1. Open `https://starbase.imaginesurrey.ca/login` → **Set up Starbase for
    Imagine Surrey**. The first account is the manager; this creates the
    Imagine Surrey workspace (BC municipal rules, the 2026 contribution
