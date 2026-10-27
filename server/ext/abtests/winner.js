@@ -34,6 +34,7 @@ import {
   NO_PROVIDER, WINNER_JOB, composeBlast, decide, findLinks, groupStats, newToken, outcomeOf,
   recordOutcome, saveLinks, sendKey, settleBlast, subjectFor,
 } from './send.js';
+import { loadAttachments } from './attach.js';
 
 const BATCH = 10;
 const perRun = () => Number(process.env.STARBASE_AB_SEND_PER_RUN) || 200;
@@ -69,6 +70,7 @@ export const pickWinner = async (db, job) => {
   const ws = (await db.query('select name from workspaces where id = $1', [workspaceId])).rows[0];
   const ctx = { workspaceId, workspace: { name: ws?.name || '' }, publicUrl: base };
   const links = findLinks(blast.body);
+  const attachments = await loadAttachments(db, workspaceId, { blastId });
   const subject = subjectFor(blast, 'rest');
   const run = { claimed: 0, sent: 0, failed: 0, unsure: 0, skipped: 0, note: null };
   let more = false;
@@ -117,7 +119,7 @@ export const pickWinner = async (db, job) => {
       const res = await sendEmail({
         to: r.email,
         subject,
-        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links }),
+        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links, attachments }),
         idempotencyKey: sendKey(blastId, r),
       });
       const { status } = outcomeOf(res);

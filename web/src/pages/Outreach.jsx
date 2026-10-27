@@ -21,6 +21,8 @@ import {
 } from '../components/AbTests.jsx';
 import LaddersLink from '../components/LaddersLink.jsx';
 import { NeedsSignal, useOnline } from '../components/NoSignal.jsx';
+import { MarkdownField, toDataUrl, uploadImage } from '../components/WebsiteBits.jsx';
+import './website.css'; // the Markdown field's toolbar and preview
 import './outreach.css';
 
 const TABS = [
@@ -98,6 +100,24 @@ const sourceLabel = (s) => {
   return s.replace(/[-_:]+/g, ' ');
 };
 const KIND_LABEL = { newsletter: 'Newsletter', press: 'Press release' };
+// Files with a send (server: ext/abtests/attach.js — the same limits).
+const ATTACH_MAX = 5 * 1024 * 1024;
+const ATTACH_COUNT = 5;
+const ATTACH_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.docx,.pptx,.xlsx,.txt,.csv,.ics';
+const fmtBytes = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+// A picture in a message: stored like the website's (blast.picture), so
+// every mail app can fetch it from /media/<id>.
+const uploadMessagePicture = (file) => uploadImage(file, 'blast.picture');
+// "Link to…" in the message: the campaign's own pages.
+const campaignLinks = (slug) => {
+  const base = origin();
+  return [
+    { label: 'Donate', url: `${base}/d/${slug}` },
+    { label: 'Volunteer', url: `${base}/v/${slug}` },
+    { label: 'Newsletter signup', url: `${base}/n/${slug}` },
+    { label: 'Website', url: `${base}/` },
+  ];
+};
 
 // Run an action with busy/error state; `onDone` gets the result.
 function useAction(onDone) {
@@ -429,17 +449,28 @@ function BlastResult({ blast: answered, emailConfigured, canWrite, onDismiss, on
   );
 }
 
-// Compose shared by newsletter + press: subject, message, Send. Sending asks
+// Compose shared by newsletter + press: subject, message, Send. The
+// message is Markdown with the website editor's toolbar (bold, italic,
+// heading, link, list, picture, "Link to…" the campaign's pages) and a
+// Preview that is the email's layout; files can go with it (5 at most,
+// 5 MB each); "Send me a test" emails the writer a copy first. Sending asks
 // once, in one line ("Send to 5 subscribers? Yes, send · No"). The server
 // refuses an empty audience, so Send waits until there is someone to send to.
 // Whatever happens the send is kept (sent, failed or saved), so the form
 // closes and the result is said once under the tabs — a failed one is tried
 // again from there, never sent a second time as a new copy.
-function ComposeCard({ kind, audienceCount, audienceNoun, emptyReason, emailConfigured, onSent, onCancel }) {
+function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, emailConfigured, onSent, onCancel }) {
   const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [confirming, setConfirming] = useState(false);
+  // Files uploaded for this send: [{ id, filename, bytes }], bound on Send.
+  const [files, setFiles] = useState([]);
+  const [fileNote, setFileNote] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+  // "Send me a test": what happened, in a line.
+  const [test, setTest] = useState(null);
   // Two subject lines (components/AbTests.jsx): null = one; a list under 50 sends normally.
   const [ab, setAb] = useState(null);
   const act = useAction(() => {
@@ -479,6 +510,7 @@ function ComposeCard({ kind, audienceCount, audienceNoun, emptyReason, emailConf
     const res = await act.run('blast.send', {
       kind, subject: subject.trim(), body: body.trim(),
       ...(testing ? { ab: { ...ab, subject_b: ab.subject_b.trim(), metric: links ? ab.metric : 'opens' } } : {}),
+      ...(files.length ? { attachment_ids: files.map((f) => f.id) } : {}),
     });
     setConfirming(false);
     if (!res) {
@@ -492,6 +524,46 @@ function ComposeCard({ kind, audienceCount, audienceNoun, emptyReason, emailConf
     onSent?.(resultOf(res));
   };
 
+  // Files: each goes up as it is picked (blast.attach) and is listed by
+  // name; Remove takes it back. Too big or not a kind the server takes is
+  // said here, the rest kept.
+  const pickFiles = async (e) => {
+    const picked = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!picked.length) return;
+    setFileNote(null);
+    setUploading(true);
+    const added = [];
+    try {
+      for (const f of picked) {
+        if (files.length + added.length >= ATTACH_COUNT) throw new Error(`${ATTACH_COUNT} files at most on one send`);
+        if (f.size > ATTACH_MAX) throw new Error(`${f.name} is too big — ${fmtBytes(ATTACH_MAX)} at most; link to it instead`);
+        const r = await action('blast.attach', { data: await toDataUrl(f), name: f.name });
+        added.push(r.attachment);
+      }
+    } catch (err) {
+      setFileNote(err.message);
+    } finally {
+      if (added.length) setFiles((cur) => [...cur, ...added]);
+      setUploading(false);
+    }
+  };
+  const dropFile = (a) => {
+    setFiles((cur) => cur.filter((x) => x.id !== a.id));
+    action('blast.unattach', { id: a.id }).catch(() => {});
+  };
+  const sendTest = async () => {
+    setTest({ busy: true });
+    try {
+      const r = await action('blast.test', {
+        kind, subject: subject.trim(), body: body.trim(), ...(files.length ? { attachment_ids: files.map((f) => f.id) } : {}),
+      });
+      setTest(r.sent ? { ok: true, line: `Test sent to ${r.to}` } : { line: r.detail || 'The test didn’t go' });
+    } catch (err) {
+      setTest({ line: err.message });
+    }
+  };
+
   return (
     <form className="card ot-compose" onSubmit={(e) => { e.preventDefault(); if (ready && !empty && !confirming) setConfirming(true); }}>
       <div className="field">
@@ -502,11 +574,31 @@ function ComposeCard({ kind, audienceCount, audienceNoun, emptyReason, emailConf
       </div>
       <AbFields idPrefix={kind} audienceCount={audienceCount} noun={noun} value={ab} links={links}
         onChange={(v) => { setAb(v); setConfirming(false); }} />
-      <div className="field">
-        <label htmlFor={`${kind}-body`}>Message</label>
-        <textarea id={`${kind}-body`} className="input" value={body} maxLength={50000}
-          onChange={(e) => { setBody(e.target.value); setConfirming(false); }}
-          placeholder={kind === 'press' ? 'FOR IMMEDIATE RELEASE …' : 'Hello friends,'} />
+      <MarkdownField id={`${kind}-body`} label="Message" value={body} rows={10}
+        onChange={(v) => { setBody(v.slice(0, 50000)); setConfirming(false); }}
+        upload={uploadMessagePicture} links={slug ? campaignLinks(slug) : []}
+        placeholder={kind === 'press' ? 'FOR IMMEDIATE RELEASE …' : 'Hello friends,'} />
+      <div className="ot-attach">
+        <input ref={fileRef} type="file" multiple hidden accept={ATTACH_ACCEPT} onChange={pickFiles} />
+        {files.length > 0 && (
+          <ul className="ot-files" aria-label="Files with this send">
+            {files.map((a) => (
+              <li key={a.id} className="ot-file">
+                <span className="ot-file__name">{a.filename}</span>
+                <span className="ot-file__size">{fmtBytes(a.bytes)}</span>
+                <button type="button" className="btn btn-quiet" onClick={() => dropFile(a)} aria-label={`Remove ${a.filename}`}>✕</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="ot-attach__row">
+          <button type="button" className="btn btn-quiet ot-btn-tap" disabled={uploading || files.length >= ATTACH_COUNT || !online}
+            onClick={() => fileRef.current?.click()}>
+            {uploading ? 'Uploading…' : 'Attach a file'}
+          </button>
+          <span className="ot-attach__hint">PDF, pictures, Word, Excel, PowerPoint, .ics, .txt or .csv — {fmtBytes(ATTACH_MAX)} each, {ATTACH_COUNT} files</span>
+        </div>
+        {fileNote && <p className="error" role="alert">{fileNote}</p>}
       </div>
       {act.error && <p className="error">{act.error}</p>}
       {empty && emptyReason && <p className="ot-note">{emptyReason}</p>}
@@ -531,11 +623,17 @@ function ComposeCard({ kind, audienceCount, audienceNoun, emptyReason, emailConf
             <span className="ot-audience">
               {audienceCount == null ? '…' : `${audienceCount} ${noun(audienceCount)}`}
             </span>
+            {!offline && (
+              <button type="button" className="btn btn-quiet ot-btn-tap" disabled={!ready || test?.busy || uploading || !online} onClick={sendTest}>
+                {test?.busy ? 'Sending…' : 'Send me a test'}
+              </button>
+            )}
             <span className="spacer" />
             <button type="button" className="btn btn-quiet ot-btn-tap" onClick={onCancel}>Cancel</button>
           </>
         )}
       </div>
+      {test?.line && <p className={test.ok ? 'ot-test-note' : 'error'} role="status">{test.line}</p>}
     </form>
   );
 }
@@ -581,6 +679,11 @@ function PastRow({ b, showKind, emailConfigured, canWrite }) {
             {showKind && <span>{KIND_LABEL[b.kind] || b.kind}</span>}
             <span>{reach}</span>
             <span>{fmtWhen(b.sent_at || b.created_at)}</span>
+            {b.attachments?.length > 0 && (
+              <span className="ot-row__files" title={b.attachments.map((a) => a.filename).join(', ')}>
+                {b.attachments.length === 1 ? b.attachments[0].filename : `${b.attachments.length} files`}
+              </span>
+            )}
           </span>
           {ab && <span className="ab-b">B · {ab.subject_b}</span>}
           {abNow && <span className="ab-line" data-tone={abNow.tone}>{abNow.line}</span>}
@@ -765,6 +868,7 @@ function NewsletterTab({ me, canWrite, creating, onClose, toast }) {
       {composing && (
         <ComposeCard
           kind="newsletter"
+          slug={slug}
           audienceCount={subscribed}
           audienceNoun={{ one: 'subscriber', many: 'subscribers' }}
           emptyReason="No subscribers yet — share the signup page first."
@@ -862,7 +966,7 @@ function NewsletterTab({ me, canWrite, creating, onClose, toast }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // PRESS — releases go to everyone tagged 'media' who has an email
 // ─────────────────────────────────────────────────────────────────────────────
-function PressTab({ canWrite, creating, onClose }) {
+function PressTab({ me, canWrite, creating, onClose }) {
   const blasts = useBlastList();
   const media = blasts.data?.mediaContacts ?? null;
   const emailConfigured = blasts.data?.emailConfigured;
@@ -874,6 +978,7 @@ function PressTab({ canWrite, creating, onClose }) {
       {composing && (
         <ComposeCard
           kind="press"
+          slug={me.workspace.slug}
           audienceCount={media}
           audienceNoun={{ one: 'media contact', many: 'media contacts' }}
           emptyReason="Tag reporters “media” in People first."

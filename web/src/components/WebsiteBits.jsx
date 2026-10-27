@@ -2,8 +2,10 @@
 //   useSiteRefresh()   refetch everything a website edit can change
 //   useSave()          run an action with busy / error / "Saved" state
 //   MarkdownField      a textarea with a small toolbar (bold, italic, heading,
-//                      link, list, picture) and a Preview that is exactly the
-//                      site's own renderer (@starbase/shared/markdown)
+//                      link, list, picture, and "Link to…" for the campaign's
+//                      own pages when given `links`) and a Preview that is
+//                      exactly the site's own renderer (@starbase/shared/markdown);
+//                      `upload` swaps the picture's action (Outreach's emails)
 //   ImageField         one picture: upload (shrunk here first) or pick an
 //                      earlier upload; Remove
 //   PhotosField        several pictures (a product's), the first is the cover
@@ -73,7 +75,7 @@ const loadImage = (file) => new Promise((resolve, reject) => {
   im.src = url;
 });
 const toBlob = (canvas, type, q) => new Promise((resolve) => canvas.toBlob(resolve, type, q));
-const toDataUrl = (blob) => new Promise((resolve, reject) => {
+export const toDataUrl = (blob) => new Promise((resolve, reject) => {
   const r = new FileReader();
   r.onload = () => resolve(r.result);
   r.onerror = () => reject(new Error('That picture couldn’t be read'));
@@ -109,14 +111,14 @@ export async function shrinkImage(file) {
   throw new Error('This picture is too big — try a smaller one');
 }
 
-export async function uploadImage(file) {
+export async function uploadImage(file, actionName = 'site.media.upload') {
   const { blob, width, height } = await shrinkImage(file);
   const data = await toDataUrl(blob);
-  const res = await action('site.media.upload', { data, name: file.name.slice(0, 200), width, height });
+  const res = await action(actionName, { data, name: file.name.slice(0, 200), width, height });
   return res.media;
 }
 
-function UploadButton({ onUploaded, label = 'Upload picture', className = 'btn ops-tap' }) {
+function UploadButton({ onUploaded, label = 'Upload picture', className = 'btn ops-tap', upload = uploadImage }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -128,7 +130,7 @@ function UploadButton({ onUploaded, label = 'Upload picture', className = 'btn o
     setBusy(true);
     setError(null);
     try {
-      const media = await uploadImage(file);
+      const media = await upload(file);
       await refresh();
       onUploaded(media);
     } catch (err) {
@@ -233,9 +235,10 @@ const TOOLS = [
   { key: 'list', label: '• List', title: 'List', line: '- ', fill: 'Item' },
 ];
 
-export function MarkdownField({ id, label, value, onChange, rows = 12, placeholder }) {
+export function MarkdownField({ id, label, value, onChange, rows = 12, placeholder, upload, links }) {
   const ref = useRef(null);
   const [preview, setPreview] = useState(false);
+  const linkMenu = useId();
   const insert = (before, after = '', fill = '') => {
     const el = ref.current;
     const start = el?.selectionStart ?? value.length;
@@ -265,7 +268,15 @@ export function MarkdownField({ id, label, value, onChange, rows = 12, placehold
           {!preview && TOOLS.map((t) => (
             <button key={t.key} type="button" className={`ws-md__tool ws-md__tool--${t.key}`} title={t.title} aria-label={t.title} onClick={() => tool(t)}>{t.label}</button>
           ))}
-          {!preview && <UploadButton className="ws-md__tool" label="Picture" onUploaded={(m) => insert('\n![', `](/media/${m.id})\n`, 'picture')} />}
+          {!preview && <UploadButton className="ws-md__tool" label="Picture" upload={upload} onUploaded={(m) => insert('\n![', `](/media/${m.id})\n`, 'picture')} />}
+          {!preview && links?.length > 0 && (
+            // "Link to…": one of the campaign's own pages, as a link at the cursor.
+            <select className="ws-md__tool ws-md__links" aria-label="Link to a campaign page" id={linkMenu} value=""
+              onChange={(e) => { const l = links[Number(e.target.value)]; if (l) insert('[', `](${l.url})`, l.label); }}>
+              <option value="">Link to…</option>
+              {links.map((l, i) => <option key={l.url} value={i}>{l.label}</option>)}
+            </select>
+          )}
           <button type="button" className="ws-md__tool ws-md__preview" aria-pressed={preview} onClick={() => setPreview((v) => !v)}>
             {preview ? 'Edit' : 'Preview'}
           </button>

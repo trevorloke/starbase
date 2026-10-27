@@ -78,4 +78,20 @@ create table if not exists blast_links (
   url text not null,
   primary key (blast_id, n)
 );
+
+-- Files that go with a send (attach.js). Uploaded first, on their own
+-- (blast_id null, the uploader's), then bound to the send on Send; an
+-- upload never bound is swept after a day.
+create table if not exists blast_attachments (
+  id uuid primary key,
+  workspace_id uuid not null references workspaces(id) on delete cascade,
+  blast_id uuid references blasts(id) on delete cascade,
+  filename text not null,
+  content_type text not null,
+  bytes int not null,
+  data bytea not null,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists blast_attachments_blast_idx on blast_attachments (blast_id);
 `;

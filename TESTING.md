@@ -141,7 +141,13 @@ one tap away under **More**.
   *Support* for the breakdown by candidate. **Needs you** lists what's waiting:
   gifts over the limit, open pledges, shifts short of people,
   signs to put up.
-- **Outreach → Newsletter** — without email connected, a newsletter is
+- **Outreach → Newsletter** — the message takes Markdown: tap **B**,
+  **H**, **• List**, **Link**, **Picture** (a photo goes in from your phone)
+  and **Link to…** (Donate, Volunteer, Newsletter signup, Website), then
+  **Preview** to see the email as it will look. **Attach a file** takes a
+  PDF or a picture (5 MB each, five at most) and lists it by name with ✕;
+  **Send me a test** emails you a copy with everything in it and nothing
+  tracked. Without email connected, a newsletter is
   *Saved — not sent*; connect email (Resend) and tap *Send now*. A send
   that partly fails says *Sent to 1 of 2 — 1 failed* with *Try again*. A
   big list says *Sending · 40 of 340* and counts up while it goes out in the

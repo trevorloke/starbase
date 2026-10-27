@@ -2,11 +2,15 @@
 // blast.resend (actions/field.js), the send job that carries their sends on
 // (SEND_JOB) and the A/B winner job (winner.js).
 //
-// Every recipient row carries a random, unguessable token. Each email goes
-// out with the plain-text part it always had plus an HTML part: the same
-// words, a 1×1 open pixel (/o/<token>.gif) and every link in the message
-// rewritten to /c/<token>/<n>, which redirects only to link n as stored for
-// that send (blast_links). The unsubscribe link is never rewritten.
+// A message is written in the same Markdown as the website's pages
+// (@starbase/shared/markdown): headings, bold, lists, links, pictures from
+// /media. Every recipient row carries a random, unguessable token. Each
+// email goes out with a plain-text part (the words, line for line) and an
+// HTML part: the message laid out, a 1×1 open pixel (/o/<token>.gif) and
+// every link in the message — typed as [words](https://…) or as a bare
+// address — rewritten to /c/<token>/<n>, which redirects only to link n as
+// stored for that send (blast_links). The unsubscribe link is never
+// rewritten. Files attached on Send (attach.js) go with every copy.
 //
 // A/B: a send with two subject lines splits its list at random into group A
 // and group B (10/20/30% each) and the rest. A and B go out now; the rest
@@ -23,6 +27,8 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { emailConfigured, sendEmail, unsubscribeHeaders } from '../../lib/notify.js';
 import { enqueueJob, jobRunnerOn, runJobsSoon } from '../../lib/jobs.js';
 import { runAction } from '../../lib/events.js';
+import { markdownPlain, renderMarkdown } from '@starbase/shared/markdown';
+import { loadAttachments } from './attach.js';
 
 export const AB_MIN = 50;
 export const AB_PCTS = [10, 20, 30];
@@ -117,9 +123,14 @@ export const recordOutcome = (tx, workspaceId, rowId, res, { token = null, from 
 
 // Every newsletter identifies the sender and carries the recipient's own
 // one-click unsubscribe link (/u/:subscriptionId); press carries the name.
-export const blastText = (ctx, kind, body, subscriptionId) => body + (kind === 'newsletter'
-  ? `\n\n—\nSent by ${ctx.workspace.name}.\nUnsubscribe: ${ctx.publicUrl || ''}/u/${subscriptionId}`
-  : `\n\n—\n${ctx.workspace.name}`);
+// A test copy (no subscription) says where the link will be.
+export const blastText = (ctx, kind, body, subscriptionId) => {
+  const base = ctx.publicUrl || '';
+  const words = markdownPlain(body).replace(/(^|[\s(])\/media\/([A-Za-z0-9-]+)/g, `$1${base}/media/$2`);
+  return words + (kind === 'newsletter'
+    ? `\n\n—\nSent by ${ctx.workspace.name}.\nUnsubscribe: ${subscriptionId ? `${base}/u/${subscriptionId}` : '(each subscriber gets their own link)'}`
+    : `\n\n—\n${ctx.workspace.name}`);
+};
 
 // 24 url-safe characters, 144 random bits.
 export const newToken = () => randomBytes(18).toString('base64url');
@@ -170,46 +181,103 @@ export const saveLinks = async (tx, workspaceId, blastId, links) => {
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const unesc = (s) => String(s ?? '').replace(/&(amp|lt|gt|quot|#39);/g, (m, k) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[k]));
 
-// The HTML part: the message's own words in paragraphs, its links tracked,
-// the footer (unsubscribe untracked), and the open pixel last.
-export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
-  const base = ctx.publicUrl || '';
-  const linkify = (line) => {
+// Mail apps read no stylesheet: every element carries its own style.
+const STYLE = {
+  p: 'margin:0 0 16px',
+  h2: 'margin:24px 0 8px;font-size:24px;line-height:1.25;font-weight:700',
+  h3: 'margin:20px 0 8px;font-size:20px;line-height:1.3;font-weight:700',
+  h4: 'margin:16px 0 8px;font-size:17px;line-height:1.35;font-weight:700',
+  ul: 'margin:0 0 16px;padding-left:24px',
+  ol: 'margin:0 0 16px;padding-left:24px',
+  li: 'margin:0 0 4px',
+  blockquote: 'margin:0 0 16px;padding:0 0 0 14px;border-left:3px solid #dde0ec;color:#5d6481',
+  hr: 'border:0;border-top:1px solid #dde0ec;margin:24px 0',
+  code: 'font:15px ui-monospace,Menlo,Consolas,monospace;background:#eef0f7;padding:1px 4px;border-radius:3px',
+  img: 'max-width:100%;height:auto;display:block;margin:0 0 16px;border:0',
+  a: 'color:#003979',
+};
+
+// The message laid out for a mail app: the website's own renderer (every
+// character escaped first; only its tags come out), then each tag given
+// its style, every picture its full address, and every link to the
+// outside — typed as a link or as a bare address — sent through
+// /c/<token>/<n> when it is link n of the send. A test copy (no token)
+// keeps its links as typed.
+export const emailBody = (body, { base = '', token = null, links = [] } = {}) => {
+  const tracked = (u) => {
+    const n = links.indexOf(u) + 1;
+    return token && n > 0 ? `${base}/c/${token}/${n}` : u;
+  };
+  const html = renderMarkdown(body);
+  let inA = false;
+  let inCode = false;
+  return html.split(/(<[^>]+>)/).map((part) => {
+    if (!part) return part;
+    if (part[0] === '<') {
+      const m = /^<(\/?)([a-z0-9]+)([^>]*)>$/i.exec(part);
+      if (!m) return part;
+      const [, close, tag, rest] = m;
+      if (tag === 'a') inA = !close;
+      if (tag === 'code') inCode = !close;
+      if (close) return part;
+      const style = STYLE[tag];
+      if (tag === 'a') {
+        const href = /\shref="([^"]*)"/.exec(rest)?.[1] ?? '';
+        const raw = unesc(href);
+        const url = /^https?:/i.test(raw) ? tracked(tidyUrl(raw)) : raw.startsWith('/') ? `${base}${raw}` : raw;
+        return `<a href="${esc(url)}" style="${STYLE.a}">`;
+      }
+      if (tag === 'img') {
+        const src = unesc(/\ssrc="([^"]*)"/.exec(rest)?.[1] ?? '');
+        const alt = /\salt="([^"]*)"/.exec(rest)?.[1] ?? '';
+        return `<img src="${esc(src.startsWith('/') ? `${base}${src}` : src)}" alt="${alt}" style="${STYLE.img}">`;
+      }
+      return style ? `<${tag} style="${style}">` : part;
+    }
+    // Text (the words as typed, escaped): a bare address becomes a link,
+    // tracked when it is one of the send's.
+    if (inA || inCode) return part;
+    const raw = unesc(part);
     let out = '';
     let last = 0;
-    for (const m of line.matchAll(URL_RE)) {
+    for (const m of raw.matchAll(URL_RE)) {
       const u = tidyUrl(m[0]);
-      const n = links.indexOf(u) + 1;
-      out += esc(line.slice(last, m.index));
-      out += n > 0
-        ? `<a href="${esc(`${base}/c/${token}/${n}`)}" style="color:#003979">${esc(u)}</a>`
-        : esc(u);
+      out += esc(raw.slice(last, m.index));
+      out += isWebUrl(u) ? `<a href="${esc(tracked(u))}" style="${STYLE.a}">${esc(u)}</a>` : esc(u);
       last = m.index + u.length;
     }
-    return out + esc(line.slice(last));
-  };
-  const paras = String(body).split(/\n[ \t]*\n/)
-    .map((p) => `<p style="margin:0 0 16px">${p.split('\n').map(linkify).join('<br>')}</p>`)
-    .join('');
-  // This part is the tracked one, so it says so.
+    return out + esc(raw.slice(last));
+  }).join('');
+};
+
+// The HTML part: the message laid out, its links tracked, the footer
+// (unsubscribe untracked), and the open pixel last — none on a test copy.
+export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
+  const base = ctx.publicUrl || '';
+  const counted = token ? ' We count opens and clicks.' : '';
+  const unsub = subscriptionId
+    ? `<a href="${esc(`${base}/u/${subscriptionId}`)}" style="color:#5d6481">Unsubscribe</a>`
+    : '<span style="color:#5d6481">Unsubscribe (each subscriber gets their own link)</span>';
   const foot = kind === 'newsletter'
-    ? `Sent by ${esc(ctx.workspace.name)}. We count opens and clicks.<br><a href="${esc(`${base}/u/${subscriptionId}`)}" style="color:#5d6481">Unsubscribe</a>`
-    : `${esc(ctx.workspace.name)}. We count opens and clicks.`;
+    ? `Sent by ${esc(ctx.workspace.name)}.${counted}<br>${unsub}`
+    : `${esc(ctx.workspace.name)}.${counted}`;
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
     + '<body style="margin:0;padding:0;background:#f4f5fa">'
     + '<div style="max-width:600px;margin:0 auto;padding:24px 16px;font:17px/1.55 system-ui,-apple-system,\'Segoe UI\',Roboto,Arial,sans-serif;color:#161a2e">'
-    + paras
+    + emailBody(body, { base, token, links })
     + `<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #dde0ec;font-size:14px;color:#5d6481">${foot}</p>`
-    + `<img src="${esc(`${base}/o/${token}.gif`)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0">`
+    + (token ? `<img src="${esc(`${base}/o/${token}.gif`)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0">` : '')
     + '</div></body></html>';
 };
 
-export const composeBlast = (ctx, { kind, body, subscriptionId, token, links }) => ({
+export const composeBlast = (ctx, { kind, body, subscriptionId, token, links, attachments }) => ({
   text: blastText(ctx, kind, body, subscriptionId),
   html: blastHtml(ctx, kind, body, subscriptionId, token, links),
   // A newsletter's mail-app Unsubscribe button: the same /u link, by POST.
   headers: kind === 'newsletter' && subscriptionId ? unsubscribeHeaders(`${ctx.publicUrl || ''}/u/${subscriptionId}`) : undefined,
+  ...(attachments?.length ? { attachments } : {}),
 });
 
 // Group A gets subject A, group B subject B, the rest the winner's.
@@ -288,9 +356,11 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
   const links = findLinks(blast.body);
   const run = { sent: 0, failed: 0, skipped: 0, unsure: 0, claimed: 0, note: null, more: false };
   const t0 = Date.now();
+  let attachments = null; // the send's files, read once, before the first email
   for (;;) {
     // Email disconnected since the tap: nothing is claimed; the rest stay not sent.
     if (!emailConfigured()) { run.note = NO_PROVIDER; break; }
+    if (!attachments) attachments = await loadAttachments(db, workspaceId, { blastId: blast.id });
     if (run.claimed >= max || Date.now() - t0 >= budgetMs) {
       run.more = await anyAsked(db, workspaceId, blast.id);
       break;
@@ -336,7 +406,7 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
       const res = await sendEmail({
         to: r.email,
         subject: subjectFor(blast, r.ab_group),
-        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links }),
+        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links, attachments }),
         idempotencyKey: sendKey(blast.id, r),
       });
       const { status } = outcomeOf(res);

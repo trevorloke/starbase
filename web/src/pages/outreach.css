@@ -211,6 +211,22 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .ot-compose { border-color: var(--ink); }
 .ot-compose textarea.input { min-height: 160px; resize: vertical; line-height: 1.5; }
 .ot-compose .input { min-height: 44px; }
+.ot-compose .ws-md__text { min-height: 200px; }
+.ot-compose .ws-md__preview-body { min-height: 200px; }
+/* Files with a send */
+.ot-attach { margin: 0 0 var(--s-3); }
+.ot-files { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-2); padding: 0; list-style: none; }
+.ot-file {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  min-height: 36px; padding: 2px 4px 2px 10px; border: var(--border); border-radius: 999px; font-size: 13px;
+}
+.ot-file__name { overflow-wrap: anywhere; }
+.ot-file__size { color: var(--text-3); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.ot-file .btn { min-height: 32px; min-width: 32px; padding: 0 8px; }
+.ot-attach__row { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; }
+.ot-attach__hint { color: var(--text-3); font-size: 13px; }
+.ot-test-note { color: var(--text-2); font-size: 14px; margin: var(--s-2) 0 0; }
+.ot-row__files::before { content: '📎 '; }
 .ot-foot { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; margin-top: var(--s-2); }
 .ot-audience { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--text-3); }
 .ot-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); overflow-wrap: anywhere; margin: 0; }
@@ -430,4 +446,5 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 /* ── Touch screens: fingers, not cursors ── */
 @media (pointer: coarse), (max-width: 720px) {
   .ot-compose .input, .ot-inline-add .input { min-height: 48px; }
+  .ot-compose .ws-md__tool, .ot-compose .ot-file .btn { min-height: 48px; min-width: 48px; }
 }

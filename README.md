@@ -30,7 +30,7 @@ button, no paragraphs, everything else one tap away.
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
 | **Donations** | Gifts (one-time / monthly) with the entity-keyed cap engine; receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
-| **Outreach** | Newsletter + press-release blasts, petitions, and the Imagine Surrey website bridge |
+| **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*), petitions, and the Imagine Surrey website bridge |
 | **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
 | **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
 
@@ -284,9 +284,18 @@ progress; the page shows it and works out the time left. With
 
 ## Sending email and text
 
+A newsletter or press release is written in the same Markdown as the
+website's pages: the message field has the editor's toolbar (bold, italic,
+heading, link, list, picture, and *Link to…* for the donate, volunteer,
+newsletter-signup and website pages) and a *Preview* that is the email's
+layout. Up to five files (PDF, pictures, Word, Excel, PowerPoint, .ics,
+.txt, .csv; 5 MB each) go with every copy; *Send me a test* emails the
+writer a copy first, untracked and off the record. Each email carries a
+plain-text part alongside the HTML.
+
 Set `STARBASE_PUBLIC_URL` (e.g. `https://starbase.imaginesurrey.ca`) so links
-in outbound mail — newsletter unsubscribe footers, invite links — point at the
-public host. Every newsletter and ladder email ends with "Sent by <campaign>"
+in outbound mail — newsletter unsubscribe footers, invite links, the
+pictures in a message — point at the public host. Every newsletter and ladder email ends with "Sent by <campaign>"
 and the reader's own unsubscribe link, and carries `List-Unsubscribe` /
 `List-Unsubscribe-Post` headers so mail apps show their own Unsubscribe
 button. Someone who unsubscribed can only rejoin from the signup page — the

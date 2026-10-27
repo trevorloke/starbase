@@ -17,9 +17,10 @@ import { httpError } from './util.js';
 import { runHooks, hasHook } from '../lib/hooks.js';
 // The tracked newsletter/press send path and A/B subject lines.
 import {
-  AB_MIN, NO_PROVIDER, abInput, abGroups, abOf, blastCounts, deliver, finishRun, findLinks, inlineMs,
+  AB_MIN, NO_PROVIDER, abInput, abGroups, abOf, blastCounts, composeBlast, deliver, finishRun, findLinks, inlineMs,
   newToken, openTest, queueSend, restReleased, retryable, runPayload, saveLinks, startTest,
 } from '../ext/abtests/send.js';
+import { ATTACH_COUNT, bindAttachments, loadAttachments } from '../ext/abtests/attach.js';
 
 const ALL_ROLES = ['manager', 'treasurer', 'staff', 'volunteer'];
 const DESK_ROLES = ['manager', 'treasurer', 'staff'];
@@ -686,6 +687,8 @@ export const FIELD_ACTIONS = {
       // Two subject lines: A and B go to two small groups now; the winner
       // goes to everyone else when the wait ends (ext/abtests).
       ab: abInput.nullish(),
+      // Files uploaded with blast.attach (ext/abtests/attach.js), to go with every copy.
+      attachment_ids: z.array(z.uuid()).max(ATTACH_COUNT).optional(),
     }),
     handler: async (tx, ctx, input, emit) => {
       if (input.ab && input.ab.subject_b === input.subject) throw httpError(400, 'subject B is the same as subject A');
@@ -722,6 +725,7 @@ export const FIELD_ACTIONS = {
          values ($1, $2, $3, $4, $5, 'queued', $6, $7, $8)`,
         [id, ctx.workspaceId, input.kind, input.subject, input.body, note, audience.length, ctx.user.id],
       );
+      const attachments = await bindAttachments(tx, ctx, id, input.attachment_ids);
       // The rows to go now are asked for. The rest of an A/B send waits for
       // the winner: nothing goes to them now.
       let now = 0;
@@ -742,10 +746,12 @@ export const FIELD_ACTIONS = {
       emit('blast', id, 'create', {
         kind: input.kind, subject: input.subject, audience: audience.length, status: 'queued',
         ...(test ? { ab: { subject_b: ab.subject_b, pct: ab.pct, wait_hours: ab.wait_hours, metric: ab.metric, status: test.status } } : {}),
+        ...(attachments.length ? { attachments: attachments.map((a) => a.filename) } : {}),
       });
       return {
         blast: {
           id, kind: input.kind, subject: input.subject, status: 'queued', audience_count: audience.length, provider_note: note,
+          attachments,
           ...(test ? { ab: test } : {}),
         },
         counts: { total: audience.length, sent: 0, failed: 0, queued: audience.length },
@@ -771,6 +777,36 @@ export const FIELD_ACTIONS = {
         result: { ...result, blast: { ...result.blast, status, audience_count: audienceCount, provider_note: providerNote }, counts: done.counts },
         lastSeq: done.lastSeq,
       };
+    },
+  },
+
+  // "Send me a test": the message as it will go, to the person writing it
+  // — their own address, no tracking, no list, nothing on record. The
+  // files named are their own uploads not yet on a send (they stay for the
+  // real send). Refused while email isn't connected.
+  'blast.test': {
+    roles: DESK_ROLES,
+    input: z.object({
+      kind: z.enum(['newsletter', 'press']),
+      subject: z.string().trim().min(1).max(300),
+      body: z.string().trim().min(1).max(50000),
+      attachment_ids: z.array(z.uuid()).max(ATTACH_COUNT).optional(),
+    }),
+    handler: async (tx, ctx, input) => {
+      if (!emailConfigured()) throw httpError(409, 'Email isn’t connected — nothing can be sent yet');
+      if (!ctx.user?.email) throw httpError(409, 'your sign-in has no email address');
+      return { to: ctx.user.email, [SEND]: { ...input } };
+    },
+    // Committed (nothing was written): now the one email, outside the lock.
+    after: async (db, ctx, result) => {
+      const plan = result[SEND];
+      const attachments = await loadAttachments(db, ctx.workspaceId, { ids: plan.attachment_ids || [], userId: ctx.user.id });
+      const res = await sendEmail({
+        to: ctx.user.email,
+        subject: `[Test] ${plan.subject}`,
+        ...composeBlast(ctx, { kind: plan.kind, body: plan.body, subscriptionId: null, token: null, links: [], attachments }),
+      });
+      return { result: { to: ctx.user.email, sent: res.status === 'sent', detail: res.detail || null } };
     },
   },
 

@@ -20,9 +20,10 @@ export const textConfigured = () =>
 // hung connection never holds a send (or anything waiting on it) for long.
 // unknown is set only when the provider never answered.
 // `headers` is optional: extra mail headers (List-Unsubscribe and
-// List-Unsubscribe-Post on newsletters and ladder emails).
+// List-Unsubscribe-Post on newsletters and ladder emails). `attachments`:
+// [{ filename, content (base64), content_type? }], as the service takes them.
 const emailTimeoutMs = () => Number(process.env.STARBASE_EMAIL_TIMEOUT_MS) || 15_000;
-export const sendEmail = async ({ to, subject, text, html, idempotencyKey, headers }) => {
+export const sendEmail = async ({ to, subject, text, html, idempotencyKey, headers, attachments }) => {
   if (!emailConfigured()) {
     return { sent: false, status: 'queued', detail: 'no email provider configured (set RESEND_API_KEY)' };
   }
@@ -41,6 +42,7 @@ export const sendEmail = async ({ to, subject, text, html, idempotencyKey, heade
         text,
         ...(html ? { html } : {}),
         ...(headers && Object.keys(headers).length ? { headers } : {}),
+        ...(attachments?.length ? { attachments: attachments.map((a) => ({ filename: a.filename, content: a.content, ...(a.content_type ? { content_type: a.content_type } : {}) })) } : {}),
       }),
       signal: AbortSignal.timeout(emailTimeoutMs()),
     });

@@ -23,6 +23,7 @@ import { runHooks } from '../lib/hooks.js';
 import { forViewer, isMoneyTag, loginEmail } from '../lib/viewer.js';
 // Which saved newsletter / press rows Try again would reach (ext/abtests).
 import { goingRow, retryable, sendJobOn } from '../ext/abtests/send.js';
+import { attachmentsOf } from '../ext/abtests/attach.js';
 
 // A date column as YYYY-MM-DD (both backends hand back a Date at UTC midnight).
 const dateOnly = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
@@ -631,7 +632,8 @@ app.get('/blasts', async (c) => {
     `select count(*)::int as n from persons where workspace_id = $1 and deleted_at is null and email is not null and tags @> '"media"'::jsonb`,
     [ctx.workspaceId],
   )).rows[0].n;
-  return c.json({ blasts: rows, mediaContacts: media, emailConfigured: emailConfigured() });
+  const files = await attachmentsOf(c.get('db'), ctx.workspaceId);
+  return c.json({ blasts: rows.map((b) => ({ ...b, attachments: files[b.id] || [] })), mediaContacts: media, emailConfigured: emailConfigured() });
 });
 
 // ── Records: generic cursor-paginated reads per registry type ──

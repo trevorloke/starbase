@@ -117,3 +117,21 @@ export const markdownText = (src, max = 200) => {
     .trim();
   return t.length > max ? `${t.slice(0, max - 1).replace(/\s+\S*$/, '')}…` : t;
 };
+
+// The plain-text form of a Markdown body — an email's text part, a notice
+// read aloud: the words line for line, formatting marks dropped. A link
+// keeps its address after its words ("Donate (https://…)"); a picture is
+// its address on its own line; lists, quotes and rules stay as typed, as
+// they read fine in plain text. Not HTML — escape it where it goes.
+export const markdownPlain = (src) => String(src ?? '')
+  .replace(/\r\n?/g, '\n')
+  .replace(/!\[[^\]]*\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, '$1')
+  .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (m, label, url) => (label.trim() === url ? url : `${label} (${url})`))
+  .replace(/^#{1,3}\s+(.+)$/gm, '$1')
+  .replace(/`([^`]+)`/g, '$1')
+  .replace(/\*\*([^*]+)\*\*/g, '$1')
+  .replace(/__([^_]+)__/g, '$1')
+  .replace(/(^|[^\w*])\*([^*\s][^*]*?)\*(?!\w)/g, '$1$2')
+  .replace(/(^|[^\w])_([^_\s][^_]*?)_(?!\w)/g, '$1$2')
+  .replace(/^(-{3,}|\*{3,})$/gm, '———')
+  .trim();

@@ -94,6 +94,7 @@
 .ws-md__tool--b { font-weight: 800; }
 .ws-md__tool--i { font-style: italic; font-family: Georgia, serif; }
 .ws-md__preview[aria-pressed='true'] { background: var(--mark-soft); border-color: var(--mark); }
+select.ws-md__links { max-width: 11em; font: 600 13.5px/1 var(--font-sans); }
 .ws-md__text { min-height: 220px; font: 15px/1.6 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; resize: vertical; }
 .ws-md__preview-body { min-height: 220px; border: var(--border); border-radius: var(--r-ctrl); background: var(--paper-0); padding: var(--s-4) var(--s-5); }
 .ws-prose { font-size: 16px; line-height: 1.65; }
