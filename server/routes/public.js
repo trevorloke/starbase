@@ -10,6 +10,8 @@
 //                                        the website store's paid orders
 //   POST     /api/public/:ws/signup   CORS-open JSON for the campaign website's
 //                                     own forms (kind: newsletter | volunteer | petition | rsvp)
+//   POST     /api/public/:ws/donate   CORS-open JSON donate: the same checks and
+//                                     pledge as /d, Stripe's return on the site's own pages
 // Server-rendered HTML keeps these dead simple to link from the website;
 // the JSON endpoint lets the website keep its own design and post here.
 //
@@ -39,7 +41,7 @@ import { renderMarkdown } from '@starbase/shared/markdown';
 // The website's look and its store's webhook half (ext/website).
 import { loadChrome, layout, assetUrl, img, dateTile } from '../ext/website/layout.js';
 import { siteWorkspace } from '../ext/website/content.js';
-import { onSiteHost, originOf } from '../ext/website/hosts.js';
+import { onSiteHost, originOf, returnUrl } from '../ext/website/hosts.js';
 import { applyStorePayment, expireStoreOrder, refundStoreOrder } from '../ext/website/store.js';
 
 const app = new Hono();
@@ -581,15 +583,34 @@ app.post('/d/:ws', async (c) => {
 
   const raw = v.other || v.amount;
   const cents = Math.round(Number.parseFloat(String(raw).replace(/[$,\s]/g, '')) * 100);
-  if (!Number.isFinite(cents) || cents < 100) return fail('Choose an amount of at least $1.');
-  if (!v.name || !v.address) return fail('Your full name and home address are required by election law.');
-  if (!emailOk(v.email)) return fail('A valid email is required so the campaign can confirm your contribution.');
-  const missing = ATTESTATIONS.filter(([k]) => !(b[`attest_${k}`] === '1' || b[`attest_${k}`] === true));
-  if (missing.length) return fail('Please confirm each eligibility statement — only eligible individuals may contribute.');
+  const attested = ATTESTATIONS.every(([k]) => b[`attest_${k}`] === '1' || b[`attest_${k}`] === true);
+  const base = publicBase(c);
+  const r = await startDonation(db, ws, { ...v, cents }, attested, {
+    ip: ipOf(c), successUrl: `${base}/d/${ws.slug}/thanks`, cancelUrl: `${base}/d/${ws.slug}`,
+  });
+  if (r.fail) return fail(r.fail);
+  if (r.url) return c.redirect(r.url, 303);
+  return c.html(page(ws, 'Thank you', `<h1>Thank you, ${esc(v.name.split(' ')[0])}.</h1>
+<div class="done">Your ${v.monthly ? 'monthly ' : ''}pledge of <b>${dollars(cents)}</b> is recorded.
+${esc(ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.')}</div>`));
+});
+
+// One contribution, from the donate page or the website's JSON: the checks,
+// the person, the pledge, and Stripe Checkout when it is connected. Answers
+// { fail } (a sentence for the contributor), { url } (Stripe's page), or
+// { pledged: true } (no card payment: the campaign follows up).
+const startDonation = async (db, ws, v, attested, { ip, successUrl, cancelUrl, subscribeToo = false }) => {
+  const year = new Date().getUTCFullYear();
+  const rule = await capFor(db, ws.jurisdiction, year, ws.settings);
+  const cents = v.cents;
+  if (!Number.isFinite(cents) || cents < 100) return { fail: 'Choose an amount of at least $1.', field: 'amount' };
+  if (!v.name || !v.address) return { fail: 'Your full name and home address are required by election law.', field: !v.name ? 'name' : 'address' };
+  if (!emailOk(v.email)) return { fail: 'A valid email is required so the campaign can confirm your contribution.', field: 'email' };
+  if (!attested) return { fail: 'Please confirm each eligibility statement — only eligible individuals may contribute.', field: 'attest' };
 
   // Cap pre-check against this person's gifts so far this year (by email).
   if (rule) {
-    if (cents > rule.capCents) return fail(`The most one person can give this year is ${dollars(rule.capCents)}.`);
+    if (cents > rule.capCents) return { fail: `The most one person can give this year is ${dollars(rule.capCents)}.`, field: 'amount' };
     const known = (await db.query(
       'select id from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1',
       [ws.id, v.email.toLowerCase()],
@@ -598,19 +619,20 @@ app.post('/d/:ws', async (c) => {
       const so = await donorYearTotal(db, ws.id, known.id, year);
       if (so + cents > rule.capCents) {
         const left = Math.max(rule.capCents - so, 0);
-        return fail(left > 0
+        return { fail: left > 0
           ? `Thank you — you can contribute up to ${dollars(left)} more this year under the annual limit.`
-          : `Thank you — you've reached this year's ${dollars(rule.capCents)} limit.`);
+          : `Thank you — you've reached this year's ${dollars(rule.capCents)} limit.`, field: 'amount' };
       }
     }
   }
 
   const { id: personId } = await upsertPersonFromPublic(db, ws,
     { name: v.name, email: v.email, phone: v.phone, address: v.address }, ['donor']);
+  if (subscribeToo) await subscribe(db, ws, v.email, v.name, 'donation');
   const cadence = v.monthly ? 'monthly' : 'one-time';
   // The attestation (what was ticked, when, from where) is part of the record
   // and of its event, so the log shows the contributor declared eligibility.
-  const attest = { ...Object.fromEntries(ATTESTATIONS.map(([k]) => [k, true])), at: new Date().toISOString(), ip: ipOf(c) };
+  const attest = { ...Object.fromEntries(ATTESTATIONS.map(([k]) => [k, true])), at: new Date().toISOString(), ip };
   const pledgeId = await publicAction(db, ws, 'public.pledge', async (tx, emit) => {
     const id = newId();
     const status = stripeConfigured() ? 'pending' : 'pledged';
@@ -629,27 +651,22 @@ app.post('/d/:ws', async (c) => {
 
   if (stripeConfigured()) {
     try {
-      const base = publicBase(c);
       const session = await createCheckoutSession({
         pledge: { id: pledgeId, amount_cents: cents, cadence, email: v.email },
-        workspace: ws,
-        successUrl: `${base}/d/${ws.slug}/thanks`,
-        cancelUrl: `${base}/d/${ws.slug}`,
+        workspace: ws, successUrl, cancelUrl,
       });
       await publicAction(db, ws, 'stripe.checkout', async (tx, emit) => {
         await tx.query('update pledges set stripe_session_id = $3, updated_at = now() where id = $1 and workspace_id = $2',
           [pledgeId, ws.id, session.id]);
         emit('pledge', pledgeId, 'update', { stripe_session_id: session.id });
       });
-      return c.redirect(session.url, 303);
+      return { url: session.url, pledge_id: pledgeId };
     } catch (e) {
-      return fail(`Card payment isn't available right now (${String(e.message).slice(0, 120)}). Please try again shortly.`);
+      return { fail: `Card payment isn't available right now (${String(e.message).slice(0, 120)}). Please try again shortly.`, field: null };
     }
   }
-  return c.html(page(ws, 'Thank you', `<h1>Thank you, ${esc(v.name.split(' ')[0])}.</h1>
-<div class="done">Your ${v.monthly ? 'monthly ' : ''}pledge of <b>${dollars(cents)}</b> is recorded.
-${esc(ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.')}</div>`));
-});
+  return { pledged: true, pledge_id: pledgeId };
+};
 
 app.get('/d/:ws/thanks', async (c) => {
   const db = await getDb();
@@ -858,6 +875,53 @@ app.post('/api/public/:ws/signup', async (c) => {
     return c.json({ ok: true, kind });
   }
   return c.json({ error: "kind must be 'newsletter', 'volunteer', 'petition', or 'rsvp'" }, 400);
+});
+
+// The website's own donate form: the same checks, person, pledge and Stripe
+// Checkout as /d, answered as JSON. Stripe brings the contributor back to
+// the site's own pages when `return` names them (hosts.js returnUrl: only
+// the site's origins), else to Starbase's thank-you page.
+//   { amount_cents | amount ("25" or "25.00"), monthly, name | first_name + last_name,
+//     email, phone, address, city, postal, attest: { individual, resident, own_funds }
+//     (or attest_individual…), subscribe, return: { success, cancel } }
+//   → { url } (go to Stripe) · { ok, pledged: true } (no card payment yet)
+//   · 400 { error, field }
+const yes = (v) => [true, 1, '1', 'true', 'on', 'yes'].includes(v);
+app.options('/api/public/:ws/donate', (c) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type');
+  return c.body(null, 204);
+});
+app.post('/api/public/:ws/donate', async (c) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Cache-Control', 'no-store');
+  if (limited(ipOf(c))) return c.json({ error: 'too many requests' }, 429);
+  const db = await getDb();
+  const ws = await loadWs(db, c.req.param('ws'));
+  if (!ws) return c.json({ error: 'unknown workspace' }, 404);
+  const b = await c.req.json().catch(() => ({}));
+  const cents = Number.isInteger(b.amount_cents) ? b.amount_cents
+    : Math.round(Number.parseFloat(String(b.amount ?? '').replace(/[$,\s]/g, '')) * 100);
+  const name = str(b.name) || `${str(b.first_name, 80)} ${str(b.last_name, 80)}`.trim();
+  const address = [str(b.address, 400), str(b.city, 80), str(b.postal || b.postal_code, 20)].filter(Boolean).join(', ');
+  const v = { cents, monthly: yes(b.monthly), name, email: str(b.email, 320), phone: str(b.phone, 40), address };
+  const at = b.attest && typeof b.attest === 'object' ? b.attest : {};
+  const attested = ATTESTATIONS.every(([k]) => yes(at[k]) || yes(b[`attest_${k}`]));
+  const base = publicBase(c);
+  const ret = b.return && typeof b.return === 'object' ? b.return : {};
+  const r = await startDonation(db, ws, v, attested, {
+    ip: ipOf(c),
+    successUrl: returnUrl(ret.success, `${base}/d/${ws.slug}/thanks`),
+    cancelUrl: returnUrl(ret.cancel, `${base}/d/${ws.slug}`),
+    subscribeToo: yes(b.subscribe),
+  });
+  if (r.fail) return c.json({ error: r.fail, ...(r.field ? { field: r.field } : {}) }, 400);
+  if (r.url) return c.json({ url: r.url });
+  return c.json({
+    ok: true, pledged: true,
+    instructions: ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.',
+  });
 });
 
 export default app;

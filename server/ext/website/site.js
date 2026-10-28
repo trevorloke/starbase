@@ -384,7 +384,7 @@ siteApp.get('/cart', async (c) => {
 });
 
 // Ways to get an order: shipping (with its fee) and/or pick-up, from Settings.
-const waysOf = (st) => {
+export const waysOf = (st) => {
   const ways = [];
   if (st.shipping) ways.push({ code: 'ship', label: 'Ship to me', note: `${money(st.shipping_cents)} · Canada only`, cents: st.shipping_cents });
   if (st.pickup || !ways.length) ways.push({ code: 'pickup', label: 'Pick up at the campaign office', note: st.pickup_note || 'Free', cents: 0 });
@@ -409,29 +409,25 @@ siteApp.post('/store/quote', async (c) => {
 
 // Checkout: price the cart here, refuse anything sold out, make the order
 // (pending) and its Stripe Checkout Session, and send the buyer there.
-siteApp.post('/store/checkout', async (c) => {
-  if (limited(c)) return c.json({ error: 'Too many tries — wait a few minutes.' }, 429);
-  const s = await site(c);
-  if (!s) return c.json({ error: 'no store' }, 404);
-  if (!stripeConfigured()) return c.json({ error: 'Online store opens soon.' }, 503);
-  const b = await c.req.json().catch(() => ({}));
-  const st = s.ch.settings;
+// Shared with the headless JSON (headless.js), which names its own return
+// addresses: successUrl is a function of the order's id.
+export const startCheckout = async ({ db, ws, settings: st }, b, { ip, successUrl, cancelUrl, imageUrl }) => {
+  if (!stripeConfigured()) return [503, { error: 'Online store opens soon.' }];
   const way = waysOf(st).find((w) => w.code === b.fulfilment);
-  if (!way) return c.json({ error: 'Choose shipping or pick-up.' }, 400);
+  if (!way) return [400, { error: 'Choose shipping or pick-up.' }];
   // Check what's left and hold it in one step: the order is saved as pending
   // (holding its items) before the buyer goes to Stripe. Actions take the
   // campaign's row lock, so two buyers of the last shirt can't both get it.
   const orderId = newId();
-  const ip = clientIp(c);
   let order;
   let refused = null;
-  await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
+  await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
     const open = (await tx.query(
       `select count(*)::int as n from store_orders where workspace_id = $1 and status = 'pending' and client_ip = $2
-         and created_at > now() - interval '35 minutes'`, [s.ws.id, ip],
+         and created_at > now() - interval '35 minutes'`, [ws.id, ip],
     )).rows[0].n;
     if (open >= OPEN_CHECKOUTS_PER_IP) { refused = [429, { error: 'You have a checkout open already — finish or cancel it first.' }]; return; }
-    const q = await priceCart(tx, s.ws, b.items);
+    const q = await priceCart(tx, ws, b.items);
     if (!q.lines.length) { refused = [400, { error: 'Your cart is empty.' }]; return; }
     if (q.problems.length) {
       const p = q.problems[0];
@@ -449,38 +445,49 @@ siteApp.post('/store/checkout', async (c) => {
     await tx.query(
       `insert into store_orders (id, workspace_id, status, fulfilment, items, subtotal_cents, shipping_cents, total_cents, client_ip)
        values ($1, $2, 'pending', $3, $4, $5, $6, $7, $8)`,
-      [order.id, s.ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, ip],
+      [order.id, ws.id, order.fulfilment, JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, ip],
     );
     emit('store_order', order.id, 'create', {
       status: 'pending', fulfilment: order.fulfilment, total_cents: order.total_cents,
       items: order.items.map((l) => ({ product_id: l.product_id, variant: l.variant, qty: l.qty, unit_cents: l.unit_cents })),
     });
   });
-  if (refused) return c.json(refused[1], refused[0]);
-  const back = `${originOf(c)}${s.base}`;
+  if (refused) return refused;
   let session;
   try {
     session = await stripePost('checkout/sessions', checkoutParams({
-      order, ws: s.ws, settings: st,
-      successUrl: `${back}/store/thanks?order=${order.id}`,
-      cancelUrl: `${back}/cart?cancel=${order.id}`,
-      imageUrl: /^https:/.test(back) ? (id) => `${back.replace(/\/site$/, '')}/media/${id}` : null,
+      order, ws, settings: st, successUrl: successUrl(order.id), cancelUrl: cancelUrl(order.id), imageUrl,
     }));
   } catch (e) {
     // No payment page: let the hold go at once.
-    await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.expire' }, async (tx, emit) => {
+    await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.expire' }, async (tx, emit) => {
       const r = await tx.query(`update store_orders set status = 'cancelled', updated_at = now()
-        where id = $1 and workspace_id = $2 and status = 'pending' returning id`, [order.id, s.ws.id]);
+        where id = $1 and workspace_id = $2 and status = 'pending' returning id`, [order.id, ws.id]);
       if (r.rows[0]) emit('store_order', order.id, 'update', { status: 'cancelled', reason: 'checkout could not open' });
     });
-    return c.json({ error: `Card payment isn’t available right now (${String(e.message).slice(0, 120)}). Please try again shortly.` }, 502);
+    return [502, { error: `Card payment isn’t available right now (${String(e.message).slice(0, 120)}). Please try again shortly.` }];
   }
-  await runAction(s.db, { workspaceId: s.ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
+  await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.checkout' }, async (tx, emit) => {
     await tx.query('update store_orders set stripe_session_id = $3, updated_at = now() where id = $1 and workspace_id = $2',
-      [order.id, s.ws.id, session.id]);
+      [order.id, ws.id, session.id]);
     emit('store_order', order.id, 'update', { stripe_session_id: session.id });
   });
-  return c.json({ url: session.url, order_id: order.id });
+  return [200, { url: session.url, order_id: order.id }];
+};
+
+siteApp.post('/store/checkout', async (c) => {
+  if (limited(c)) return c.json({ error: 'Too many tries — wait a few minutes.' }, 429);
+  const s = await site(c);
+  if (!s) return c.json({ error: 'no store' }, 404);
+  const b = await c.req.json().catch(() => ({}));
+  const back = `${originOf(c)}${s.base}`;
+  const [status, out] = await startCheckout({ db: s.db, ws: s.ws, settings: s.ch.settings }, b, {
+    ip: clientIp(c),
+    successUrl: (id) => `${back}/store/thanks?order=${id}`,
+    cancelUrl: (id) => `${back}/cart?cancel=${id}`,
+    imageUrl: /^https:/.test(back) ? (id) => `${back.replace(/\/site$/, '')}/media/${id}` : null,
+  });
+  return c.json(out, status);
 });
 
 // ── Search engines ──

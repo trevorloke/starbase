@@ -44,6 +44,7 @@ Set these before the first sign-in; the rest can wait.
 |---|---|---|
 | `STARBASE_PUBLIC_URL` | `https://starbase.imaginesurrey.ca` | every link in an email: invites, unsubscribe, receipts, Stripe return pages |
 | `STARBASE_SITE_HOSTS` | `imaginesurrey.ca,www.imaginesurrey.ca` | the website at `/` on those hosts |
+| `STARBASE_SITE_ORIGINS` | `https://imaginesurrey.ca` | a website built elsewhere that reads Starbase's public JSON: where Stripe may bring people back to after a donation or an order |
 | `RESEND_API_KEY`, `MAIL_FROM` | from Resend; `Imagine Surrey <team@imaginesurrey.ca>` on a domain verified there | email; without it invites are shown to copy and sends wait as *queued* |
 
 Then, as each one is ready:

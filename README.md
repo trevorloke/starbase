@@ -190,13 +190,48 @@ The site can also keep its own forms and post JSON here (CORS-open):
 
 ```http
 POST /api/public/:slug/signup
-{ "kind": "newsletter" | "volunteer" | "petition", "name", "email", "phone",
+{ "kind": "newsletter" | "volunteer" | "petition" | "rsvp", "name", "email", "phone",
   "roles": ["highrise_captain"], "detail_highrise_captain": "<building>",
-  "petition": "<petition-slug>", "subscribe": true, "note": "…" }
+  "petition": "<petition-slug>", "event": "<event-slug>", "guests": 2,
+  "subscribe": true, "note": "…" }
+
+POST /api/public/:slug/donate
+{ "amount_cents": 2500 | "amount": "25", "monthly": false,
+  "name" | "first_name" + "last_name", "email", "phone", "address", "city", "postal",
+  "attest": { "individual": true, "resident": true, "own_funds": true }, "subscribe": true,
+  "return": { "success": "https://imaginesurrey.ca/donate/thanks", "cancel": "https://imaginesurrey.ca/donate" } }
+→ { "url": "<Stripe Checkout>" }  or  { "ok": true, "pledged": true }  or  400 { "error", "field" }
 ```
 
 Every public submission lands in the directory as a Person (deduped by email),
 tagged by source, and is appended to the event log under a system actor.
+
+### The site, headless
+
+A website built elsewhere — the campaign's own Next.js site — can be edited
+from Starbase's website admin and read everything as JSON, no sign-in,
+CORS-open, revalidated by ETag so an edit is live at once. Drafts never
+show; pictures carry their full address; Markdown comes as written (`body`)
+and rendered by the site's own safe renderer (`html`).
+
+| | |
+|---|---|
+| `GET /api/public/:slug/site` | the campaign, the website settings (title, tagline, hero, colours, contact, socials, *Authorized by*), the links (donate, volunteer, newsletter, unsubscribe), published pages, people cards, open petitions, the store's ways |
+| `GET …/site/pages/:slug` | a published page |
+| `GET …/site/news[/:slug]` | published posts (`?limit`, `?offset`), one post |
+| `GET …/site/events[/:slug]` | upcoming public events with their RSVP link and count (`?past=1`: the last 20), one event |
+| `GET …/site/team` | published people cards |
+| `GET …/site/products[/:slug]` | the store: price, pictures, what is left of each size after other buyers' open checkouts |
+| `GET …/site/petitions[/:slug]` | open petitions with their counts (a closed one answers 410) |
+| `POST …/site/store/quote` | `{ items }` priced here, never in the browser |
+| `POST …/site/store/checkout` | `{ items, fulfilment: "ship" \| "pickup", return: { success, cancel } }` → `{ url, order_id }` |
+
+Stripe brings a contributor or buyer back to the address the site names
+only when it is on one of the site's own origins: `STARBASE_SITE_ORIGINS`
+(comma-separated, e.g. `https://imaginesurrey.ca`), `https://` + each of
+`STARBASE_SITE_HOSTS`, and `STARBASE_PUBLIC_URL`'s origin. Any other
+address falls back to Starbase's own thank-you page. One Stripe webhook —
+`/api/public/stripe/webhook` on Starbase — books every payment.
 
 ## Website (imaginesurrey.ca) and store
 

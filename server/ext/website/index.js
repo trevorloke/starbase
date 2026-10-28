@@ -12,9 +12,11 @@
 //   store.js     prices, stock, Stripe Checkout and the paid webhook
 //   actions.js   site.* and store.* actions
 //   api.js       the staff app's reads
+//   headless.js  the site as public JSON, for a website built elsewhere
 import { Hono } from 'hono';
 import { getDb } from '../../db/client.js';
 import { serveMedia } from './media.js';
+import { headless } from './headless.js';
 import { ASSETS } from './layout.js';
 
 export { sql } from './sql.js';
@@ -24,6 +26,7 @@ export { api } from './api.js';
 // /media/:id and /site-assets/* answer on every host (the site's pages use
 // them under /site too).
 export const publicRoutes = new Hono();
+publicRoutes.route('/', headless); // the site as JSON, for a website built elsewhere
 publicRoutes.get('/media/:id', async (c) => serveMedia(c, await getDb()));
 publicRoutes.get('/site-assets/:file', (c) => {
   const a = Object.hasOwn(ASSETS, c.req.param('file')) ? ASSETS[c.req.param('file')] : null;
