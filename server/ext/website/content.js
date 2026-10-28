@@ -49,6 +49,8 @@ export const DEFAULTS = {
   shipping_cents: 1200,
   pickup: true,
   pickup_note: '',
+  // Membership (ext/members): the yearly fee in cents; 0 for free membership.
+  membership_fee_cents: 1000,
 };
 
 export const settingsOut = (data, ws) => {

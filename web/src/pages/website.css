@@ -133,3 +133,21 @@ select.ws-md__links { max-width: 11em; font: 600 13.5px/1 var(--font-sans); }
 .ws-menu__name { flex: 1; font-weight: 600; display: flex; align-items: center; gap: var(--s-2); min-width: 0; overflow-wrap: anywhere; }
 .ws-menu .btn { min-height: 40px; min-width: 40px; padding: 0; }
 .ws-menu__show { font-size: 13.5px; }
+
+/* Promise tracker (Website → Promise tracker) */
+.tr-board { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s-3); }
+.tr-board__n { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: 999px; border: var(--border); font-size: 13px; }
+.tr-board__n strong { font-size: 15px; }
+.tr-s--going { background: #fff8b3; border-color: #e6d800; }
+.tr-s--partly { background: #ffe3c2; border-color: #f28c28; }
+.tr-s--kept { background: #d7f2e1; border-color: #1b8a4b; }
+.tr-s--broken { background: #ffd9d9; border-color: #ef2023; }
+.tr-num { min-width: 2.2em; color: var(--text-3); font-size: 13px; padding-right: var(--s-2); }
+.tr-empty p { margin: 0 0 var(--s-3); }
+.tr-source { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 6px; }
+.tr-add { margin-top: var(--s-3); }
+.tr-add h3 { margin: 0 0 var(--s-2); font-size: 16px; }
+.tr-updates { margin-top: var(--s-5); }
+.tr-updates h2 { font-size: 18px; margin: 0 0 var(--s-2); }
+.tr-ann { margin-top: var(--s-5); }
+@media (max-width: 560px) { .tr-source { grid-template-columns: 1fr auto; } .tr-source .mono { grid-column: 1 / -1; } }

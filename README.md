@@ -30,6 +30,7 @@ button, no paragraphs, everything else one tap away.
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
 | **Donations** | Gifts (one-time / monthly) with the entity-keyed cap engine; receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
+| **Members** | The organization's roll, fed by the website's join form: who's a member, until when, who votes at member meetings, who still owes the fee (a contribution under BC law: a pledge on Donations until it's paid; the membership turns active then) |
 | **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*), petitions, and the Imagine Surrey website bridge |
 | **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
 | **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
@@ -226,6 +227,25 @@ and rendered by the site's own safe renderer (`html`).
 | `POST …/site/store/quote` | `{ items }` priced here, never in the browser |
 | `POST …/site/store/checkout` | `{ items, fulfilment: "ship" \| "pickup", return: { success, cancel } }` → `{ url, order_id }` |
 
+Two more forms and one more read for the site:
+
+```http
+POST /api/public/:slug/join
+{ "first_name", "last_name", "email", "phone", "address", "city", "postal",
+  "neighbourhood": "Newton" | … | "Outside Surrey", "birthdate": "1990-05-04",
+  "citizenship": "Citizen" | "Permanent resident" | "Other", "gender", "languages": [],
+  "student": true, "campus", "issue", "interest_volunteer": true, "interest_lawn_sign": true,
+  "consent": true, "return": { "success", "cancel" } }
+→ { "url" } (the fee, by card)  ·  { "ok", "status": "active" | "pledged" | "already_member" }  ·  400 { "error", "field" }
+
+GET /api/public/:slug/site/tracker   the promise tracker: promises with their updates, announcements, the scoreboard
+```
+
+The yearly fee is set under Website → Settings → Membership (0 for free
+membership); `GET …/site` carries it with the form's choices. Members
+must be 14 or older; a fee is taken only from citizens and permanent
+residents living in BC, and counts against the annual contribution limit.
+
 Stripe brings a contributor or buyer back to the address the site names
 only when it is on one of the site's own origins: `STARBASE_SITE_ORIGINS`
 (comma-separated, e.g. `https://imaginesurrey.ca`), `https://` + each of
@@ -239,7 +259,14 @@ Starbase hosts the campaign's public website. It is edited in its own
 small app, the **website admin** at `/website-admin` (the same accounts:
 managers and staff edit, treasurers see Orders; the field app's account
 menu has *Edit the website*): **Pages · News · Events · Team · Store ·
-Orders · Settings** and *View site*. The website is apart from the field
+Orders · Promise tracker · Settings** and *View site*. The **Promise
+tracker** is the governing party's promises scored in public: each has
+its words, area, sources and delivery test (what counts as kept, partly
+kept or broken), and is scored by dated updates with a link to the
+record; announcements log what the party said and when. A new campaign
+loads the tracker as first published (the 26 Safe Surrey Coalition
+promises) with one tap, then edits from there. The campaign's own site
+reads it as JSON (above). The website is apart from the field
 app: `STARBASE_SERVE=site` runs it as its own service (the site at `/` on
 every host, its admin, the public forms and the Stripe webhook, and only
 the slice of the API its admin needs — never the campaign's people, money

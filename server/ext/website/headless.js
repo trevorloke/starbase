@@ -29,6 +29,7 @@ import { startCheckout, waysOf } from './site.js';
 import { originOf, returnUrl, withParam } from './hosts.js';
 import { stripeConfigured } from '../../lib/stripe.js';
 import { clientIp, makeLimiter } from '../../lib/guard.js';
+import { MIN_MEMBER_AGE, NEIGHBOURHOODS, OUTSIDE_SURREY, CAMPUSES, CITIZENSHIP } from '../members/rules.js';
 
 export const headless = new Hono();
 
@@ -142,6 +143,11 @@ headless.get('/api/public/:ws/site', async (c) => {
     petitions: petitions.map((p) => ({ slug: p.slug, title: p.title })),
     team: team.map((p) => personOut(base, p)),
     store: storeOut(st),
+    membership: {
+      fee_cents: Number(st.membership_fee_cents) || 0, min_age: MIN_MEMBER_AGE,
+      neighbourhoods: [...NEIGHBOURHOODS, OUTSIDE_SURREY], campuses: CAMPUSES, citizenship: CITIZENSHIP,
+      join: `${base}/api/public/${ws.slug}/join`,
+    },
   });
 });
 

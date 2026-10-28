@@ -63,7 +63,7 @@ export default function WebsiteSettings({ overview }) {
   useEffect(() => {
     if (overview?.settings && !f) {
       const s = overview.settings;
-      setF({ ...s, socials: { ...s.socials }, shipping_fee: (s.shipping_cents / 100).toFixed(2).replace(/\.00$/, '') });
+      setF({ ...s, socials: { ...s.socials }, shipping_fee: (s.shipping_cents / 100).toFixed(2).replace(/\.00$/, ''), membership_fee: ((s.membership_fee_cents || 0) / 100).toFixed(2).replace(/\.00$/, '') });
     }
   }, [overview, f]);
   // Arriving from "Add the Authorized by line": scroll to it.
@@ -84,6 +84,8 @@ export default function WebsiteSettings({ overview }) {
     if (!HEX.test(f.primary) || !HEX.test(f.accent)) { save.setError('Colours look like #003979'); return; }
     const fee = dollarsToCents(f.shipping_fee || '0');
     if (fee == null) { save.setError('Shipping fee: a dollar amount'); return; }
+    const memberFee = dollarsToCents(f.membership_fee || '0');
+    if (memberFee == null) { save.setError('Membership fee: a dollar amount'); return; }
     await save.run('site.settings.save', {
       title: f.title.trim(), tagline: f.tagline.trim(), seo_description: f.seo_description.trim(),
       hero_headline: f.hero_headline.trim(), hero_text: f.hero_text.trim(), hero_image: f.hero_image || null,
@@ -93,6 +95,7 @@ export default function WebsiteSettings({ overview }) {
       socials: Object.fromEntries(SOCIALS.map(([k]) => [k, (f.socials[k] || '').trim()])),
       authorized_by: f.authorized_by.trim(), nav_order: f.nav_order, hidden_sections: f.hidden_sections,
       shipping: !!f.shipping, shipping_cents: fee, pickup: !!f.pickup, pickup_note: f.pickup_note.trim(),
+      membership_fee_cents: memberFee,
     });
   };
 
@@ -182,6 +185,15 @@ export default function WebsiteSettings({ overview }) {
         <Switch label="Pick up at the campaign office" checked={!!f.pickup} onChange={set('pickup')} />
         {f.pickup && text('pickup_note', 'Pick-up note', { maxLength: 300, placeholder: 'Free' })}
         <p className="ops-meta">{overview.stripe.configured ? 'Card payments: Stripe is connected.' : 'Connect Stripe: set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET'}</p>
+      </section>
+
+      <section className="card ws-group">
+        <h2>Membership</h2>
+        <div className="field ws-narrow-field">
+          <label htmlFor="st-mfee">Yearly fee (CAD)</label>
+          <input id="st-mfee" className="input mono" inputMode="decimal" value={f.membership_fee} onChange={(e) => set('membership_fee')(e.target.value)} />
+          <span className="ops-meta">0 for free membership. A fee counts as a contribution under BC law: it goes through Donations like any gift, and the membership turns active when it’s paid. Members must be 14 or older.</span>
+        </div>
       </section>
 
       {save.error && <p className="error" role="alert">{save.error}</p>}

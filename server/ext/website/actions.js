@@ -94,6 +94,7 @@ const settingsInput = z.object({
   shipping_cents: z.number().int().min(0).max(100_000),
   pickup: z.boolean(),
   pickup_note: text(300),
+  membership_fee_cents: z.number().int().min(0).max(100_000),
 }).partial();
 
 const variantsInput = () => z.array(z.object({

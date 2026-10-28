@@ -141,6 +141,18 @@ one tap away under **More**.
   *Support* for the breakdown by candidate. **Needs you** lists what's waiting:
   gifts over the limit, open pledges, shifts short of people,
   signs to put up.
+- **Members** (Today → More → Members) — the roll from the website's join
+  form: *Current* lists members and anyone whose fee is owing; *Expired*,
+  *Cancelled* and *All* the rest; the counts say how many vote at member
+  meetings. A row opens the person (the profile wears *Member · until …*
+  or *Fee owing*); **Cancel** asks first; **Mark active** puts someone
+  back for a year. A fee owing is a pledge on Donations: *Mark received*
+  there (or the card payment) turns the membership active. The fee is set
+  under Website → Settings → Membership.
+- **Website → Promise tracker** — empty at first: *Load the 26 promises*
+  brings in the tracker as published. Open a promise, add a dated update
+  with a score and a link: the status, the scoreboard and the public JSON
+  change together. Announcements sit under the list.
 - **Outreach → Newsletter** — the message takes Markdown: tap **B**,
   **H**, **• List**, **Link**, **Picture** (a photo goes in from your phone)
   and **Link to…** (Donate, Volunteer, Newsletter signup, Website), then

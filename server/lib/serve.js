@@ -13,8 +13,8 @@ export const serveMode = () => (['app', 'site'].includes(process.env.STARBASE_SE
 // In site mode, the part of /api the website admin uses and nothing else.
 const SITE_API = [
   /^\/api\/health$/, /^\/api\/auth(\/|$)/, /^\/api\/public(\/|$)/,
-  /^\/api\/site(\/|$)/, /^\/api\/store(\/|$)/, /^\/api\/campaign-events(\/|$)/,
-  /^\/api\/actions\/(site|store|cevent)\./,
+  /^\/api\/site(\/|$)/, /^\/api\/store(\/|$)/, /^\/api\/campaign-events(\/|$)/, /^\/api\/tracker(\/|$)/,
+  /^\/api\/actions\/(site|store|cevent|tracker)\./,
 ];
 export const siteApiAllows = (path) => SITE_API.some((re) => re.test(path));
 

@@ -1,5 +1,5 @@
 // Website — the campaign's public site and store, edited here.
-//   /website/:tab        Pages · News · Events · Team · Store · Orders · Settings
+//   /website/:tab        Pages · News · Events · Team · Store · Orders · Promise tracker · Settings
 //   /website/:tab/new    a new one;  /website/:tab/:id  edit one
 // Managers and staff edit everything; treasurers see Orders only (the
 // server refuses the rest). "View site" opens the live site in a new tab.
@@ -19,6 +19,7 @@ const TABS = {
   team: { label: 'Team', el: lazy(() => import('./WebsiteTeam.jsx')) },
   store: { label: 'Store', el: lazy(() => import('./WebsiteStore.jsx')) },
   orders: { label: 'Orders', el: lazy(() => import('./WebsiteOrders.jsx')) },
+  tracker: { label: 'Promise tracker', el: lazy(() => import('./WebsiteTracker.jsx')) },
   settings: { label: 'Settings', el: lazy(() => import('./WebsiteSettings.jsx')) },
 };
 

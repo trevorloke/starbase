@@ -24,6 +24,7 @@ const MapPage = lazy(() => import('./pages/Map.jsx'));
 const TextingInbox = lazy(() => import('./pages/TextingInbox.jsx'));
 const ImagineU = lazy(() => import('./pages/ImagineU.jsx'));
 const Banks = lazy(() => import('./pages/Banks.jsx'));
+const Members = lazy(() => import('./pages/Members.jsx'));
 const TextingThread = lazy(() => import('./pages/TextingThread.jsx'));
 const TextingSettings = lazy(() => import('./pages/TextingSettings.jsx'));
 const People = lazy(() => import('./pages/People.jsx'));
@@ -83,7 +84,7 @@ function NotForYou({ me }) {
 
 // A desk address typed into the field app (an old bookmark, a link in an
 // email): the admin has it. Volunteers go home, as before.
-const DESK_PATHS = /^\/(people(\/(import|fields|connected))?|money|outreach|ladders|follow-ups|surveys|rating-scale|settings|team|admin|inbox\/settings|banks\/new)(\/|$)/;
+const DESK_PATHS = /^\/(people(\/(import|fields|connected))?|money|members|outreach|ladders|follow-ups|surveys|rating-scale|settings|team|admin|inbox\/settings|banks\/new)(\/|$)/;
 function FieldFallback() {
   const ctx = useOutletContext();
   const { pathname, search } = useLocation();
@@ -99,7 +100,7 @@ function FieldFallback() {
 // Desk screens: a desk role, or anyone given the screen's area (Admin →
 // Permissions); a desk role denied the area is sent home too.
 const ROUTE_AREA = [
-  [/^\/people\/(import|connected)/, 'people'], [/^\/people\/fields/, 'admin'],
+  [/^\/people\/(import|connected)|^\/members/, 'people'], [/^\/people\/fields/, 'admin'],
   [/^\/money/, 'money'], [/^\/outreach|^\/ladders|^\/follow-ups|^\/surveys|^\/inbox\/settings/, 'outreach'],
   [/^\/team|^\/settings|^\/rating-scale/, 'admin'],
 ];
@@ -175,6 +176,7 @@ export default function App({ mode = 'field' }) {
           <Route path="/people/import" element={<ImportPeople />} />
           <Route path="/people/fields" element={<Fields />} />
           <Route path="/people/connected" element={<PeopleConnected />} />
+          <Route path="/members" element={<Members />} />
           <Route path="/inbox/settings" element={<TextingSettings />} />
           <Route path="/money" element={<Money />} />
           <Route path="/money/receipts" element={<Receipts />} />

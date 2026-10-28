@@ -12,7 +12,7 @@
 //     taken off are saved on this device, shown on the profile ("Not sent
 //     yet") through a reload, and sent once when the signal is back — one
 //     answer lost on the way, replayed, still recorded once;
-//   · screens with nothing kept (Rating scale, Team, Filings) say No signal,
+//   · screens with nothing kept (Rating scale, Team) say No signal,
 //     their writes are off, and the strip claims no kept copy;
 //   · wifi with no internet, reloaded: still signed in, on the kept copies,
 //     and it asks again by itself; the server down (502): the kept copies,
@@ -312,11 +312,6 @@ check('Team with no signal: "No signal", never "Members 0"; Get invite link off 
   /No signal — this loads when you’re back online/.test(t) && !/Members 0/.test(t) && !(await D.kept())
     && await page.locator('.ot-invite button[type="submit"]').isDisabled().catch(() => false) && /Inviting, changing roles and removing need signal/.test(t), `${await D.kept()} · ${t.slice(0, 200)}`);
 await simple(D, 'Team, no signal (1360)');
-await D.go('/filings');
-t = await D.main();
-check('Filings with no signal: Add filing off and says so; "No signal", not an endless Loading…',
-  await page.locator('.ops-head button:has-text("Add filing")').isDisabled().catch(() => false) && /Adding or filing a deadline needs signal/.test(t)
-    && /No signal — this loads when you’re back online/.test(t) && !/Loading…/.test(t), t.slice(0, 200));
 await D.go('/');
 await page.waitForSelector('.today-morebox__toggle', { timeout: 8000 }).catch(() => {});
 await page.click('.today-morebox__toggle').catch(() => {});
@@ -643,7 +638,7 @@ const vk = await V.stored();
 const vLocal = Object.keys(vk.local);
 check('volunteer: their Today and the profile they opened are kept (in this browser — no money in them)',
   has(vLocal, ':q:volunteer:brief') && has(vLocal, `:q:volunteer:person:${harjit.id}`) && Object.keys(vk.session).length === 0, vLocal.map((x) => x.split(':').slice(5).join(':')).join(' | '));
-check('volunteer: no People list, no money copies', !vLocal.some((x) => /:q:volunteer:(persons|gifts|pledges|receipts|filings)/.test(x)));
+check('volunteer: no People list, no money copies', !vLocal.some((x) => /:q:volunteer:(persons|gifts|pledges|receipts)/.test(x)));
 const vText = Object.values(vk.local).join('\n');
 const vBrief = JSON.parse(Object.entries(vk.local).find(([x]) => x.endsWith(':q:volunteer:brief'))?.[1] || '{}').data || {};
 const vProf = JSON.parse(Object.entries(vk.local).find(([x]) => x.endsWith(`:q:volunteer:person:${harjit.id}`))?.[1] || '{}').data || {};
