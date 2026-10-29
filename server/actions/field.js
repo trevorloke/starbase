@@ -17,10 +17,13 @@ import { httpError } from './util.js';
 import { runHooks, hasHook } from '../lib/hooks.js';
 // The tracked newsletter/press send path and A/B subject lines.
 import {
-  AB_MIN, NO_PROVIDER, abInput, abGroups, abOf, blastCounts, composeBlast, deliver, finishRun, findLinks, inlineMs,
+  AB_MIN, NO_PROVIDER, NO_TEXT_PROVIDER, abInput, abGroups, abOf, blastCounts, composeBlast, deliver, finishRun, findLinks, inlineMs,
   newToken, openTest, queueSend, restReleased, retryable, runPayload, saveLinks, startTest,
 } from '../ext/abtests/send.js';
 import { ATTACH_COUNT, bindAttachments, loadAttachments } from '../ext/abtests/attach.js';
+import { audienceOf, recipientsOf } from '../ext/lists/audience.js';
+import { e164, namesCampaign, MAX_BODY as TEXT_MAX } from '../ext/texting/rules.js';
+import { textConfigured } from '../lib/notify.js';
 
 const ALL_ROLES = ['manager', 'treasurer', 'staff', 'volunteer'];
 const DESK_ROLES = ['manager', 'treasurer', 'staff'];
@@ -678,12 +681,23 @@ export const FIELD_ACTIONS = {
   // never no record and never a second copy by itself.
   // Without email connected nothing is sent: the send is saved, and
   // blast.resend sends it once it is.
+  // kind: newsletter (the list of subscribers) · press (people tagged media)
+  // · eblast (an email to a list or a filter of People: everyone with an
+  // address who may be emailed) · text (a text to a list or a filter:
+  // everyone with a number that can be texted, through the campaign's
+  // Twilio number, inside quiet hours, "Reply STOP to opt out" on each).
+  // audience: { list_id } or { filter: { tag, rating, role, has, q } } for
+  // eblast and text.
   'blast.send': {
     roles: DESK_ROLES,
     input: z.object({
-      kind: z.enum(['newsletter', 'press']),
-      subject: z.string().trim().min(1).max(300),
+      kind: z.enum(['newsletter', 'press', 'eblast', 'text']),
+      subject: z.string().trim().max(300).default(''),
       body: z.string().trim().min(1).max(50000),
+      audience: z.object({
+        list_id: z.uuid().optional(),
+        filter: z.record(z.string().max(40), z.string().max(400)).optional(),
+      }).optional(),
       // Two subject lines: A and B go to two small groups now; the winner
       // goes to everyone else when the wait ends (ext/abtests).
       ab: abInput.nullish(),
@@ -691,39 +705,63 @@ export const FIELD_ACTIONS = {
       attachment_ids: z.array(z.uuid()).max(ATTACH_COUNT).optional(),
     }),
     handler: async (tx, ctx, input, emit) => {
+      const isText = input.kind === 'text';
+      const toList = input.kind === 'eblast' || isText;
+      if (!isText && !input.subject) throw httpError(400, 'a subject is required');
+      if (isText) {
+        if (input.ab) throw httpError(400, 'a text has no subject line to test');
+        if (input.attachment_ids?.length) throw httpError(400, 'a text carries no files');
+        if (input.body.length > TEXT_MAX) throw httpError(400, `a text is ${TEXT_MAX} characters at most`);
+        if (!namesCampaign(input.body, ctx.workspace.name)) throw httpError(400, `Say it's ${ctx.workspace.name} in the text`);
+        if (/\{\{[^}]*\}\}/.test(input.body)) throw httpError(400, 'Fill in the {{…}} parts first');
+      }
       if (input.ab && input.ab.subject_b === input.subject) throw httpError(400, 'subject B is the same as subject A');
       // Winner by clicks needs something to click.
       if (input.ab?.metric === 'clicks' && findLinks(input.body).length === 0) {
         throw httpError(400, 'winner by clicks needs a link in the message');
       }
-      const audience = input.kind === 'newsletter'
-        ? (await tx.query(
-            `select id, email, name from subscriptions where workspace_id = $1 and status = 'subscribed'`,
-            [ctx.workspaceId],
-          )).rows
-        : (await tx.query(
-            `select email, name from persons
-             where workspace_id = $1 and deleted_at is null and email is not null
-               and tags @> '"media"'::jsonb`,
-            [ctx.workspaceId],
-          )).rows;
+      let picked = null;
+      let audience;
+      if (toList) {
+        picked = await audienceOf(tx, ctx, input.audience || {});
+        if (!picked) throw httpError(404, 'list not found');
+        const rows = await recipientsOf(tx, ctx, { list: picked.list, filter: picked.filter, reach: isText ? 'phone' : 'email' });
+        audience = isText
+          ? rows.map((r) => ({ ...r, phone: e164(r.phone) })).filter((r) => r.phone)
+          : rows;
+      } else if (input.kind === 'newsletter') {
+        audience = (await tx.query(
+          `select id, email, name from subscriptions where workspace_id = $1 and status = 'subscribed'`,
+          [ctx.workspaceId],
+        )).rows;
+      } else {
+        audience = (await tx.query(
+          `select id as person_id, email, name from persons
+           where workspace_id = $1 and deleted_at is null and email is not null
+             and tags @> '"media"'::jsonb`,
+          [ctx.workspaceId],
+        )).rows;
+      }
       if (audience.length === 0) {
-        throw httpError(400, input.kind === 'newsletter'
-          ? 'no subscribed addresses on the newsletter list yet'
-          : "no people tagged 'media' with an email address yet");
+        throw httpError(400, input.kind === 'newsletter' ? 'no subscribed addresses on the newsletter list yet'
+          : input.kind === 'press' ? "no people tagged 'media' with an email address yet"
+          : isText ? 'no one on this list has a number that can be texted'
+          : 'no one on this list has an email address that can be emailed');
       }
 
       // A test needs a list big enough to tell; a smaller one sends normally.
       const ab = input.ab && audience.length >= AB_MIN ? input.ab : null;
       const groups = ab ? abGroups(audience.length, ab.pct) : [];
-      const live = emailConfigured();
-      const note = live ? null : NO_PROVIDER;
+      const live = isText ? textConfigured() : emailConfigured();
+      const note = live ? null : (isText ? NO_TEXT_PROVIDER : NO_PROVIDER);
+      const subject = isText ? (input.subject || input.body.replace(/\s+/g, ' ').slice(0, 80)) : input.subject;
 
       const id = newId();
       await tx.query(
-        `insert into blasts (id, workspace_id, kind, subject, body, status, provider_note, audience_count, created_by)
-         values ($1, $2, $3, $4, $5, 'queued', $6, $7, $8)`,
-        [id, ctx.workspaceId, input.kind, input.subject, input.body, note, audience.length, ctx.user.id],
+        `insert into blasts (id, workspace_id, kind, subject, body, status, provider_note, audience_count, created_by, audience, list_id)
+         values ($1, $2, $3, $4, $5, 'queued', $6, $7, $8, $9, $10)`,
+        [id, ctx.workspaceId, input.kind, subject, input.body, note, audience.length, ctx.user.id,
+          picked ? JSON.stringify({ list_id: picked.list?.id || null, list_name: picked.name, kind: picked.list?.kind || 'filter', filter: picked.list ? picked.list.filter : picked.filter }) : null, picked?.list?.id || null],
       );
       const attachments = await bindAttachments(tx, ctx, id, input.attachment_ids);
       // The rows to go now are asked for. The rest of an A/B send waits for
@@ -733,9 +771,10 @@ export const FIELD_ACTIONS = {
         const group = groups[i] || null;
         const asked = live && group !== 'rest';
         await tx.query(
-          `insert into blast_recipients (id, workspace_id, blast_id, email, name, status, token, ab_group, send_asked_at)
-           values ($1, $2, $3, $4, $5, 'queued', $6, $7, case when $8 then now() end)`,
-          [newId(), ctx.workspaceId, id, r.email, r.name || null, newToken(), group, asked],
+          `insert into blast_recipients (id, workspace_id, blast_id, email, phone, person_id, name, status, token, ab_group, send_asked_at)
+           values ($1, $2, $3, $4, $5, $6, $7, 'queued', $8, $9, case when $10 then now() end)`,
+          [newId(), ctx.workspaceId, id, isText ? null : r.email, isText ? r.phone : null, r.person_id || (toList ? r.id : null) || null,
+            r.name || null, newToken(), group, asked],
         );
         if (asked) now += 1;
       }
@@ -744,21 +783,22 @@ export const FIELD_ACTIONS = {
       // Not connected: the whole test is saved and starts on Send now.
       const test = ab ? await openTest(tx, ctx, id, ab, live) : null;
       emit('blast', id, 'create', {
-        kind: input.kind, subject: input.subject, audience: audience.length, status: 'queued',
+        kind: input.kind, subject, audience: audience.length, status: 'queued',
+        ...(picked ? { list_id: picked.list?.id || null, list_name: picked.name, filter: picked.filter } : {}),
         ...(test ? { ab: { subject_b: ab.subject_b, pct: ab.pct, wait_hours: ab.wait_hours, metric: ab.metric, status: test.status } } : {}),
         ...(attachments.length ? { attachments: attachments.map((a) => a.filename) } : {}),
       });
       return {
         blast: {
-          id, kind: input.kind, subject: input.subject, status: 'queued', audience_count: audience.length, provider_note: note,
-          attachments,
+          id, kind: input.kind, subject, status: 'queued', audience_count: audience.length, provider_note: note,
+          attachments, list_name: picked?.name || null,
           ...(test ? { ab: test } : {}),
         },
         counts: { total: audience.length, sent: 0, failed: 0, queued: audience.length },
         ...(input.ab && !ab ? { ab_skipped: `A/B needs at least ${AB_MIN}` } : {}),
         [SEND]: now ? {
           jobId,
-          blast: { id, kind: input.kind, subject: input.subject, body: input.body, ab_subject_b: ab?.subject_b ?? null, ab_winner: null },
+          blast: { id, kind: input.kind, subject, body: input.body, ab_subject_b: ab?.subject_b ?? null, ab_winner: null },
         } : null,
       };
     },
@@ -770,7 +810,7 @@ export const FIELD_ACTIONS = {
       const run = await deliver(db, ctx, plan.blast, { actorId: ctx.user.id, budgetMs: inlineMs() });
       const done = await finishRun(db, ctx, {
         actorId: ctx.user.id, action: 'blast.send', blastId: plan.blast.id, note: run.note,
-        payload: runPayload('blast.send', run), done: !run.more, jobId: plan.jobId,
+        payload: runPayload('blast.send', run), done: !run.more, jobId: plan.jobId, nextAt: run.heldUntil || null,
       });
       const { status, audience_count: audienceCount, provider_note: providerNote } = done.blast;
       return {
@@ -787,7 +827,7 @@ export const FIELD_ACTIONS = {
   'blast.test': {
     roles: DESK_ROLES,
     input: z.object({
-      kind: z.enum(['newsletter', 'press']),
+      kind: z.enum(['newsletter', 'press', 'eblast']),
       subject: z.string().trim().min(1).max(300),
       body: z.string().trim().min(1).max(50000),
       attachment_ids: z.array(z.uuid()).max(ATTACH_COUNT).optional(),
@@ -804,7 +844,7 @@ export const FIELD_ACTIONS = {
       const res = await sendEmail({
         to: ctx.user.email,
         subject: `[Test] ${plan.subject}`,
-        ...composeBlast(ctx, { kind: plan.kind, body: plan.body, subscriptionId: null, token: null, links: [], attachments }),
+        ...composeBlast(ctx, { kind: plan.kind, body: plan.body, unsubscribeUrl: null, token: null, links: [], attachments }),
       });
       return { result: { to: ctx.user.email, sent: res.status === 'sent', detail: res.detail || null } };
     },
@@ -864,7 +904,7 @@ export const FIELD_ACTIONS = {
       const done = await finishRun(db, ctx, {
         actorId: ctx.user.id, action: 'blast.resend', blastId: plan.blast.id, note: run.note,
         payload: runPayload('blast.resend', run, plan.test ? { ab: plan.test.status } : {}),
-        done: !run.more, jobId: plan.jobId,
+        done: !run.more, jobId: plan.jobId, nextAt: run.heldUntil || null,
       });
       return {
         result: { blast: blastOut(done.blast), counts: done.counts, resent: { sent: run.sent, failed: run.failed, skipped: run.skipped } },

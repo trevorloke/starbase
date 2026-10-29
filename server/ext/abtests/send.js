@@ -29,6 +29,7 @@ import { enqueueJob, jobRunnerOn, runJobsSoon } from '../../lib/jobs.js';
 import { runAction } from '../../lib/events.js';
 import { markdownPlain, renderMarkdown } from '@starbase/shared/markdown';
 import { loadAttachments } from './attach.js';
+import { deliverTexts } from '../texting/blast.js';
 
 export const AB_MIN = 50;
 export const AB_PCTS = [10, 20, 30];
@@ -38,6 +39,8 @@ export const WINNER_JOB = 'abtests.winner';
 export const SEND_JOB = 'abtests.send';
 // sendEmail's own words when email isn't connected (the screen keys on them).
 export const NO_PROVIDER = 'no email provider configured (set RESEND_API_KEY)';
+// sendText's, when texting isn't.
+export const NO_TEXT_PROVIDER = 'no SMS provider configured (set TWILIO_ACCOUNT_SID/AUTH_TOKEN/FROM)';
 
 export const abInput = z.object({
   subject_b: z.string().trim().min(1).max(300),
@@ -121,14 +124,16 @@ export const recordOutcome = (tx, workspaceId, rowId, res, { token = null, from 
   );
 };
 
-// Every newsletter identifies the sender and carries the recipient's own
-// one-click unsubscribe link (/u/:subscriptionId); press carries the name.
-// A test copy (no subscription) says where the link will be.
-export const blastText = (ctx, kind, body, subscriptionId) => {
+// Every newsletter and email blast identifies the sender and carries the
+// recipient's own one-click unsubscribe link (/u/:subscriptionId on the
+// newsletter list; /bu/:recipientId on an email blast); press carries the
+// name. A test copy (no link) says where the link will be.
+const hasUnsub = (kind) => kind === 'newsletter' || kind === 'eblast';
+export const blastText = (ctx, kind, body, unsubscribeUrl) => {
   const base = ctx.publicUrl || '';
   const words = markdownPlain(body).replace(/(^|[\s(])\/media\/([A-Za-z0-9-]+)/g, `$1${base}/media/$2`);
-  return words + (kind === 'newsletter'
-    ? `\n\n—\nSent by ${ctx.workspace.name}.\nUnsubscribe: ${subscriptionId ? `${base}/u/${subscriptionId}` : '(each subscriber gets their own link)'}`
+  return words + (hasUnsub(kind)
+    ? `\n\n—\nSent by ${ctx.workspace.name}.\nUnsubscribe: ${unsubscribeUrl || '(each recipient gets their own link)'}`
     : `\n\n—\n${ctx.workspace.name}`);
 };
 
@@ -254,13 +259,13 @@ export const emailBody = (body, { base = '', token = null, links = [] } = {}) =>
 
 // The HTML part: the message laid out, its links tracked, the footer
 // (unsubscribe untracked), and the open pixel last — none on a test copy.
-export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
+export const blastHtml = (ctx, kind, body, unsubscribeUrl, token, links) => {
   const base = ctx.publicUrl || '';
   const counted = token ? ' We count opens and clicks.' : '';
-  const unsub = subscriptionId
-    ? `<a href="${esc(`${base}/u/${subscriptionId}`)}" style="color:#5d6481">Unsubscribe</a>`
-    : '<span style="color:#5d6481">Unsubscribe (each subscriber gets their own link)</span>';
-  const foot = kind === 'newsletter'
+  const unsub = unsubscribeUrl
+    ? `<a href="${esc(unsubscribeUrl)}" style="color:#5d6481">Unsubscribe</a>`
+    : '<span style="color:#5d6481">Unsubscribe (each recipient gets their own link)</span>';
+  const foot = hasUnsub(kind)
     ? `Sent by ${esc(ctx.workspace.name)}.${counted}<br>${unsub}`
     : `${esc(ctx.workspace.name)}.${counted}`;
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
@@ -272,11 +277,11 @@ export const blastHtml = (ctx, kind, body, subscriptionId, token, links) => {
     + '</div></body></html>';
 };
 
-export const composeBlast = (ctx, { kind, body, subscriptionId, token, links, attachments }) => ({
-  text: blastText(ctx, kind, body, subscriptionId),
-  html: blastHtml(ctx, kind, body, subscriptionId, token, links),
-  // A newsletter's mail-app Unsubscribe button: the same /u link, by POST.
-  headers: kind === 'newsletter' && subscriptionId ? unsubscribeHeaders(`${ctx.publicUrl || ''}/u/${subscriptionId}`) : undefined,
+export const composeBlast = (ctx, { kind, body, unsubscribeUrl, token, links, attachments }) => ({
+  text: blastText(ctx, kind, body, unsubscribeUrl),
+  html: blastHtml(ctx, kind, body, unsubscribeUrl, token, links),
+  // The mail-app Unsubscribe button: the same link, by POST.
+  headers: hasUnsub(kind) && unsubscribeUrl ? unsubscribeHeaders(unsubscribeUrl) : undefined,
   ...(attachments?.length ? { attachments } : {}),
 });
 
@@ -351,6 +356,7 @@ const anyAsked = async (db, workspaceId, blastId) => (await db.query(
   [blastId, workspaceId],
 )).rows.length > 0;
 export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infinity, max = Infinity } = {}) => {
+  if (blast.kind === 'text') return deliverTexts(db, ctx, blast, { actorId, budgetMs, max });
   const workspaceId = ctx.workspaceId;
   const act = (fn) => runAction(db, { workspaceId, actorId, action: DELIVER_ACTION }, fn);
   const links = findLinks(blast.body);
@@ -375,7 +381,7 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
       const out = [];
       let gone = 0;
       for (const r of rows) {
-        let subscriptionId = null;
+        let unsubscribeUrl = blast.kind === 'eblast' ? `${ctx.publicUrl || ''}/bu/${r.id}` : null;
         if (blast.kind === 'newsletter') {
           const sub = (await tx.query(
             'select id, status from subscriptions where workspace_id = $1 and email = $2',
@@ -386,7 +392,7 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
             gone += 1;
             continue;
           }
-          subscriptionId = sub.id;
+          unsubscribeUrl = `${ctx.publicUrl || ''}/u/${sub.id}`;
         }
         const token = r.token || newToken();
         await tx.query(
@@ -394,7 +400,7 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
            where id = $1 and workspace_id = $2`,
           [r.id, workspaceId, token],
         );
-        out.push({ ...r, token, subscriptionId });
+        out.push({ ...r, token, unsubscribeUrl });
       }
       if (out.length || gone) emit('blast', blast.id, 'update', { sending: out.length, unsubscribed: gone });
       return { rows: out, gone, empty: rows.length === 0 };
@@ -406,7 +412,7 @@ export const deliver = async (db, ctx, blast, { actorId = null, budgetMs = Infin
       const res = await sendEmail({
         to: r.email,
         subject: subjectFor(blast, r.ab_group),
-        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links, attachments }),
+        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, unsubscribeUrl: r.unsubscribeUrl, token: r.token, links, attachments }),
         idempotencyKey: sendKey(blast.id, r),
       });
       const { status } = outcomeOf(res);
@@ -461,24 +467,25 @@ export const settleBlast = async (tx, workspaceId, blastId, { note = null, quiet
 // (`jobId`), or the next run is queued (`next`, its payload), and runs
 // straight away. Answers { blast (the row), counts, lastSeq }.
 export const finishRun = async (db, ctx, {
-  actorId = null, action, blastId, note = null, payload = {}, quiet = false, done = true, jobId = null, next = null,
+  actorId = null, action, blastId, note = null, payload = {}, quiet = false, done = true, jobId = null, next = null, nextAt = null,
 }) => {
   const workspaceId = ctx.workspaceId;
   const { result, lastSeq } = await runAction(db, { workspaceId, actorId, action }, async (tx, emit) => {
     if (jobId) {
+      // Not done: the tap's job is due now — or when texting opens (nextAt).
       await tx.query(
         done
           ? `update jobs set status = 'cancelled', done_at = now() where id = $1 and workspace_id = $2 and status = 'pending'`
-          : `update jobs set run_at = now() where id = $1 and workspace_id = $2 and status = 'pending'`,
-        [jobId, workspaceId],
+          : `update jobs set run_at = coalesce($3::timestamptz, now()) where id = $1 and workspace_id = $2 and status = 'pending'`,
+        done ? [jobId, workspaceId] : [jobId, workspaceId, nextAt ? new Date(nextAt).toISOString() : null],
       );
     }
-    if (!done && next) await enqueueJob(tx, { workspaceId, kind: SEND_JOB, payload: next });
+    if (!done && next) await enqueueJob(tx, { workspaceId, kind: SEND_JOB, payload: next, ...(nextAt ? { runAt: new Date(nextAt).toISOString() } : {}) });
     const s = await settleBlast(tx, workspaceId, blastId, { note, quiet: quiet && done });
     if (s?.wrote) emit('blast', blastId, 'update', { ...payload, status: s.status, ...(done ? {} : { more: true }) });
     return { blast: s?.blast || null, counts: s?.counts || null };
   });
-  if (!done) runJobsSoon();
+  if (!done && !nextAt) runJobsSoon();
   return { ...result, lastSeq };
 };
 
@@ -523,12 +530,13 @@ export const runSendJob = async (db, job) => {
     [blastId, workspaceId],
   )).rows[0];
   if (!blast) return;
-  const ws = (await db.query('select name from workspaces where id = $1', [workspaceId])).rows[0];
-  const ctx = { workspaceId, workspace: { name: ws?.name || '' }, publicUrl: base };
+  const ws = (await db.query('select name, settings from workspaces where id = $1', [workspaceId])).rows[0];
+  const ctx = { workspaceId, workspace: { name: ws?.name || '', settings: typeof ws?.settings === 'string' ? JSON.parse(ws.settings) : (ws?.settings || {}) }, publicUrl: base };
   const run = await deliver(db, ctx, blast, { actorId, max: sendPerRun() });
   await finishRun(db, ctx, {
     actorId, action, blastId, note: run.note, payload: runPayload(action, run),
-    quiet: run.claimed === 0 && run.skipped === 0, done: !run.more, next: run.more ? job.payload : null,
+    quiet: run.claimed === 0 && run.skipped === 0 && !run.heldUntil, done: !run.more, next: run.more ? job.payload : null,
+    nextAt: run.heldUntil || null,
   });
 };
 

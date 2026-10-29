@@ -1,0 +1,17 @@
+/* Lists (ops-* rows from shifts.css) */
+.ls-page .ops-meta { margin: 0 0 var(--s-3); }
+.ls-counts strong { font-size: 16px; }
+.ls-preview { margin: var(--s-2) 0; color: var(--text-2); font-size: 14px; }
+.ls-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-2); margin: 0 0 var(--s-3); }
+.ls-kind { display: flex; gap: var(--s-2); align-items: flex-start; padding: var(--s-3); border: var(--border); border-radius: var(--r-card); cursor: pointer; background: var(--paper-0); }
+.ls-kind.is-on { border-color: var(--ink); }
+.ls-kind input { margin-top: 4px; }
+.ls-filter .form-row { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+.ls-filter .form-row .field { flex: 1 1 160px; }
+.ls-tools { margin: var(--s-2) 0 var(--s-3); align-items: center; flex-wrap: wrap; }
+.ls-edit { margin: 0 0 var(--s-3); padding: var(--s-3); }
+.ls-search { margin: 0 0 var(--s-2); max-width: 360px; min-height: 40px; }
+.ls-link { text-decoration: none; color: inherit; }
+.ls-found { margin: 0 0 var(--s-3); }
+.ls-add { margin: 0 0 var(--s-2); }
+@media (pointer: coarse), (max-width: 720px) { .ls-search { max-width: none; min-height: 48px; } }

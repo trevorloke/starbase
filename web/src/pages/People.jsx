@@ -341,7 +341,7 @@ const FILTER_KEYS = ['q', 'tag', 'rating', 'role', 'field']; // field: <field id
 // voter backs ("Voting for…") under More. The value goes to the server as is.
 // A band is every code of the campaign's scale in it, those off the list too.
 const BAND_LABEL = { support: 'Support', undecided: 'Undecided', opposed: 'Opposed' };
-const ratingBands = (scale) => [
+export const ratingBands = (scale) => [
   ...Object.entries(BAND_LABEL).map(([band, label]) => ({ value: codesInBand(scale, band).join(','), label, band })),
   { value: 'unrated', label: 'Unrated', band: 'none' },
 ];
@@ -778,7 +778,16 @@ function PeopleList() {
       <FilterChips f={f} update={update}
         extra={f.field ? <FieldFilterChip value={f.field} onRemove={() => update({ field: null })} /> : null} />
 
-      {!offline && !failed && <p className="pp-count"><strong className="mono">{count}</strong> {rows.length === 1 ? 'person' : 'people'}{partial ? ' in the kept list' : ''}</p>}
+      {!offline && !failed && (
+        <p className="pp-count">
+          <strong className="mono">{count}</strong> {rows.length === 1 ? 'person' : 'people'}{partial ? ' in the kept list' : ''}
+          {desk && anyFilter && !partial && (
+            <Link className="pp-savelist" to={`/lists/new?${new URLSearchParams(Object.fromEntries(Object.entries(f).filter(([k, v]) => v && ['q', 'tag', 'rating', 'role', 'has', 'field'].includes(k))))}`}>
+              Save as a list
+            </Link>
+          )}
+        </p>
+      )}
 
       {persons.isError && !offline && <p className="error">{noAnswer(persons.error) ? 'No answer — check your signal' : persons.error.message}</p>}
 

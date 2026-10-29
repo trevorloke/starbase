@@ -234,6 +234,15 @@ create table if not exists blast_recipients (
   created_at timestamptz not null default now()
 );
 create index if not exists brecip_blast_idx on blast_recipients (workspace_id, blast_id);
+-- Email blasts and text blasts to a list (ext/lists): the send keeps its
+-- audience; a recipient is an address or a number, and the person it was.
+alter table blasts drop constraint if exists blasts_kind_check;
+alter table blasts add constraint blasts_kind_check check (kind in ('newsletter', 'press', 'eblast', 'text'));
+alter table blasts add column if not exists audience jsonb;
+alter table blasts add column if not exists list_id uuid;
+alter table blast_recipients alter column email drop not null;
+alter table blast_recipients add column if not exists phone text;
+alter table blast_recipients add column if not exists person_id uuid;
 
 -- The event log: append-only, per-workspace sequence, hash-chained.
 -- This one table is the sync protocol, the audit trail, and the API.

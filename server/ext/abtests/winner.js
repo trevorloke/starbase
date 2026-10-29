@@ -71,6 +71,7 @@ export const pickWinner = async (db, job) => {
   const ctx = { workspaceId, workspace: { name: ws?.name || '' }, publicUrl: base };
   const links = findLinks(blast.body);
   const attachments = await loadAttachments(db, workspaceId, { blastId });
+  const unsubFor = (r) => (r.subscriptionId ? `${base}/u/${r.subscriptionId}` : blast.kind === 'eblast' ? `${base}/bu/${r.id}` : null);
   const subject = subjectFor(blast, 'rest');
   const run = { claimed: 0, sent: 0, failed: 0, unsure: 0, skipped: 0, note: null };
   let more = false;
@@ -119,7 +120,7 @@ export const pickWinner = async (db, job) => {
       const res = await sendEmail({
         to: r.email,
         subject,
-        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, subscriptionId: r.subscriptionId, token: r.token, links, attachments }),
+        ...composeBlast(ctx, { kind: blast.kind, body: blast.body, unsubscribeUrl: unsubFor(r), token: r.token, links, attachments }),
         idempotencyKey: sendKey(blastId, r),
       });
       const { status } = outcomeOf(res);

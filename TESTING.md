@@ -153,6 +153,19 @@ one tap away under **More**.
   brings in the tracker as published. Open a promise, add a dated update
   with a score and a link: the status, the scoreboard and the public JSON
   change together. Announcements sit under the list.
+- **Lists** (Today → More → Lists, or People → *Save as a list* once a
+  filter is on) — a saved filter counts who matches as you pick (and how
+  many can be emailed or texted); a hand-picked list takes people by name.
+  A list has *Download CSV*, *Email this list* and *Text this list*.
+- **Outreach → Email blast** — choose a list, write as for a newsletter,
+  Send: everyone with an address who may be emailed; the footer's
+  *Unsubscribe* tags that address do-not-email. **Outreach → Texts** —
+  choose a list, write a text that names the campaign (the counter shows
+  the 1000-character limit with "Reply STOP to opt out" counted), Send: one
+  text each through the campaign number; at night it waits and says when
+  texting opens; replies land in the Inbox.
+- **Reports** (Today → More → Reports) — the campaign in numbers, *CSV* on
+  every table, and the exports: any table as a spreadsheet.
 - **Outreach → Newsletter** — the message takes Markdown: tap **B**,
   **H**, **• List**, **Link**, **Picture** (a photo goes in from your phone)
   and **Link to…** (Donate, Volunteer, Newsletter signup, Website), then

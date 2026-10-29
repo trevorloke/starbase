@@ -177,7 +177,7 @@ test('"Send me a test" emails the writer alone — no tracking, no record — an
     assert.equal(m.subject, '[Test] Draft');
     assert.ok(!m.html.includes('/o/') && !m.html.includes('/c/'), 'nothing tracked on a test');
     assert.ok(m.html.includes('href="https://imaginesurrey.example/plan"'), 'the link as typed');
-    assert.ok(m.html.includes('each subscriber gets their own link'));
+    assert.ok(m.html.includes('each recipient gets their own link'));
     assert.deepEqual(m.attachments.map((a) => a.filename), ['draft.pdf']);
     assert.equal((await mgr.get('/api/blasts')).json.blasts.length, before, 'nothing on record');
     // The file is still the writer's to send for real.

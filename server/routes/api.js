@@ -12,7 +12,6 @@ import { ACTIONS, httpError } from '../actions/index.js';
 import { tierFor } from '../lib/tiers.js';
 import { emailConfigured, textConfigured } from '../lib/notify.js';
 import { RECORD_TYPES } from '@starbase/shared/registry';
-import { SOCIAL_PLATFORMS } from '@starbase/shared/canvass';
 import { staleTimeZoneData } from '../lib/tzcheck.js';
 import { crossSiteWrite } from '../lib/guard.js';
 import dataRoutes from './data.js';
@@ -20,7 +19,8 @@ import { pointInPolygon, groupDoors, walkOrder } from '../lib/geo.js';
 import { checkCap } from '../lib/cap.js';
 import { EXTENSIONS } from '../ext.js';
 import { runHooks } from '../lib/hooks.js';
-import { forViewer, isMoneyTag, loginEmail } from '../lib/viewer.js';
+import { forViewer, loginEmail } from '../lib/viewer.js';
+import { personsWhere } from '../lib/audience.js';
 // Which saved newsletter / press rows Try again would reach (ext/abtests).
 import { goingRow, retryable, sendJobOn } from '../ext/abtests/send.js';
 import { attachmentsOf } from '../ext/abtests/attach.js';
@@ -137,59 +137,10 @@ const personRow = (r) => ({
 
 app.get('/persons', async (c) => {
   const ctx = c.get('ctx');
-  const vol = ctx.role === 'volunteer';
-  const q = (c.req.query('q') || '').trim();
-  const tag = (c.req.query('tag') || '').trim();
-  const rating = (c.req.query('rating') || '').trim();
-  const role = (c.req.query('role') || '').trim();
-  const has = (c.req.query('has') || '').trim();       // phone | email | location | a social platform
   const limit = Math.min(Number(c.req.query('limit')) || 25, 2000);
-  const like = `%${q.replace(/[%_\\]/g, (m) => '\\' + m)}%`;
-  const params = [ctx.workspaceId, q, like, limit];
-  // A volunteer's search, tag and has=email filters never match on what they
-  // may not see — otherwise the result set itself would tell them who has
-  // which email, or who is a donor. Their own email still finds their own
-  // record (Shifts and Today look themselves up that way).
-  if (vol) params.push(loginEmail(ctx));
-  const ownEmail = `($5::text <> '' and lower(p.email) = $5::text)`;
-  // A social handle matches with or without its @ (or Reddit's u/).
-  params.push(`%${q.replace(/^@|^\/?u\//i, '').replace(/[%_\\]/g, (m) => '\\' + m)}%`);
-  const handleLike = `$${params.length}`;
-  let where = `p.workspace_id = $1 and p.deleted_at is null
-       and ($2 = '' or p.name ilike $3 or p.address ilike $3 or p.phone ilike $3
-            or (p.email ilike $3${vol ? ` and ${ownEmail}` : ''})
-            or exists (select 1 from jsonb_each_text(p.socials) s
-                       where regexp_replace(s.value, '^@|^/?u/', '', 'i') ilike ${handleLike}))`;
-  if (tag && vol && isMoneyTag(tag)) where += ' and false';
-  else if (tag) { params.push(JSON.stringify(tag)); where += ` and p.tags @> $${params.length}::jsonb`; }
-  // rating: one code (4B), a comma list for a band (1,2 · 4,4D,4B,4F,4N,4C),
-  // and/or "unrated" (no rating yet). A band reaches every code on the
-  // campaign's scale, those off the list too (ext/scale: up to 64).
-  if (rating) {
-    const codes = [...new Set(rating.split(',').map((s) => s.trim()).filter(Boolean))].slice(0, 80);
-    const ors = [];
-    for (const code of codes) {
-      if (code === 'unrated') { ors.push('p.rating is null'); continue; }
-      params.push(code);
-      ors.push(`p.rating = $${params.length}`);
-    }
-    where += ors.length ? ` and (${ors.join(' or ')})` : ' and false';
-  }
-  if (role) {
-    params.push(role);
-    where += ` and exists (select 1 from volunteer_roles v where v.person_id = p.id and v.role = $${params.length})`;
-  }
-  if (has === 'phone') where += ' and p.phone is not null';
-  if (has === 'email') where += vol ? ` and ${ownEmail}` : ' and p.email is not null';
-  if (has === 'location') where += ' and p.lat is not null and p.lng is not null';
-  if (SOCIAL_PLATFORMS.includes(has)) {
-    params.push(has);
-    where += ` and coalesce(trim(p.socials ->> $${params.length}), '') <> ''`;
-  }
-  // Features' own filters (?field= — ext/fields), on the same params.
-  const more = { params, where: '' };
-  await runHooks('personsWhere', c.get('db'), ctx, c.req.query(), more);
-  where += more.where;
+  // The one WHERE behind People, saved lists and a send's audience (lib/audience.js).
+  const { where, params } = await personsWhere(c.get('db'), ctx, c.req.query());
+  params[3] = limit;
   // note: their own words from the volunteer form (attrs.note), so the call
   // card needs no per-person fetch. Nothing else from attrs is exposed.
   const { rows } = await c.get('db').query(
@@ -606,7 +557,7 @@ app.get('/subscriptions', async (c) => {
 app.get('/blasts', async (c) => {
   const ctx = c.get('ctx');
   const { rows } = await c.get('db').query(
-    `select b.id, b.kind, b.subject, b.status, b.provider_note, b.audience_count, b.sent_at, b.created_at,
+    `select b.id, b.kind, b.subject, b.status, b.provider_note, b.audience_count, b.sent_at, b.created_at, b.audience, b.list_id,
             k.sent_count, k.failed_count, k.queued_count, k.retry_count, k.sending_count, k.going_count
      from blasts b
      cross join lateral (select ${sendJobOn('b.id', 'b.workspace_id')} as job_on) j
@@ -633,7 +584,11 @@ app.get('/blasts', async (c) => {
     [ctx.workspaceId],
   )).rows[0].n;
   const files = await attachmentsOf(c.get('db'), ctx.workspaceId);
-  return c.json({ blasts: rows.map((b) => ({ ...b, attachments: files[b.id] || [] })), mediaContacts: media, emailConfigured: emailConfigured() });
+  const parseJ = (v) => { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch { return null; } };
+  return c.json({
+    blasts: rows.map((b) => ({ ...b, audience: parseJ(b.audience) || null, attachments: files[b.id] || [] })),
+    mediaContacts: media, emailConfigured: emailConfigured(), textConfigured: textConfigured(),
+  });
 });
 
 // ── Records: generic cursor-paginated reads per registry type ──

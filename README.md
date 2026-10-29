@@ -31,7 +31,9 @@ button, no paragraphs, everything else one tap away.
 | **Donations** | Gifts (one-time / monthly) with the entity-keyed cap engine; receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
 | **Members** | The organization's roll, fed by the website's join form: who's a member, until when, who votes at member meetings, who still owes the fee (a contribution under BC law: a pledge on Donations until it's paid; the membership turns active then) |
-| **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*), petitions, and the Imagine Surrey website bridge |
+| **Lists** | Saved filters (a tag, a rating band, a role, has an email…) and hand-picked lists of people: an audience for an email or text blast, a CSV, a report; People's *Save as a list* starts one |
+| **Reports** | The campaign in numbers (people by rating, tags, cities, people added by week, contacts by week, donations by month, members, the newsletter list, sends), each downloadable as CSV; any table as a spreadsheet; the full JSON export |
+| **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*); **email blasts** and **texts** to any list, with the same rules as one-to-one texts (quiet hours, STOP, do-not-contact); petitions; and the Imagine Surrey website bridge |
 | **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
 | **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
 
@@ -354,6 +356,22 @@ layout. Up to five files (PDF, pictures, Word, Excel, PowerPoint, .ics,
 .txt, .csv; 5 MB each) go with every copy; *Send me a test* emails the
 writer a copy first, untracked and off the record. Each email carries a
 plain-text part alongside the HTML.
+
+**Email blasts and texts to a list.** Outreach → Email blast sends to a
+list (Lists: a saved filter or a hand-picked list): everyone on it with an
+address who may be emailed — never do-not-email, do-not-contact or an
+address that unsubscribed — each copy with its own unsubscribe link
+(`/bu/<recipient>`, which tags the address do-not-email). Outreach →
+Texts sends one text to everyone on a list with a number that can be
+texted, through the campaign's Twilio number, by the one-to-one rules:
+never a number that replied STOP, do-not-text or do-not-contact; the
+campaign named in the text; "Reply STOP to opt out" on each; inside quiet
+hours (a text sent at night waits, and the send job sends it when texting
+opens); each filed in the Inbox as the sender's conversation, so replies
+and STOP land where the desk reads them. Managers, staff and treasurers
+(the outreach area) send; volunteers never. Confirm bulk texting with
+counsel before the first send: the texting module was built for
+one-to-one texts, and election texting rules are the campaign's to meet.
 
 Set `STARBASE_PUBLIC_URL` (e.g. `https://starbase.imaginesurrey.ca`) so links
 in outbound mail — newsletter unsubscribe footers, invite links, the

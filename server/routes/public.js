@@ -83,7 +83,7 @@ ${inner}
 };
 
 // Public form paths remember their request's base and origin for page().
-for (const path of ['/p/*', '/n/*', '/v/*', '/u/*', '/e/*', '/d/*']) {
+for (const path of ['/p/*', '/n/*', '/v/*', '/u/*', '/bu/*', '/e/*', '/d/*']) {
   app.use(path, (c, next) => reqInfo.run({
     base: onSiteHost(c) ? '' : '/site', origin: originOf(c), path: c.req.path,
   }, next));
@@ -741,6 +741,53 @@ const refundWebhook = async (c, evt, obj) => {
   });
   return c.json({ ok: true, ...result });
 };
+
+// ── Unsubscribe from email blasts (/bu/:recipientId) ──
+// The link at the foot of an email blast to a list. Like a ladder email's
+// (/lu): an address on the newsletter list is marked unsubscribed there;
+// one that never was gets the do-not-email tag on everyone with it, so
+// no blast or ladder emails them again. Opening only asks; the button, or
+// a mail app's one-click unsubscribe, does it.
+const loadBlastRecipient = async (db, id) => {
+  if (!UUID.test(id)) return null;
+  const row = (await db.query(
+    `select r.id, r.workspace_id, r.email, w.name, w.slug, w.settings from blast_recipients r
+     join blasts b on b.id = r.blast_id join workspaces w on w.id = r.workspace_id
+     where r.id = $1 and b.kind = 'eblast'`, [id],
+  )).rows[0];
+  const email = String(row?.email || '').trim().toLowerCase();
+  return row && email ? { ...row, email, ws: { id: row.workspace_id, name: row.name, slug: row.slug, settings: settingsOf(row) } } : null;
+};
+app.get('/bu/:id', async (c) => {
+  const row = await loadBlastRecipient(await getDb(), c.req.param('id'));
+  if (!row) return badUnsubscribe(c);
+  return c.html(page(row.ws, 'Unsubscribe', `<h1>Unsubscribe from ${esc(row.name)}?</h1>
+<form method="post" action="/bu/${esc(row.id)}"><button type="submit">Unsubscribe</button></form>`));
+});
+app.post('/bu/:id', async (c) => {
+  const db = await getDb();
+  const row = await loadBlastRecipient(db, c.req.param('id'));
+  if (!row) return badUnsubscribe(c);
+  const ws = row.ws;
+  await publicAction(db, ws, 'public.unsubscribe', async (tx, emit) => {
+    const sub = (await tx.query('select id, status from subscriptions where workspace_id = $1 and email = $2', [ws.id, row.email])).rows[0];
+    if (sub && sub.status !== 'unsubscribed') {
+      await tx.query("update subscriptions set status = 'unsubscribed', unsubscribed_at = now() where id = $1 and workspace_id = $2", [sub.id, ws.id]);
+      emit('subscription', sub.id, 'update', { status: 'unsubscribed', source: 'blast-unsubscribe' });
+    }
+    const people = (await tx.query(
+      'select id, tags from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null', [ws.id, row.email],
+    )).rows;
+    for (const p of people) {
+      const tags = typeof p.tags === 'string' ? JSON.parse(p.tags) : (p.tags || []);
+      if (tags.includes('do-not-email')) continue;
+      const next = [...tags, 'do-not-email'];
+      await tx.query('update persons set tags = $3, updated_at = now() where id = $1 and workspace_id = $2', [p.id, ws.id, JSON.stringify(next)]);
+      emit('person', p.id, 'update', { tags: next, source: 'blast-unsubscribe' });
+    }
+  });
+  return c.html(page(ws, 'Unsubscribed', `<h1>Unsubscribed.</h1><div class="done">You won't receive further emails from ${esc(ws.name)}.</div>`));
+});
 
 // ── Website bridge: JSON endpoint for the campaign site's own forms ──
 app.options('/api/public/:ws/signup', (c) => {

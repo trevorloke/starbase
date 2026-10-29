@@ -27,6 +27,8 @@ import './outreach.css';
 
 const TABS = [
   { key: 'newsletter', label: 'Newsletter' },
+  { key: 'eblast',     label: 'Blasts' },
+  { key: 'texts',      label: 'Texts' },
   { key: 'press',      label: 'Press' },
   { key: 'petitions',  label: 'Petitions' },
   { key: 'events',     label: 'Events' },
@@ -35,6 +37,8 @@ const TABS = [
 // The one yellow button in the header, per tab.
 const PRIMARY = {
   newsletter: 'Write newsletter',
+  eblast: 'Write email blast',
+  texts: 'Write a text',
   press: 'Write press release',
   petitions: 'New petition',
   events: 'New event',
@@ -47,6 +51,8 @@ const VOLUNTEER_TABS = new Set(['petitions', 'events', 'website']);
 // Tab icons (24×24, stroke = currentColor), same hand as the phone tab bar.
 const TAB_ICONS = {
   newsletter: <><rect x="3.5" y="5.5" width="17" height="13" rx="1.5" /><path d="m4 7 8 6 8-6" /></>,
+  eblast: <><rect x="3.5" y="5.5" width="17" height="13" rx="1.5" /><path d="m4 7 8 6 8-6" /><path d="M7 15.5h4" /></>,
+  texts: <><path d="M4 5.5h16v10H9l-4 3.5z" /><path d="M8 9h8M8 12h5" /></>,
   press: <><path d="M4 5.5h12v13H6a2 2 0 0 1-2-2z" /><path d="M16 9h3.5v7.5a2 2 0 0 1-2 2H16" /><path d="M7 9h6M7 12h6M7 15h4" /></>,
   petitions: <><rect x="5" y="4.5" width="14" height="16" rx="1.5" /><path d="M9 3.5h6v3H9z" /><path d="m9 13.5 2 2 4-4.5" /></>,
   events: <><rect x="3.5" y="5" width="17" height="15.5" rx="1.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
@@ -99,7 +105,10 @@ const sourceLabel = (s) => {
   if (s.startsWith('petition')) return 'petition';
   return s.replace(/[-_:]+/g, ' ');
 };
-const KIND_LABEL = { newsletter: 'Newsletter', press: 'Press release' };
+const KIND_LABEL = { newsletter: 'Newsletter', press: 'Press release', eblast: 'Email blast', text: 'Text' };
+// The texting rules a blast follows (server: ext/texting/rules.js).
+const TEXT_MAX = 1000;
+const TEXT_FOOTER = 'Reply STOP to opt out';
 // Files with a send (server: ext/abtests/attach.js — the same limits).
 const ATTACH_MAX = 5 * 1024 * 1024;
 const ATTACH_COUNT = 5;
@@ -264,7 +273,9 @@ function StatusChip({ status, label }) {
 // list goes on in the background after the tap: going_count (counts.going)
 // are on their way — "Sending · 40 of 340" — never "not sent", never tried
 // again, and the list is read again every 2 s until they've gone.
-const noProviderNote = (note) => /no email provider/i.test(note || '');
+const noProviderNote = (note) => /no (email|SMS) provider/i.test(note || '');
+// What a send goes by: texts by texting, everything else by email.
+const wayOf = (b) => (b?.kind === 'text' ? 'texting' : 'email');
 const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const countsOf = (b) => {
   if (!b) return null;
@@ -324,7 +335,9 @@ const heldOf = (ab, fallback = 0) => (ab?.status === 'testing' ? (ab.rest?.held 
 // Why some didn't go out, in plain words — never the provider's raw reply.
 const plainReason = (note) => {
   const t = String(note || '');
+  if (/no SMS provider/i.test(t)) return 'Texting isn’t connected.';
   if (noProviderNote(t)) return 'Email isn’t connected.';
+  if (/quiet hours/i.test(t)) return t;
   if (/unsubscribed/i.test(t)) return 'Everyone on it unsubscribed.';
   const code = Number((/provider (\d{3})/i.exec(t) || [])[1]) || 0;
   if (code === 429) return 'The email service was busy.';
@@ -333,7 +346,7 @@ const plainReason = (note) => {
   if (code >= 400) return 'The email service turned them down.';
   return 'The email service couldn’t be reached.';
 };
-const KIND_NOUN = { newsletter: ['subscriber', 'subscribers'], press: ['media contact', 'media contacts'] };
+const KIND_NOUN = { newsletter: ['subscriber', 'subscribers'], press: ['media contact', 'media contacts'], eblast: ['person', 'people'], text: ['number', 'numbers'] };
 const nounFor = (kind, n) => plural(n, ...(KIND_NOUN[kind] || ['recipient', 'recipients']));
 const audienceWords = (kind, n) => `${n} ${nounFor(kind, n)}`;
 // Where "Connect" goes: the Website tab, with its More open on Email & texting.
@@ -426,7 +439,7 @@ function BlastResult({ blast: answered, emailConfigured, canWrite, onDismiss, on
           {line}
           {gone > 0 && c.total > 0 && <span className="ot-result-next"> {gone} unsubscribed first.</span>}
           {unsent && emailConfigured !== true && (
-            <span className="ot-result-next"> <Link to={CONNECT_TO}>Connect email</Link>, then {saved ? 'Start test' : 'Send now'}.</span>
+            <span className="ot-result-next"> <Link to={CONNECT_TO}>Connect {wayOf(blast)}</Link>, then {saved ? 'Start test' : 'Send now'}.</span>
           )}
         </strong>
         {onDismiss && <button type="button" className="btn btn-quiet ot-btn-tap" onClick={onDismiss}>OK</button>}
@@ -437,7 +450,7 @@ function BlastResult({ blast: answered, emailConfigured, canWrite, onDismiss, on
       {!unsent && !going && (c.failed > 0 || c.sent == null) && c.total > 0 && (
         <div className="ot-result-why">
           {plainReason(blast.provider_note)}
-          {emailConfigured === false && <> <Link to={CONNECT_TO}>Connect email</Link>, then try again.</>}
+          {emailConfigured === false && <> <Link to={CONNECT_TO}>Connect {wayOf(blast)}</Link>, then try again.</>}
         </div>
       )}
       {canRetry && (
@@ -459,8 +472,9 @@ function BlastResult({ blast: answered, emailConfigured, canWrite, onDismiss, on
 // Whatever happens the send is kept (sent, failed or saved), so the form
 // closes and the result is said once under the tabs — a failed one is tried
 // again from there, never sent a second time as a new copy.
-function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, emailConfigured, onSent, onCancel }) {
+function ComposeCard({ kind, slug, audience, audienceCount, audienceNoun, emptyReason, emailConfigured, onSent, onCancel, campaign }) {
   const queryClient = useQueryClient();
+  const isText = kind === 'text';
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -481,8 +495,10 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
   // Winner by clicks needs a link in the message; without one it's by opens.
   const links = hasLinks(body);
   const plan = testing ? abPlan(audienceCount, ab.pct) : null;
-  const ready = subject.trim().length > 0 && body.trim().length > 0
-    && (ab == null || audienceCount != null) && (!testing || ab.subject_b.trim().length > 0);
+  const textLen = body.trim().length + (body.trim() ? TEXT_FOOTER.length + 1 : 0);
+  const textOk = !isText || (textLen <= TEXT_MAX && (!campaign || body.toLowerCase().includes(String(campaign).toLowerCase())));
+  const ready = (isText || subject.trim().length > 0) && body.trim().length > 0 && textOk
+    && (ab == null || audienceCount != null) && (!testing || ab.subject_b.trim().length > 0) && (!audience || audienceCount != null);
   const empty = audienceCount === 0;
   const noun = (n) => plural(n, audienceNoun.one, audienceNoun.many);
   // Without email connected nothing goes out — say so before, not after.
@@ -508,9 +524,10 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
     const kept = unanswered.current ? await onRecord() : null;
     if (kept) { setConfirming(false); onSent?.(kept); return; }
     const res = await act.run('blast.send', {
-      kind, subject: subject.trim(), body: body.trim(),
-      ...(testing ? { ab: { ...ab, subject_b: ab.subject_b.trim(), metric: links ? ab.metric : 'opens' } } : {}),
-      ...(files.length ? { attachment_ids: files.map((f) => f.id) } : {}),
+      kind, subject: isText ? '' : subject.trim(), body: body.trim(),
+      ...(audience ? { audience } : {}),
+      ...(testing && !isText ? { ab: { ...ab, subject_b: ab.subject_b.trim(), metric: links ? ab.metric : 'opens' } } : {}),
+      ...(files.length && !isText ? { attachment_ids: files.map((f) => f.id) } : {}),
     });
     setConfirming(false);
     if (!res) {
@@ -566,19 +583,32 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
 
   return (
     <form className="card ot-compose" onSubmit={(e) => { e.preventDefault(); if (ready && !empty && !confirming) setConfirming(true); }}>
+      {isText ? (
+        <div className="field">
+          <label htmlFor="text-body">Message</label>
+          <textarea id="text-body" className="input ot-textbody" rows={5} value={body} maxLength={TEXT_MAX}
+            onChange={(e) => { setBody(e.target.value); setConfirming(false); }}
+            placeholder={`Hi, it's ${campaign || 'the campaign'} — `} />
+          <span className="ops-meta">
+            <span className={`mono${textLen > TEXT_MAX ? ' error' : ''}`}>{textLen}/{TEXT_MAX}</span> · “{TEXT_FOOTER}” goes on the end of each.
+            {campaign && !body.toLowerCase().includes(String(campaign).toLowerCase()) && body.trim() && <> Say it’s {campaign} in the text.</>}
+          </span>
+        </div>
+      ) : (
       <div className="field">
         <label htmlFor={`${kind}-subject`}>{testing ? 'Subject A' : 'Subject'}</label>
         <input id={`${kind}-subject`} className="input" value={subject} maxLength={300} autoFocus
           onChange={(e) => { setSubject(e.target.value); setConfirming(false); }}
           placeholder={kind === 'press' ? 'Imagine Surrey unveils transit plan' : 'This week on the campaign'} />
       </div>
-      <AbFields idPrefix={kind} audienceCount={audienceCount} noun={noun} value={ab} links={links}
-        onChange={(v) => { setAb(v); setConfirming(false); }} />
-      <MarkdownField id={`${kind}-body`} label="Message" value={body} rows={10}
+      )}
+      {!isText && <AbFields idPrefix={kind} audienceCount={audienceCount} noun={noun} value={ab} links={links}
+        onChange={(v) => { setAb(v); setConfirming(false); }} />}
+      {!isText && <MarkdownField id={`${kind}-body`} label="Message" value={body} rows={10}
         onChange={(v) => { setBody(v.slice(0, 50000)); setConfirming(false); }}
         upload={uploadMessagePicture} links={slug ? campaignLinks(slug) : []}
-        placeholder={kind === 'press' ? 'FOR IMMEDIATE RELEASE …' : 'Hello friends,'} />
-      <div className="ot-attach">
+        placeholder={kind === 'press' ? 'FOR IMMEDIATE RELEASE …' : 'Hello friends,'} />}
+      {!isText && <div className="ot-attach">
         <input ref={fileRef} type="file" multiple hidden accept={ATTACH_ACCEPT} onChange={pickFiles} />
         {files.length > 0 && (
           <ul className="ot-files" aria-label="Files with this send">
@@ -599,7 +629,7 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
           <span className="ot-attach__hint">PDF, pictures, Word, Excel, PowerPoint, .ics, .txt or .csv — {fmtBytes(ATTACH_MAX)} each, {ATTACH_COUNT} files</span>
         </div>
         {fileNote && <p className="error" role="alert">{fileNote}</p>}
-      </div>
+      </div>}
       {act.error && <p className="error">{act.error}</p>}
       {empty && emptyReason && <p className="ot-note">{emptyReason}</p>}
       <div className="ot-foot">
@@ -612,7 +642,7 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
             </button>
             <button type="button" className="btn btn-quiet ot-btn-tap" disabled={act.busy} onClick={() => setConfirming(false)}>No</button>
             {/* No Connect link here: leaving would drop the draft. */}
-            {offline && online && <span className="ot-confirm-note">Email isn’t connected — nothing is sent.</span>}
+            {offline && online && <span className="ot-confirm-note">{isText ? 'Texting' : 'Email'} isn’t connected — nothing is sent.</span>}
             {!online && <NeedsSignal className="ot-confirm-note" />}
           </div>
         ) : (
@@ -623,7 +653,7 @@ function ComposeCard({ kind, slug, audienceCount, audienceNoun, emptyReason, ema
             <span className="ot-audience">
               {audienceCount == null ? '…' : `${audienceCount} ${noun(audienceCount)}`}
             </span>
-            {!offline && (
+            {!offline && !isText && (
               <button type="button" className="btn btn-quiet ot-btn-tap" disabled={!ready || test?.busy || uploading || !online} onClick={sendTest}>
                 {test?.busy ? 'Sending…' : 'Send me a test'}
               </button>
@@ -750,7 +780,7 @@ function UnsentRow({ b, emailConfigured, canWrite, onResent }) {
   // A saved A/B send: Send now starts the test — A and B now, the winner later.
   const stat = useBlastStat(b.id);
   const ab = stat?.ab?.status === 'saved' ? stat.ab : null;
-  const notSent = emailConfigured ? 'Not sent' : 'Not sent — email isn’t connected';
+  const notSent = emailConfigured ? 'Not sent' : `Not sent — ${wayOf(b)} isn’t connected`;
   // The plan, before anyone taps: who gets A, who gets B, who gets the winner.
   const plan = ab ? { a: ab.a.total, b: ab.b.total, rest: ab.rest.total } : null;
   return (
@@ -818,6 +848,96 @@ function EmailStatus({ configured }) {
       <span className="ot-status-dot" data-status={configured ? 'sent' : 'queued'} aria-hidden="true" />
       {configured ? 'Email connected' : <>Email not connected · <ConnectLink /></>}
     </p>
+  );
+}
+
+function TextStatus({ configured, quiet }) {
+  if (configured == null) return null;
+  return (
+    <p className="ot-pay">
+      <span className="ot-status-dot" data-status={configured ? 'sent' : 'queued'} aria-hidden="true" />
+      {configured ? <>Texting connected{quiet ? ` · texts go ${quiet.label} (${quiet.weekends} on weekends)` : ''}</> : <>Texting not connected · <ConnectLink /></>}
+    </p>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAIL BLAST · TEXTS — to a list (Lists: a saved filter or a hand-picked list)
+// ─────────────────────────────────────────────────────────────────────────────
+function ListBlastTab({ kind, me, canWrite, creating, onClose }) {
+  const blastKind = kind === 'texts' ? 'text' : 'eblast';
+  const reach = blastKind === 'text' ? 'with_phone' : 'with_email';
+  const [params] = useSearchParams();
+  const lists = useQuery({ queryKey: ['lists', 'all'], queryFn: () => apiGet('/lists') });
+  const blasts = useBlastList();
+  const texting = useQuery({ queryKey: ['texting', 'settings'], queryFn: () => apiGet('/texting/settings'), enabled: blastKind === 'text' });
+  const [listId, setListId] = useState(params.get('list') || '');
+  const [result, setResult] = useState(null);
+  const composing = canWrite && creating;
+  const all = lists.data?.lists ?? [];
+  const chosen = all.find((l) => l.id === listId) || null;
+  const configured = blastKind === 'text' ? blasts.data?.textConfigured : blasts.data?.emailConfigured;
+  const count = chosen ? chosen.counts[reach] : (lists.isSuccess && !listId ? 0 : null);
+  const noun = blastKind === 'text' ? { one: 'number', many: 'numbers' } : { one: 'person', many: 'people' };
+  const quiet = texting.data?.quiet;
+
+  return (
+    <>
+      {composing && (
+        <div className="card ot-audience">
+          <div className="field">
+            <label htmlFor={`${kind}-list`}>To</label>
+            <select id={`${kind}-list`} className="input" value={listId} onChange={(e) => setListId(e.target.value)}>
+              <option value="">Choose a list…</option>
+              {all.map((l) => <option key={l.id} value={l.id}>{l.name} — {l.counts[reach]} {plural(l.counts[reach], noun.one, noun.many)}</option>)}
+            </select>
+            <span className="ops-meta">
+              {lists.isSuccess && !all.length ? <>No lists yet. </> : null}
+              <Link to="/lists">Lists</Link> — a saved filter (a tag, a rating, a role) or a hand-picked list.
+              {blastKind === 'text' ? ' Numbers that replied STOP, do-not-text and do-not-contact are left out.' : ' Do-not-email, do-not-contact and unsubscribed addresses are left out.'}
+            </span>
+          </div>
+          {blastKind === 'text' && quiet?.now && <p className="ot-note">Quiet hours — sending opens at {quiet.opens}. A text sent now waits until then.</p>}
+        </div>
+      )}
+      {composing && (
+        <ComposeCard
+          kind={blastKind}
+          slug={me.workspace.slug}
+          campaign={me.workspace.name}
+          audience={listId ? { list_id: listId } : null}
+          audienceCount={listId ? count : null}
+          audienceNoun={noun}
+          emptyReason={listId ? `No one on this list can be ${blastKind === 'text' ? 'texted' : 'emailed'}.` : 'Choose a list first.'}
+          emailConfigured={configured}
+          onCancel={onClose}
+          onSent={(b) => { setResult(b); onClose(); }}
+        />
+      )}
+      <BlastResult blast={result} emailConfigured={configured} canWrite={canWrite}
+        onDismiss={() => setResult(null)} onRetried={setResult} />
+      {!composing && (
+        <>
+          <Big n={all.length} one="list" many="lists" />
+          <ul className="ot-list">
+            <li className="ot-item"><Link className="ot-row" to="/lists"><span className="ot-row__main"><span className="ot-row__name">Lists</span><span className="ot-row__sub"><span>who a send goes to</span></span></span></Link></li>
+          </ul>
+          <UnsentList blasts={blasts.data?.blasts} kind={blastKind} emailConfigured={configured} canWrite={canWrite} onResent={setResult} />
+          {blastKind === 'eblast' && <TestingList blasts={blasts.data?.blasts} kind={blastKind} skip={result?.id} />}
+          <LastSent blasts={blasts.data?.blasts} kind={blastKind} skip={result?.id} emailConfigured={configured} canWrite={canWrite} />
+        </>
+      )}
+      {!composing && <More>
+        {blastKind === 'text' ? <TextStatus configured={configured} quiet={quiet} /> : <EmailStatus configured={configured} />}
+        <section className="ot-sec" aria-label="Past sends">
+          <h2 className="ot-sec-h">Past sends</h2>
+          {blasts.isError && <p className="error">{blasts.error.message}</p>}
+          <PastList blasts={blasts.data?.blasts} loading={blasts.isPending} kindFilter={blastKind}
+            emailConfigured={configured} canWrite={canWrite} />
+          {blastKind === 'eblast' && <OpensNote />}
+        </section>
+      </More>}
+    </>
   );
 }
 
@@ -2003,6 +2123,8 @@ export default function Outreach() {
 
       {tab === 'newsletter' && <NewsletterTab {...tabProps} />}
       {tab === 'press' && <PressTab {...tabProps} />}
+      {tab === 'eblast' && <ListBlastTab kind="eblast" {...tabProps} />}
+      {tab === 'texts' && <ListBlastTab kind="texts" {...tabProps} />}
       {tab === 'petitions' && <PetitionsTab {...tabProps} />}
       {tab === 'events' && <EventsTab {...tabProps} />}
       {tab === 'website' && <WebsiteTab {...tabProps} />}

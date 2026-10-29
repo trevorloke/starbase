@@ -448,3 +448,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
   .ot-compose .input, .ot-inline-add .input { min-height: 48px; }
   .ot-compose .ws-md__tool, .ot-compose .ot-file .btn { min-height: 48px; min-width: 48px; }
 }
+/* Email blasts and texts to a list */
+.ot-audience { margin-bottom: var(--s-3); }
+.ot-audience .field { margin-bottom: 0; }
+.ot-textbody { min-height: 120px; resize: vertical; line-height: 1.5; }
