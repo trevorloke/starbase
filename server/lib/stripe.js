@@ -4,6 +4,7 @@
 //   STRIPE_WEBHOOK_SECRET  whsec_…                 (required to accept webhooks)
 // The website's store uses the same key and webhook (ext/website/store.js).
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { slateLabel } from '@starbase/shared/canvass';
 
 export const stripeConfigured = () => !!process.env.STRIPE_SECRET_KEY;
 
@@ -17,24 +18,32 @@ const form = (obj, prefix = '', out = new URLSearchParams()) => {
   return out;
 };
 
-export const createCheckoutSession = async ({ pledge, workspace, successUrl, cancelUrl }) => {
-  const monthly = pledge.cadence === 'monthly';
-  const metadata = { pledge_id: pledge.id, workspace_id: workspace.id };
+// One Checkout Session for one or more pledges paid together (the Superstar
+// Club: the maximum to each slate, two contributions, one payment). All the
+// pledges share a cadence; each is a line item, named for its slate when
+// there is more than one. metadata.pledge_ids names them all (pledge_id the
+// first, for older webhooks), on the session, the payment intent and the
+// subscription, so every later event finds its pledges.
+export const createCheckoutSession = async ({ pledge, pledges, workspace, successUrl, cancelUrl }) => {
+  const list = pledges || [pledge];
+  const monthly = list[0].cadence === 'monthly';
+  const metadata = { pledge_id: list[0].id, pledge_ids: list.map((p) => p.id).join(','), workspace_id: workspace.id };
+  const lineName = (p) => `${monthly ? 'Monthly contribution' : 'Contribution'} to ${workspace.name}${list.length > 1 ? ` (${slateLabel(p.slate).toLowerCase()} slate)` : ''}`;
   const body = form({
     mode: monthly ? 'subscription' : 'payment',
-    customer_email: pledge.email,
+    customer_email: list[0].email,
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata,
-    line_items: { 0: {
+    line_items: Object.fromEntries(list.map((p, i) => [i, {
       quantity: 1,
       price_data: {
         currency: 'cad',
-        unit_amount: pledge.amount_cents,
-        product_data: { name: `${monthly ? 'Monthly contribution' : 'Contribution'} to ${workspace.name}` },
+        unit_amount: p.amount_cents,
+        product_data: { name: lineName(p) },
         ...(monthly ? { recurring: { interval: 'month' } } : {}),
       },
-    } },
+    }])),
     ...(monthly ? { subscription_data: { metadata } } : { payment_intent_data: { metadata } }),
   });
   const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {

@@ -124,7 +124,7 @@ test('brief: each flagged gift carries the donor’s year total and the cap (des
   assert.equal(flagged[0].total_cents, 150000, 'this year only');
   assert.equal(flagged[0].cap_cents, 142970, 'the bc-municipal cap the engine used');
   assert.equal(flagged[0].person_id, donor.id);
-  assert.match(flagged[0].flag_reason, /\$1500\.00 for 2026 — over the \$1429\.70 limit \(Elections BC 2026/, 'the legal wording is unchanged');
+  assert.match(flagged[0].flag_reason, /\$1500\.00 for 2026 — over the \$1429\.70 limit on the city council slate \(Elections BC 2026/, 'the legal wording is unchanged');
 
   // A second crossing: both rows carry the donor's total as it stands now.
   const again = await c.action('gift.log', { person_id: donor.id, amount_cents: 10000, date: `${year}-03-01` });

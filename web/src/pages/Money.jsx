@@ -29,6 +29,7 @@ import {
   useInfiniteQuery, useQuery, useQueryClient, keepPreviousData,
 } from '@tanstack/react-query';
 import { apiGet, action, fmtMoney, fmtDate, todayISO, dollarsToCents } from '../api.js';
+import { SLATES, DEFAULT_SLATE, slateLabel } from '@starbase/shared/canvass';
 import ReceiptsGiftLine from '../components/ReceiptsGiftLine.jsx';
 import { AddressRow, VoidNoticeAsk, receiptOf, receiptNote } from '../components/ReceiptsNeeds.jsx';
 import { NoSignal, noSignal, useOnline, NeedsSignalLine } from '../components/NoSignal.jsx';
@@ -45,6 +46,11 @@ const CADENCES = [
   { code: 'one-time', label: 'One-time' },
   { code: 'monthly', label: 'Monthly' },
 ];
+// Which slate a contribution is to (the limit is per slate). A gift to the
+// first slate wears no chip; one to another slate says which.
+const MANY_SLATES = SLATES.length > 1;
+const SlateChip = ({ slate }) => (MANY_SLATES && slate && slate !== DEFAULT_SLATE
+  ? <span className="chip" title="The slate this contribution is to">{slateLabel(slate)}</span> : null);
 // The ledger opens on the latest few; the rest is one tap ("All gifts").
 const LATEST = 3;
 
@@ -208,6 +214,7 @@ function GiftForm({ presetPersonId, onSaved, onClose }) {
   const [date, setDate] = useState(todayISO());
   const [method, setMethod] = useState('');
   const [cadence, setCadence] = useState('one-time');
+  const [slate, setSlate] = useState(DEFAULT_SLATE);
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('');
   const [more, setMore] = useState(false);
@@ -246,6 +253,7 @@ function GiftForm({ presetPersonId, onSaved, onClose }) {
         date,
         method: method || undefined,
         cadence,
+        ...(MANY_SLATES ? { slate } : {}),
         note: note.trim() || undefined,
       });
       onSaved(res, donor);
@@ -295,6 +303,15 @@ function GiftForm({ presetPersonId, onSaved, onClose }) {
               </select>
             </div>
           </div>
+          {MANY_SLATES && (
+            <div className="field">
+              <label htmlFor="gift-slate">Slate</label>
+              <select id="gift-slate" className="input" value={slate} onChange={(e) => setSlate(e.target.value)}>
+                {SLATES.map((sl) => <option key={sl.code} value={sl.code}>{sl.label}</option>)}
+              </select>
+              <span className="ops-meta">The annual limit is per slate.</span>
+            </div>
+          )}
           <div className="field">
             <label htmlFor="gift-note">Note</label>
             <input id="gift-note" className="input" maxLength={4000} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -399,6 +416,7 @@ function PledgeRow({ p, onReceived, onChanged }) {
             {localDay(p.created_at)}
             {open && !inThisMonth && <span className="chip ops-chip-amber" title="Promised on the donate page — not paid yet">Pledge</span>}
             {monthly && <MonthlyChip />}
+            <SlateChip slate={p.slate} />
             {last && (
               <span className={`chip${inThisMonth ? ' chip-ok' : ''}`} title="The latest month marked paid">
                 {monthWord(last)} paid
@@ -419,6 +437,9 @@ function PledgeRow({ p, onReceived, onChanged }) {
             </button>
           )}
           <button type="button" className="btn btn-quiet ops-tap" onClick={() => setMode('cancel')}>Cancel pledge</button>
+          {monthly && p.stripe_subscription_id && (
+            <span className="ops-meta">A card subscription: cancel it in Stripe too, or Stripe keeps charging. Cancelled there, it closes here on its own.</span>
+          )}
         </div>
       )}
 
@@ -532,6 +553,7 @@ function GiftRow({ g, open, onToggle, onVoid }) {
           <span className="ops-row__sub">
             {shortDate(g.date)}
             {g.cadence === 'monthly' && <MonthlyChip />}
+            <SlateChip slate={g.slate} />
             {g.flagged && <OverChip title={g.flag_reason} />}
           </span>
         </span>

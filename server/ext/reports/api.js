@@ -128,12 +128,12 @@ api.get('/reports/:name', async (c) => {
 const DATASETS = {
   people: { sql: `select p.name, p.email, p.phone, p.address, p.house_number, p.unit, p.city, p.postal, p.rating, p.rated_at, p.tags, p.lat, p.lng, p.kind, p.created_at
     from persons p where p.workspace_id = $1 and p.deleted_at is null order by lower(p.name)`, tags: true },
-  gifts: { sql: `select p.name as donor, p.email, g.amount_cents / 100.0 as amount, g.date, g.method, g.cadence, g.note, g.flagged, g.flag_reason, g.created_at
+  gifts: { sql: `select p.name as donor, p.email, g.amount_cents / 100.0 as amount, g.date, g.method, g.cadence, coalesce(g.slate, 'council') as slate, g.note, g.flagged, g.flag_reason, g.created_at
     from gifts g join persons p on p.id = g.person_id where g.workspace_id = $1 and g.deleted_at is null order by g.date desc` },
-  pledges: { sql: `select name, email, phone, address, amount_cents / 100.0 as amount, cadence, status, last_received_on, created_at
+  pledges: { sql: `select name, email, phone, address, amount_cents / 100.0 as amount, cadence, coalesce(slate, 'council') as slate, status, last_received_on, created_at
     from pledges where workspace_id = $1 order by created_at desc` },
   subscribers: { sql: `select email, name, status, source, created_at, unsubscribed_at from subscriptions where workspace_id = $1 order by created_at desc` },
-  signatures: { sql: `select t.title as petition, s.name, s.email, s.phone, s.address, s.subscribe, s.created_at
+  signatures: { sql: `select t.title as petition, s.name, s.email, s.phone, s.address, s.answer, s.subscribe, s.created_at
     from petition_signatures s join petitions t on t.id = s.petition_id where s.workspace_id = $1 order by s.created_at desc` },
   rsvps: { sql: `select e.title as event, e.starts_at, r.name, r.email, r.phone, r.guests, r.status, r.created_at
     from event_rsvps r join campaign_events e on e.id = r.event_id where r.workspace_id = $1 order by e.starts_at desc, r.created_at` },

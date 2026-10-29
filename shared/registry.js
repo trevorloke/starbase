@@ -26,6 +26,10 @@ export const RECORD_TYPES = {
         options: ['card', 'etransfer', 'cheque', 'cash', 'in-kind'] },
       { key: 'cadence',      label: 'Cadence', type: 'select',
         options: ['one-time', 'monthly'], default: 'one-time' },
+      // Which slate the contribution is to (shared/canvass.js SLATES); the
+      // annual limit is counted per slate. Unset means the first slate.
+      { key: 'slate',        label: 'Slate',  type: 'select',
+        options: ['council', 'school_board'], default: 'council' },
       { key: 'note',         label: 'Note',   type: 'text' },
     ],
   },

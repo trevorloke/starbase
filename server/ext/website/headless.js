@@ -20,6 +20,9 @@
 // volunteer, petition, rsvp) and /api/public/:ws/donate. A return address
 // is used only on the site's own origins (hosts.js returnUrl).
 import { Hono } from 'hono';
+import { SLATES } from '@starbase/shared/canvass';
+import { capFor } from '../../lib/cap.js';
+import { campaignDay } from '../../lib/gifts.js';
 import { etag } from 'hono/etag';
 import { getDb } from '../../db/client.js';
 import { renderMarkdown, markdownText } from '@starbase/shared/markdown';
@@ -126,6 +129,8 @@ headless.get('/api/public/:ws/site', async (c) => {
   )).rows;
   const team = (await db.query('select * from site_team where workspace_id = $1 and published order by position, lower(name)', [ws.id])).rows;
   const petitions = (await db.query('select slug, title from petitions where workspace_id = $1 and active order by created_at', [ws.id])).rows;
+  const donateYear = Number(campaignDay(new Date(), s.tz).slice(0, 4));
+  const rule = await capFor(db, ws.jurisdiction, donateYear, ws.settings);
   return c.json({
     campaign: { name: ws.name, slug: ws.slug, jurisdiction: ws.jurisdiction, tz: s.tz },
     site: {
@@ -143,6 +148,12 @@ headless.get('/api/public/:ws/site', async (c) => {
     petitions: petitions.map((p) => ({ slug: p.slug, title: p.title })),
     team: team.map((p) => personOut(base, p)),
     store: storeOut(st),
+    // What the donate form needs: this year's limit per contributor per
+    // slate (null when no rule is known), the slates, and where to post.
+    donate: {
+      limit_cents: rule ? rule.capCents : null, year: donateYear, slates: SLATES,
+      post: `${base}/api/public/${ws.slug}/donate`,
+    },
     membership: {
       fee_cents: Number(st.membership_fee_cents) || 0, min_age: MIN_MEMBER_AGE,
       neighbourhoods: [...NEIGHBOURHOODS, OUTSIDE_SURREY], campuses: CAMPUSES, citizenship: CITIZENSHIP,
@@ -238,8 +249,8 @@ headless.get('/api/public/:ws/site/products/:slug', async (c) => {
   return c.json({ product: productOut(s.base, p, await heldQty(s.db, s.ws), true), store: storeOut(s.settings) });
 });
 
-const petitionOut = (s, p) => ({ slug: p.slug, title: p.title, body: p.body || '', signatures: p.signatures, sign_url: `${s.base}/p/${s.ws.slug}/${p.slug}` });
-const petitionSql = `select p.slug, p.title, p.body, p.active,
+const petitionOut = (s, p) => ({ slug: p.slug, title: p.title, body: p.body || '', question: p.question || null, signatures: p.signatures, sign_url: `${s.base}/p/${s.ws.slug}/${p.slug}` });
+const petitionSql = `select p.slug, p.title, p.body, p.question, p.active,
   (select count(*) from petition_signatures g where g.petition_id = p.id)::int as signatures
   from petitions p where p.workspace_id = $1`;
 headless.get('/api/public/:ws/site/petitions', async (c) => {

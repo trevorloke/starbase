@@ -18,6 +18,7 @@ import {
   SIGN_KINDS, SIGN_STATUSES, DONOR_TIERS,
 } from '@starbase/shared/canvass';
 import { ratingByCode } from '@starbase/shared/scale';
+import { SLATES, DEFAULT_SLATE, slateLabel } from '@starbase/shared/canvass';
 import RatingButtons, { OutcomeButtons, RatingChip, focusRating, ratingSay, ratingText, useScale } from '../components/RatingButtons.jsx';
 import SurveyQuestions, { PersonAnswers, answersTail, usePersonAnswers, useSurvey } from '../components/SurveyQuestions.jsx';
 import { apiGet, fmtMoney, fmtDate, noAnswer } from '../api.js';
@@ -785,6 +786,7 @@ function Gifts({ person, gifts, totals }) {
                 {g.cadence === 'monthly'
                   ? <span className="chip chip-ok">monthly</span>
                   : <span className="chip chip-ghost">one-time</span>}
+                {SLATES.length > 1 && g.slate && g.slate !== DEFAULT_SLATE && <span className="chip" title="The slate this contribution is to">{slateLabel(g.slate)}</span>}
                 {g.flagged && <span className="chip chip-warn" title={g.flag_reason || ''}>flagged</span>}
                 {g.note && <span className="note">{g.note}</span>}
               </li>

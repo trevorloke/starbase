@@ -390,6 +390,15 @@ alter table pledges add column if not exists last_received_on date;
 -- The pledge a gift was received for (pledge.receive), so a void can reopen
 -- the pledge and a restore can close it again.
 alter table gifts add column if not exists pledge_id uuid;
+-- A contribution is to one slate (shared/canvass.js SLATES; null = the first);
+-- the annual limit is per contributor per slate. A card subscription's id
+-- lets Stripe's cancellation close the monthly pledge.
+alter table gifts add column if not exists slate text;
+alter table pledges add column if not exists slate text;
+alter table pledges add column if not exists stripe_subscription_id text;
+-- A petition may ask one question; each signature keeps its answer.
+alter table petitions add column if not exists question text;
+alter table petition_signatures add column if not exists answer text;
 create index if not exists gifts_pledge_idx on gifts (workspace_id, pledge_id) where pledge_id is not null;
 -- When an address left the newsletter list (its own link, or the desk's
 -- Remove). Once off, only the person can rejoin — the desk's Add says so.

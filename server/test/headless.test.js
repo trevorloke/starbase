@@ -96,6 +96,10 @@ test('GET /site: the campaign, its settings, links, published pages, people and 
   assert.ok(j.pages.some((p) => p.slug === 'our-story') && !j.pages.some((p) => p.slug === 'secret' || p.slug === 'about'), 'drafts never show');
   assert.deepEqual(j.team.map((t) => t.name), ['Anne Blunt']);
   assert.deepEqual(j.petitions.map((p) => p.slug), ['skytrain']);
+  // The donate form's numbers: the limit per contributor per slate, the slates, where to post.
+  assert.equal(j.donate.limit_cents, 142970);
+  assert.deepEqual(j.donate.slates.map((x) => x.code), ['council', 'school_board']);
+  assert.equal(j.donate.post, `https://starbase.test/api/public/${slug}/donate`);
   assert.equal(j.store.open, false);
   assert.equal(j.store.ways.length, 2);
   assert.equal((await pub('GET', '/api/public/nobody/site')).status, 404);
@@ -157,7 +161,7 @@ test('team, products and petitions: only what is published, open or active; what
   assert.equal((await get('/products/campaign-t-shirt')).json.product.html, '<p>Soft <strong>cotton</strong>.</p>');
   assert.equal((await get('/products/hidden-mug')).status, 404);
   const pets = await get('/petitions');
-  assert.deepEqual(pets.json.petitions.map((p) => [p.slug, p.signatures]), [['skytrain', 0]]);
+  assert.deepEqual(pets.json.petitions.map((p) => [p.slug, p.signatures, p.question]), [['skytrain', 0, null]]);
   assert.equal(pets.json.petitions[0].sign_url, `https://starbase.test/p/${slug}/skytrain`);
   const closed = await get('/petitions/closed');
   assert.equal(closed.status, 410);

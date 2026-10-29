@@ -368,7 +368,7 @@ app.get('/campaign-events/:id/rsvps', async (c) => {
 app.get('/pledges', async (c) => {
   const ctx = c.get('ctx');
   const { rows } = await c.get('db').query(
-    `select id, person_id, name, email, phone, address, amount_cents, cadence, status, gift_id, stripe_session_id, created_at,
+    `select id, person_id, name, email, phone, address, amount_cents, cadence, slate, status, gift_id, stripe_session_id, stripe_subscription_id, created_at,
             to_char(last_received_on, 'YYYY-MM-DD') as last_received_on
      from pledges where workspace_id = $1 order by created_at desc limit 500`,
     [ctx.workspaceId],
@@ -523,7 +523,7 @@ app.get('/petitions/:id/signatures', async (c) => {
   if (badId(c)) return c.json({ error: 'not found' }, 404);
   const ctx = c.get('ctx');
   const { rows } = await c.get('db').query(
-    `select id, name, email, phone, address, subscribe, created_at from petition_signatures
+    `select id, name, email, phone, address, answer, subscribe, created_at from petition_signatures
      where workspace_id = $1 and petition_id = $2 order by created_at desc limit 2000`,
     [ctx.workspaceId, c.req.param('id')],
   );
@@ -662,7 +662,7 @@ app.get('/brief', async (c) => {
     for (const g of flagged) {
       const cap = await checkCap(db, {
         workspaceId: ws, personId: g.person_id, date: dateOnly(g.date),
-        jurisdiction: ctx.workspace.jurisdiction, settings: ctx.workspace.settings || {},
+        jurisdiction: ctx.workspace.jurisdiction, settings: ctx.workspace.settings || {}, slate: g.slate,
       });
       g.total_cents = cap.checked ? Number(cap.totalCents) : null;
       g.cap_cents = cap.checked ? Number(cap.capCents) : null;

@@ -257,7 +257,7 @@ export const ORGANIZE_ACTIONS = {
       const { gift, compliance } = await logGift(tx, ctx.workspace, {
         person_id: p.person_id, amount_cents: p.amount_cents, date: input.date,
         method: input.method, cadence: p.cadence, note: `Online pledge ${p.id.slice(0, 8)}`,
-        pledge_id: p.id,
+        pledge_id: p.id, slate: p.slate || undefined,
       }, emit);
       if (monthly) {
         const row = (await tx.query(

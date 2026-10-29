@@ -309,6 +309,8 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .ot-list--flat { gap: 0; margin: 0; }
 .ot-sig { display: flex; flex-direction: column; gap: 2px; padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
 .ot-sig:last-child { border-bottom: 0; }
+.ot-sig__answer { color: var(--ink-2, inherit); font-style: italic; overflow-wrap: anywhere; }
+.ot-empty-block { display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-start; }
 .ot-sig__name { font-weight: 600; display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
 
 /* ── Events: going / capacity ── */

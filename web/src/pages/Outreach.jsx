@@ -1170,6 +1170,7 @@ function Signatures({ petitionId }) {
             {s.phone && <a className="ot-email" href={telHref(s.phone)}>{s.phone}</a>}
             <span>{fmtDay(s.created_at)}</span>
           </span>
+          {s.answer && <span className="ot-sig__answer">“{s.answer}”</span>}
         </li>
       ))}
     </ul>
@@ -1205,6 +1206,7 @@ function PetitionRow({ p, slug, canWrite, toast }) {
       {open && (
         <div className="ot-body">
           {p.body && <p className="ot-text">{p.body}</p>}
+          {p.question && <p className="ot-note">Asks each signer: <em>{p.question}</em></p>}
           <a className="ot-url" href={url} target="_blank" rel="noreferrer">Petition page</a>
           {canWrite && (
             <div className="ot-actions">
@@ -1230,6 +1232,7 @@ function NewPetitionForm({ wsSlug, onCreated, onCancel }) {
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [body, setBody] = useState('');
+  const [question, setQuestion] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const act = useAction(() => {
     queryClient.invalidateQueries({ queryKey: ['petitions'] });
@@ -1243,7 +1246,7 @@ function NewPetitionForm({ wsSlug, onCreated, onCancel }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    const res = await act.run('petition.create', { slug: cleanSlug, title: title.trim(), body: body.trim() || undefined });
+    const res = await act.run('petition.create', { slug: cleanSlug, title: title.trim(), body: body.trim() || undefined, question: question.trim() || undefined });
     if (!res) return;
     onCreated?.(res.petition);
   };
@@ -1258,6 +1261,11 @@ function NewPetitionForm({ wsSlug, onCreated, onCancel }) {
       <div className="field">
         <label htmlFor="pet-body">What are you asking for?</label>
         <textarea id="pet-body" className="input" rows={4} maxLength={8000} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Surrey deserves rapid transit south of 72nd." />
+      </div>
+      <div className="field">
+        <label htmlFor="pet-question">One question for each signer (optional)</label>
+        <input id="pet-question" className="input" maxLength={200} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Where do you think the line should end?" />
+        <span className="ot-hint">Their answer stays with their signature.</span>
       </div>
       <button type="button" className="ot-more disclose disclose--inline" aria-expanded={Boolean(showLink)} aria-controls="pet-link" onClick={() => setLinkOpen((o) => !o)}>
         Link
@@ -1283,11 +1291,19 @@ function NewPetitionForm({ wsSlug, onCreated, onCancel }) {
 }
 
 function PetitionsTab({ me, canWrite, creating, onClose, toast }) {
+  const queryClient = useQueryClient();
   const pets = useQuery({ queryKey: ['petitions'], queryFn: () => apiGet('/petitions') });
   const slug = pets.data?.slug || me.workspace.slug;
   const rows = pets.data?.petitions ?? [];
   const totalSigs = rows.reduce((n, p) => n + (p.signatures || 0), 0);
   const openCount = rows.filter((p) => p.active).length;
+  // A campaign with no petitions yet can load the website's two, as it first
+  // published them, by their slugs (the site's forms post to those).
+  const seed = useAction(() => queryClient.invalidateQueries({ queryKey: ['petitions'] }));
+  const loadSeed = async () => {
+    const res = await seed.run('petition.seed', {});
+    if (res) toast(`${res.petitions.length} petitions loaded — edit their words here`);
+  };
 
   return (
     <>
@@ -1300,7 +1316,20 @@ function PetitionsTab({ me, canWrite, creating, onClose, toast }) {
           {rows.map((p) => <PetitionRow key={p.id} p={p} slug={slug} canWrite={canWrite} toast={toast} />)}
         </ul>
       )}
-      {rows.length === 0 && !pets.isPending && <p className="ot-empty">No petitions yet.</p>}
+      {rows.length === 0 && !pets.isPending && (
+        <div className="ot-empty-block">
+          <p className="ot-empty">No petitions yet.</p>
+          {canWrite && (
+            <>
+              <button type="button" className="btn ot-btn-tap" disabled={seed.busy} onClick={loadSeed}>
+                {seed.busy ? 'Loading…' : 'Load the website’s petitions'}
+              </button>
+              <p className="ot-note">The pledge and the SkyTrain petition, as the website first published them — by the links its forms use.</p>
+              {seed.error && <p className="error">{seed.error}</p>}
+            </>
+          )}
+        </div>
+      )}
 
       {canWrite && rows.length > 0 && (
         <More>

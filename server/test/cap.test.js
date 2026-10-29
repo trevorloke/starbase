@@ -98,3 +98,22 @@ test('unknown donor id is rejected before any write', async () => {
   assert.equal(r.status, 400);
   assert.match(r.json.error, /donor not found/);
 });
+
+// The limit is per slate: the council slate and the school board slate are
+// each one limit per contributor, so the maximum to both is two gifts,
+// neither over; a gift that names no slate is on the first (council).
+test('the limit is per slate', async () => {
+  const donor = await client.createPerson('Sasha Superstar');
+  const council = await client.action('gift.log', { person_id: donor.id, amount_cents: 149565, date: '2025-06-01', method: 'card' });
+  assert.equal(council.json.gift.flagged, false);
+  assert.equal(council.json.gift.slate, 'council', 'unnamed means the first slate');
+  const board = await client.action('gift.log', { person_id: donor.id, amount_cents: 149565, date: '2025-06-01', method: 'card', slate: 'school_board' });
+  assert.equal(board.json.gift.flagged, false, 'the school board slate has its own limit');
+  assert.equal(board.json.compliance.totalCents, 149565);
+  assert.equal(board.json.compliance.slate, 'school_board');
+  const over = await client.action('gift.log', { person_id: donor.id, amount_cents: 100, date: '2025-06-02', method: 'card', slate: 'school_board' });
+  assert.equal(over.json.gift.flagged, true);
+  assert.match(over.json.gift.flag_reason, /over the \$1495\.65 limit on the school board slate/);
+  const nope = await client.action('gift.log', { person_id: donor.id, amount_cents: 100, date: '2025-06-02', slate: 'senate' });
+  assert.equal(nope.status, 400, 'only the campaign’s slates');
+});

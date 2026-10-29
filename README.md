@@ -28,7 +28,7 @@ button, no paragraphs, everything else one tap away.
 | **Map** | Field mode. Houses as clickable pins; tap a door → rate, log, request a sign, call/text. Turfs and walk lists |
 | **People** | Everyone, filterable by rating / tag / role / the campaign's own fields; profiles with socials, roles, gifts, history, *More details* and who they know; **Calls** works a list one person at a time; **My people** is each volunteer's own circle |
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
-| **Donations** | Gifts (one-time / monthly) with the entity-keyed cap engine; receipts; donor tiers — the only money Starbase tracks |
+| **Donations** | Gifts (one-time / monthly), each to one slate — city council or school board — with the entity-keyed cap engine (the annual limit is per contributor per slate); receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
 | **Members** | The organization's roll, fed by the website's join form: who's a member, until when, who votes at member meetings, who still owes the fee (a contribution under BC law: a pledge on Donations until it's paid; the membership turns active then) |
 | **Lists** | Saved filters (a tag, a rating band, a role, has an email…) and hand-picked lists of people: an audience for an email or text blast, a CSV, a report; People's *Save as a list* starts one |
@@ -195,16 +195,31 @@ The site can also keep its own forms and post JSON here (CORS-open):
 POST /api/public/:slug/signup
 { "kind": "newsletter" | "volunteer" | "petition" | "rsvp", "name", "email", "phone",
   "roles": ["highrise_captain"], "detail_highrise_captain": "<building>",
-  "petition": "<petition-slug>", "event": "<event-slug>", "guests": 2,
-  "subscribe": true, "note": "…" }
+  "petition": "<petition-slug>", "answer": "<to the petition's question>",
+  "event": "<event-slug>", "guests": 2, "subscribe": true, "note": "…" }
 
 POST /api/public/:slug/donate
-{ "amount_cents": 2500 | "amount": "25", "monthly": false,
+{ "amount_cents": 2500 | "amount": "25", "monthly": false, "slate": "council" | "school_board",
+  — or, for one payment to several slates (the Superstar Club: the maximum to each),
+  "amounts": { "council": 142970, "school_board": 142970 } —
   "name" | "first_name" + "last_name", "email", "phone", "address", "city", "postal",
   "attest": { "individual": true, "resident": true, "own_funds": true }, "subscribe": true,
   "return": { "success": "https://imaginesurrey.ca/donate/thanks", "cancel": "https://imaginesurrey.ca/donate" } }
 → { "url": "<Stripe Checkout>" }  or  { "ok": true, "pledged": true }  or  400 { "error", "field" }
 ```
+
+A contribution is to one slate (`council` when unnamed), and the annual
+limit is checked per slate: what the person has given that slate this
+year, plus what their monthly pledges to it will still take (a monthly
+gift counts every month left in the calendar year, and must fit a full
+year on its own). Several slates in one payment make one pledge each, one
+Checkout Session with a line item each, and one gift each when Stripe
+pays — a refund of that charge voids them all. A monthly gift cancelled in
+Stripe (`customer.subscription.deleted`) closes its pledge here. A
+petition may ask each signer one question (Outreach → Petitions); the
+answer stays with the signature, in the list and the CSV. A campaign with
+no petitions can load the website's two as first published (*Load the
+website's petitions*), so the site's forms find their slugs.
 
 Every public submission lands in the directory as a Person (deduped by email),
 tagged by source, and is appended to the event log under a system actor.
@@ -219,13 +234,13 @@ and rendered by the site's own safe renderer (`html`).
 
 | | |
 |---|---|
-| `GET /api/public/:slug/site` | the campaign, the website settings (title, tagline, hero, colours, contact, socials, *Authorized by*), the links (donate, volunteer, newsletter, unsubscribe), published pages, people cards, open petitions, the store's ways |
+| `GET /api/public/:slug/site` | the campaign, the website settings (title, tagline, hero, colours, contact, socials, *Authorized by*), the links (donate, volunteer, newsletter, unsubscribe), published pages, people cards, open petitions, the store's ways, the donate form's numbers (`donate.limit_cents` — this year's limit per contributor per slate — and `donate.slates`) |
 | `GET …/site/pages/:slug` | a published page |
 | `GET …/site/news[/:slug]` | published posts (`?limit`, `?offset`), one post |
 | `GET …/site/events[/:slug]` | upcoming public events with their RSVP link and count (`?past=1`: the last 20), one event |
 | `GET …/site/team` | published people cards |
 | `GET …/site/products[/:slug]` | the store: price, pictures, what is left of each size after other buyers' open checkouts |
-| `GET …/site/petitions[/:slug]` | open petitions with their counts (a closed one answers 410) |
+| `GET …/site/petitions[/:slug]` | open petitions with their counts and their question, if one (a closed one answers 410) |
 | `POST …/site/store/quote` | `{ items }` priced here, never in the browser |
 | `POST …/site/store/checkout` | `{ items, fulfilment: "ship" \| "pickup", return: { success, cancel } }` → `{ url, order_id }` |
 
@@ -489,8 +504,9 @@ the audit trail (`GET /api/audit/verify`), and the public API. `GET /api/export`
 returns every campaign table (each feature's too), event log included — never
 sign-ins or a link's secret token. Money is integer cents; donors are
 foreign keys; the cap engine sums `SUM(amount_cents)` per `person_id` per
-calendar year against `cap_rules(jurisdiction, year)` — Imagine Surrey
-defaults to `bc-municipal` (LECFA).
+calendar year per slate against `cap_rules(jurisdiction, year)` — Imagine
+Surrey defaults to `bc-municipal` (LECFA); the slates (city council, school
+board) are `SLATES` in `shared/canvass.js`.
 
 Database: PGlite (embedded, real Postgres) — in-memory for tests, file-backed
 via `STARBASE_DATA=./data`; hosted Postgres via `DATABASE_URL` in v0.3.

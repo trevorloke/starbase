@@ -71,4 +71,16 @@ export const donorTier = ({ yearCents = 0, monthlyCents = 0 }) => {
   return null;
 };
 
+// The slates a contribution goes to. A contribution is to one slate; the
+// annual limit is per contributor per slate (each slate is its own election —
+// city council, school board — and LECFA's limit is per jurisdiction; verify
+// with Elections BC). A gift that names no slate is to the first one.
+export const SLATES = [
+  { code: 'council', label: 'City council' },
+  { code: 'school_board', label: 'School board' },
+];
+export const SLATE_CODES = SLATES.map((s) => s.code);
+export const DEFAULT_SLATE = SLATES[0].code;
+export const slateLabel = (code) => SLATES.find((s) => s.code === (code || DEFAULT_SLATE))?.label || String(code);
+
 export const SHIFT_STATUSES = ['assigned', 'confirmed', 'declined', 'no_show', 'completed'];
