@@ -21,20 +21,10 @@ where it happens and how to tell it worked. The longer explanations are in
 | Host | What it serves | Where |
 |---|---|---|
 | `starbase.imaginesurrey.ca` | the staff and volunteer app, and the public forms | Render → Settings → Custom Domains |
-| `imaginesurrey.ca`, `www.imaginesurrey.ca` | the public website at `/`, and its admin at `/website-admin` | same, plus `STARBASE_SITE_HOSTS` below |
 
-Add the DNS records Render shows; it issues the certificates. Until DNS is
-ready the site is at `https://starbase.imaginesurrey.ca/site/` and its
-admin at `https://starbase.imaginesurrey.ca/website-admin`.
-
-**One service or two.** One `starbase` service serves both (the default).
-To keep the website apart from the field app — its own service, its own
-scaling, the campaign's data never on the public host — add a second Render
-web service from the same repo with `STARBASE_SERVE=site`, the same
-`DATABASE_URL`, `STRIPE_*` and `STARBASE_PUBLIC_URL`, put the
-`imaginesurrey.ca` domains on it, and set `STARBASE_SERVE=app` on the first
-(`render.yaml` has the second service ready to uncomment). The Stripe
-webhook then points at the site service.
+Add the DNS records Render shows; it issues the certificates. The
+campaign's website (`imaginesurrey.ca`) is its own thing, hosted apart; it
+links to Starbase's public pages and posts its forms to the JSON bridge.
 
 ## 3 · Settings (Render → starbase → Environment)
 
@@ -43,15 +33,13 @@ Set these before the first sign-in; the rest can wait.
 | Variable | Set it to | Needed for |
 |---|---|---|
 | `STARBASE_PUBLIC_URL` | `https://starbase.imaginesurrey.ca` | every link in an email: invites, unsubscribe, receipts, Stripe return pages |
-| `STARBASE_SITE_HOSTS` | `imaginesurrey.ca,www.imaginesurrey.ca` | the website at `/` on those hosts |
-| `STARBASE_SITE_ORIGINS` | `https://imaginesurrey.ca` | a website built elsewhere that reads Starbase's public JSON: where Stripe may bring people back to after a donation or an order |
 | `RESEND_API_KEY`, `MAIL_FROM` | from Resend; `Imagine Surrey <team@imaginesurrey.ca>` on a domain verified there | email; without it invites are shown to copy and sends wait as *queued* |
 
 Then, as each one is ready:
 
 | Variable | Set it to | Needed for |
 |---|---|---|
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | the **live** keys (test keys and card `4242…` until the store and donate pages are checked) | card donations and the store; without them donations are pledges and the store says *opens soon* |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | the **live** keys (test keys and card `4242…` until the donate page is checked) | card donations; without them donations are pledges |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | from Twilio | texting and calling through the campaign's number, SMS shift alerts; without them the phone's own apps are used |
 | `GEOCODER` | leave unset (`bc`, the free BC Address Geocoder); `GEOCODER_FALLBACK=google` to ask Google only for addresses BC can't place | placing people on the map |
 | `GOOGLE_MAPS_SERVER_KEY` | a Google Cloud key restricted to the server's IP with only the APIs used enabled (Geocoding; Map Tiles for `GOOGLE_MAPS_TILES=1`) | Google geocoding and Google Maps tiles |
@@ -60,14 +48,13 @@ Then, as each one is ready:
 
 Stripe: in the Stripe dashboard add a webhook at
 `https://starbase.imaginesurrey.ca/api/public/stripe/webhook` with the
-events `checkout.session.completed`, `checkout.session.expired`,
-`charge.refunded`, `invoice.paid` and `customer.subscription.deleted`, and
-copy its signing secret into `STRIPE_WEBHOOK_SECRET`. Donations and the
-store share the key and the webhook. A refund made in Stripe shows here by
-itself: a store order is marked refunded, and a donation refunded in full
-leaves the books as a void does (its receipt is voided too). A monthly gift
-cancelled in Stripe closes its pledge here; cancelling a pledge here does
-not stop Stripe — cancel the subscription in the Stripe dashboard.
+events `checkout.session.completed`, `charge.refunded`, `invoice.paid` and
+`customer.subscription.deleted`, and copy its signing secret into
+`STRIPE_WEBHOOK_SECRET`. A refund made in Stripe shows here by itself: a
+donation refunded in full leaves the books as a void does (its receipt is
+voided too). A monthly gift cancelled in Stripe closes its pledge here;
+cancelling a pledge here does not stop Stripe — cancel the subscription in
+the Stripe dashboard.
 
 Twilio: set the number's incoming-message webhook to
 `https://starbase.imaginesurrey.ca/api/public/twilio/sms` (HTTP POST).
@@ -91,29 +78,7 @@ what volunteers get, and what you see under *Field app ↗* in your account menu
 4. **Outreach → More → Donations**: the donation instructions (for pledges
    and e-transfer) and the campaign's website link the public pages use.
 
-## 5 · The website
-
-Open the **website admin** (`/website-admin` on the site's host, or *Edit
-the website* in the app's account menu) and sign in with the same account:
-
-1. **Settings**: title, the **logo** (the reversed version, a PNG with a
-   transparent background, from the brand kit's master files) and the
-   **star device** for the browser tab, contact details, social links, the
-   menu order and **Authorized by** (election ads must carry it; the footer
-   shows it). The colours already default to Surrey Navy and the brand's
-   text-safe red. Save the shipping fee if the store ships.
-2. **Pages**: the new site starts with draft pages of placeholder words.
-   Write the real ones (Markdown with a toolbar; **Preview draft** shows the
-   page on the site, visible only to staff). Publish when ready; drafts never
-   show to the public.
-3. **News**, **Events** (the same list as Outreach → Events), **Team**.
-4. **Store**: products, sizes, stock, photos. Check out once with Stripe
-   test keys before switching to live keys; the order appears under
-   **Orders** as *Paid* and the buyer in People tagged `store`.
-5. Open `https://imaginesurrey.ca` on a phone and a computer; check
-   `/sitemap.xml` lists the published pages.
-
-## 6 · The lists and the map
+## 5 · The lists and the map
 
 1. **People → Import**: a CSV or spreadsheet, up to 300 MB in the browser.
    Map the columns, run a dry run first (it reports matches, new people and
@@ -133,7 +98,7 @@ the website* in the app's account menu) and sign in with the same account:
    `https` (every host in section 2 is). A position is kept only while they
    share it, a trail for the day; neither is in the export.
 
-## 7 · Before the public link goes out
+## 6 · Before the public link goes out
 
 - `https://imaginesurrey.ca/` and `/d/imagine-surrey` (donate), `/n/imagine-surrey`,
   `/v/imagine-surrey` load over https with the campaign's header and footer.
@@ -141,7 +106,7 @@ the website* in the app's account menu) and sign in with the same account:
 - A test donation (live key, a real card, refunded in Stripe afterwards)
   lands under **Donations** with a receipt emailed.
 - Backups: Render's managed Postgres keeps daily backups; **Today → Export
-  all data** (managers) downloads everything (site pictures are not in it).
+  all data** (managers) downloads everything (message pictures are not in it).
 - Keys: every key above is in Render only, never in the repo or a chat.
   Anyone who leaves the campaign is removed under **Admin → Members**, which ends their
   sign-in everywhere at once.
@@ -150,9 +115,7 @@ the website* in the app's account menu) and sign in with the same account:
 
 - Sign-in: 30 tries per address and 10 failures per email in 15 minutes,
   then a wait. Sessions last 30 days and end at sign-out or removal.
-- Public forms and the store: rate-limited per address; a request's body is
-  capped; open store checkouts are capped at 2 per address so stock can't
-  be held hostage.
+- Public forms: rate-limited per address; a request's body is capped.
 - Email: every newsletter carries the reader's own unsubscribe link and the
   headers mail apps use for their Unsubscribe button; an unsubscribed
   address cannot be added back by the desk.

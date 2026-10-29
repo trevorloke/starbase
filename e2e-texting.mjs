@@ -4,7 +4,7 @@
 //
 //   1. Not connected: Calls → Text keeps the phone's own Messages (sms: link)
 //      and says "Texting isn't connected · Connect" once (the link to the
-//      Website tab's Email & texting); nothing reaches Twilio; every webhook
+//      Links tab's Email & texting); nothing reaches Twilio; every webhook
 //      is refused.
 //   2. Connected: a manager sets quiet hours on Texting settings and Calls
 //      refuses to send inside them; the first text (their first name filled
@@ -220,8 +220,8 @@ let server = await startServer({ TWILIO_API_BASE: STUB });
   let t = await D.text();
   const sms = await page.locator('.cl-card a.cl-call[href^="sms:"]').count();
   check('not connected: Text keeps the phone\'s own Messages (sms: link)', sms === 1 && (await page.locator('.tx-send').count()) === 0, `sms links=${sms}`);
-  check('not connected: says "Texting isn’t connected · Connect" once, Connect to the Website tab', count(t, 'Texting isn’t connected · Connect') === 1
-    && (await page.locator('main.page a[href="/admin/outreach/website?connect=1"]').count()) === 1 && !/Twilio/.test(t), t.slice(0, 200));
+  check('not connected: says "Texting isn’t connected · Connect" once, Connect to the Links tab', count(t, 'Texting isn’t connected · Connect') === 1
+    && (await page.locator('main.page a[href="/admin/outreach/links?connect=1"]').count()) === 1 && !/Twilio/.test(t), t.slice(0, 200));
   const status = (await D.api('/texting/status')).json;
   check('not connected: the server agrees (no texts, no calls)', status?.sms === false && status?.voice === false, JSON.stringify(status));
   const refused = await D.api('/actions/text.send', { person_id: harjit.id, body: `Hi Harjit, it's Riley with ${CAMPAIGN}.` });

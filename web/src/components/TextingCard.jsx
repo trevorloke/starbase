@@ -27,7 +27,7 @@
 //       Twilio not connected: the children (today's sms: / tel: link) and, in
 //       Text mode, one line — "Texts open on your phone" (volunteers) or
 //       "Texting isn't connected · Connect" (the desk: <TextingOff />, the
-//       words Shifts and the Website tab use).
+//       words Shifts and the Links tab use).
 //   <TextingRepliesLink me />   Calls' quiet "New replies · N" ("New texts" for
 //                            the desk), else "Inbox" (its back link says "← Calls")
 //   <TextingPersonLink personId />   a profile's "Texts" row (desk)
@@ -50,8 +50,8 @@ export { useTextingStatus, statusOffline, textingOn, useTextQueue, useTextingPer
 export const NO_TEXT_TAGS = ['do-not-text', 'do-not-contact'];
 export const noTexts = (p) => Array.isArray(p?.tags) && p.tags.some((t) => NO_TEXT_TAGS.includes(t));
 export const FOOTER = 'Reply STOP to opt out';
-// Where texting gets connected (the Website tab's "Email & texting").
-export const CONNECT_TO = '/outreach/website?connect=1';
+// Where texting gets connected (the Links tab's "Email & texting").
+export const CONNECT_TO = '/outreach/links?connect=1';
 export function TextingOff({ className = 'tx-line' }) {
   return <p className={className}>Texting isn’t connected · <Link to={CONNECT_TO}>Connect</Link></p>;
 }

@@ -7,12 +7,12 @@ import './reports.css';
 
 const TITLES = {
   rating: 'People by rating', tags: 'Tags', cities: 'Cities', 'people-by-week': 'People added, by week',
-  contacts: 'Contacts by week', donations: 'Donations by month', members: 'Members', subscribers: 'Newsletter list, by month', sends: 'Sends',
+  contacts: 'Contacts by week', donations: 'Donations by month', subscribers: 'Newsletter list, by month', sends: 'Sends',
 };
 const EXPORTS = [
   ['people', 'People'], ['contacts', 'Contacts (doors, calls, texts)'], ['gifts', 'Gifts'], ['pledges', 'Pledges'],
-  ['members', 'Members'], ['subscribers', 'Newsletter subscribers'], ['signatures', 'Petition signatures'], ['rsvps', 'Event RSVPs'],
-  ['orders', 'Store orders'], ['lists', 'Lists (hand-picked)'],
+  ['subscribers', 'Newsletter subscribers'], ['signatures', 'Petition signatures'], ['rsvps', 'Event RSVPs'],
+  ['lists', 'Lists (hand-picked)'],
 ];
 const cell = (v) => (v instanceof Date || /^\d{4}-\d{2}-\d{2}T/.test(String(v)) ? String(v).slice(0, 10) : typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(2) : String(v ?? ''));
 
@@ -48,7 +48,6 @@ export default function Reports() {
           <span role="listitem"><strong className="mono">{t.people.total}</strong> people <span className="muted">· {t.people.rated} rated · {t.people.with_email} with email · {t.people.with_phone} with phone</span></span>
           <span role="listitem"><strong className="mono">{t.contacts.week}</strong> contacts this week <span className="muted">· {t.contacts.total} all time</span></span>
           <span role="listitem"><strong className="mono">{fmtMoney(t.donations.cents)}</strong> raised this year <span className="muted">· {t.donations.gifts} gifts from {t.donations.donors} donors</span></span>
-          <span role="listitem"><strong className="mono">{t.members.active}</strong> members</span>
           <span role="listitem"><strong className="mono">{t.newsletter.subscribed}</strong> subscribers <span className="muted">· {t.newsletter.unsubscribed} left</span></span>
         </div>
       )}

@@ -1,8 +1,8 @@
 // What every public submission does, shared by the public pages and
-// bridge (routes/public.js) and the features with public forms of their
-// own (ext/members): a write as the system, a person made or found and
-// tagged, an address put on the newsletter list. Kept out of routes/* so
-// a feature module can import it without an import cycle.
+// bridge (routes/public.js) and any feature with a public form of its
+// own: a write as the system, a person made or found and tagged, an
+// address put on the newsletter list. Kept out of routes/* so a feature
+// module can import it without an import cycle.
 import { runAction, newId } from './events.js';
 
 // Run one public write as a system action (no actor): its table writes and

@@ -565,7 +565,7 @@ html:has(.auth-page) body { background: transparent; }
   .tabbar[data-count='4'] a { min-height: 60px; font-size: 13.5px; gap: 4px; }
   .tabbar[data-count='4'] .tab-icon { width: 26px; height: 26px; }
 }
-/* Eight desk tabs (Website): a little tighter on small phones, labels whole. */
+/* Seven desk tabs: a little tighter on small phones, labels whole. */
 @media (max-width: 400px) {
   .tabbar[data-count='8'] { gap: 0; padding-left: var(--s-1); padding-right: var(--s-1); }
   .tabbar[data-count='8'] a { font-size: 10.5px; padding-left: 2px; padding-right: 2px; }

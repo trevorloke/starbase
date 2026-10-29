@@ -2,9 +2,7 @@
 // contributions, and webhook signature verification.
 //   STRIPE_SECRET_KEY      sk_live_… / sk_test_…  (unset → donations are pledges)
 //   STRIPE_WEBHOOK_SECRET  whsec_…                 (required to accept webhooks)
-// The website's store uses the same key and webhook (ext/website/store.js).
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { slateLabel } from '@starbase/shared/canvass';
 
 export const stripeConfigured = () => !!process.env.STRIPE_SECRET_KEY;
 
@@ -18,32 +16,27 @@ const form = (obj, prefix = '', out = new URLSearchParams()) => {
   return out;
 };
 
-// One Checkout Session for one or more pledges paid together (the Superstar
-// Club: the maximum to each slate, two contributions, one payment). All the
-// pledges share a cadence; each is a line item, named for its slate when
-// there is more than one. metadata.pledge_ids names them all (pledge_id the
-// first, for older webhooks), on the session, the payment intent and the
-// subscription, so every later event finds its pledges.
-export const createCheckoutSession = async ({ pledge, pledges, workspace, successUrl, cancelUrl }) => {
-  const list = pledges || [pledge];
-  const monthly = list[0].cadence === 'monthly';
-  const metadata = { pledge_id: list[0].id, pledge_ids: list.map((p) => p.id).join(','), workspace_id: workspace.id };
-  const lineName = (p) => `${monthly ? 'Monthly contribution' : 'Contribution'} to ${workspace.name}${list.length > 1 ? ` (${slateLabel(p.slate).toLowerCase()} slate)` : ''}`;
+// A Checkout Session for a pledge: one payment, or a monthly subscription.
+// metadata.pledge_id rides on the session, the payment intent and the
+// subscription, so every later event finds its pledge.
+export const createCheckoutSession = async ({ pledge, workspace, successUrl, cancelUrl }) => {
+  const monthly = pledge.cadence === 'monthly';
+  const metadata = { pledge_id: pledge.id, workspace_id: workspace.id };
   const body = form({
     mode: monthly ? 'subscription' : 'payment',
-    customer_email: list[0].email,
+    customer_email: pledge.email,
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata,
-    line_items: Object.fromEntries(list.map((p, i) => [i, {
+    line_items: { 0: {
       quantity: 1,
       price_data: {
         currency: 'cad',
-        unit_amount: p.amount_cents,
-        product_data: { name: lineName(p) },
+        unit_amount: pledge.amount_cents,
+        product_data: { name: `${monthly ? 'Monthly contribution' : 'Contribution'} to ${workspace.name}` },
         ...(monthly ? { recurring: { interval: 'month' } } : {}),
       },
-    }])),
+    } },
     ...(monthly ? { subscription_data: { metadata } } : { payment_intent_data: { metadata } }),
   });
   const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -57,22 +50,6 @@ export const createCheckoutSession = async ({ pledge, pledges, workspace, succes
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error?.message || `stripe ${res.status}`);
   return json; // { id, url, … }
-};
-
-// Any other Stripe POST (the store's Checkout Sessions — ext/website/store.js
-// builds the fields): form-encoded, nested keys as Stripe expects.
-export const stripePost = async (path, params) => {
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: form(params),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error?.message || `stripe ${res.status}`);
-  return json;
 };
 
 // Verify a Stripe-Signature header against the raw body (5-minute tolerance).

@@ -1,5 +1,5 @@
 // App chrome. The nav is the handful of things each role actually does:
-//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Donations · Signs · Outreach · Website
+//   desk (staff, treasurer, manager): Today · Map · People · Shifts · Donations · Signs · Outreach
 //   volunteer:                        Today · Map · Calls · Shifts
 // A navy sidebar on desktop, a top bar plus a big-label tab bar on phones
 // (field mode lives on /map): every label whole at 360px, never cut off.
@@ -47,7 +47,6 @@ const ICONS = {
   signs: <><rect x="4" y="4" width="16" height="10" rx="1" /><path d="M12 14v7M9 21h6" /></>,
   outreach: <><path d="M4 10v4h3l7 4.5v-13L7 10H4z" /><path d="M17 9.5a3.5 3.5 0 0 1 0 5M19.2 7a7 7 0 0 1 0 10" /></>,
   learn: <><path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5z" /><path d="M6.5 11.5v4.2c0 1.3 2.5 2.8 5.5 2.8s5.5-1.5 5.5-2.8v-4.2" /><path d="M21 9.5v5" /></>,
-  website: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z" /></>,
 };
 const Icon = ({ name }) => (
   <svg className="tab-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
@@ -69,7 +68,7 @@ const NAV_DESK = [
   { to: '/imagineu', label: 'ImagineU', icon: 'learn', area: 'learn' },
 ];
 // The areas a person has: what the server said, else their role's usual ones.
-export const areasOf = (me) => (Array.isArray(me?.areas) ? me.areas : (isDesk(me) ? ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data'] : []));
+export const areasOf = (me) => (Array.isArray(me?.areas) ? me.areas : (isDesk(me) ? ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data'] : []));
 export const hasArea = (me, area) => !area || areasOf(me).includes(area) || (me?.role === 'manager');
 // Volunteers request signs at the door card, so Signs isn't a tab for them.
 const NAV_VOLUNTEER = [
@@ -239,9 +238,6 @@ function AccountMenu({ me, mode, signingOut, confirmLeft, onSignOut, onCancelSig
         )}
         {mode === 'admin' && <a href="/" className="acct-item">Field app ↗</a>}
         {mode === 'admin' && me.role === 'manager' && <NavLink to="/settings" ref={firstRef} className="acct-item">Settings</NavLink>}
-        {mode === 'admin' && (hasArea(me, 'website') || me.role === 'treasurer') && me.site_admin_url && (
-          <a href={me.site_admin_url} className="acct-item" target="_blank" rel="noopener">Edit the website ↗</a>
-        )}
         {mode === 'admin' && me.role === 'manager' && <NavLink to="/rating-scale" className="acct-item">Rating scale</NavLink>}
         {confirmLeft > 0 ? (
           <div className="acct-confirm" role="group" aria-label="Sign out">

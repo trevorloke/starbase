@@ -12,6 +12,7 @@ import { ApiError, action, apiGet } from '../api.js';
 import { RatingChip, useScale } from '../components/RatingButtons.jsx';
 import './dashboard.css';
 import './banks.css';
+import '../editor.css';
 
 const DESK = ['manager', 'staff', 'treasurer'];
 const plural = (n, w, many = `${w}s`) => (n === 1 ? w : many);

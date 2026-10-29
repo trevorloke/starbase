@@ -3,7 +3,7 @@
 // A role is the baseline (manager, treasurer, staff, volunteer — each action
 // names the roles that may run it, as before). On top of it a manager can
 // grant or deny an AREA — People, Map, Shifts, Money, Signs, Outreach,
-// Website, Data, Admin — to a whole role (workspace settings.permissions.roles)
+// Data, Admin, ImagineU — to a whole role (workspace settings.permissions.roles)
 // or to one person (memberships.permissions), under Admin → Permissions.
 //
 //   decide(perms, area)      false: denied · true: granted · null: the role decides
@@ -21,7 +21,6 @@ export const AREAS = [
   { key: 'money', label: 'Donations', what: 'gifts, pledges, receipts' },
   { key: 'signs', label: 'Signs', what: 'requests, crews, the map of signs' },
   { key: 'outreach', label: 'Outreach', what: 'newsletters, press, petitions, events, surveys, texting' },
-  { key: 'website', label: 'Website', what: 'pages, news, the store and its orders' },
   { key: 'data', label: 'Data', what: 'the full export, the event log, records' },
   { key: 'admin', label: 'Admin', what: 'members, teams, permissions, the rating scale' },
   { key: 'learn', label: 'ImagineU', what: 'training: the lessons, their files, who has done what' },
@@ -31,7 +30,7 @@ export const AREA_KEYS = AREAS.map((a) => a.key);
 export const BASE = {
   manager: AREA_KEYS,
   treasurer: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn'],
-  staff: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'learn'],
+  staff: ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn'],
   volunteer: [],
 };
 
@@ -43,9 +42,8 @@ const ACTION_AREA = {
   sign: 'signs',
   blast: 'outreach', petition: 'outreach', cevent: 'outreach', rsvp: 'outreach', survey: 'outreach',
   ladder: 'outreach', text: 'outreach', texting: 'outreach', subscription: 'outreach',
-  site: 'website', store: 'website', tracker: 'website',
   member: 'admin', team: 'admin', permission: 'admin', workspace: 'admin', scale: 'admin', field: 'admin',
-  bank: 'people', member: 'people', list: 'people',
+  bank: 'people', list: 'people',
   learn: 'learn',
 };
 // field.values.set is a person's record; field.ping ("I'm here", from the
@@ -60,7 +58,6 @@ const PATH_AREA = [
   [/^\/api\/(records|export|events|audit|reports)(\/|$)/, 'data'],
   [/^\/api\/data\/(import|export)/, 'data'],
   [/^\/api\/(gifts|pledges|receipts|money|cap)(\/|$)/, 'money'],
-  [/^\/api\/(site|store|tracker)(\/|$)/, 'website'],
   [/^\/api\/(blasts|petitions|campaign-events|surveys|ladders|subscriptions|texting|inbox)(\/|$)/, 'outreach'],
   [/^\/api\/shifts(\/|$)/, 'shifts'],
   [/^\/api\/signs(\/|$)/, 'signs'],
@@ -68,7 +65,7 @@ const PATH_AREA = [
   [/^\/api\/(team|admin|invites)(\/|$)/, 'admin'],
   [/^\/api\/fields(\/|$)/, 'admin'],
   [/^\/api\/learn\/progress$/, 'learn'],
-  [/^\/api\/(banks|membership|lists)(\/|$)/, 'people'],
+  [/^\/api\/(banks|lists)(\/|$)/, 'people'],
   [/^\/api\/persons(\/|$)/, 'people'],
 ];
 export const areaOfPath = (path) => PATH_AREA.find(([re]) => re.test(path))?.[1] || null;

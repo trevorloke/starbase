@@ -20,8 +20,11 @@ import { Hono } from 'hono';
 import { getDb } from '../../db/client.js';
 import { newId, runAction } from '../../lib/events.js';
 import { TOKEN_RE } from './send.js';
+import { serveMedia } from './media.js';
 
 export const publicRoutes = new Hono();
+// A picture in a message's body, for every mail app that opens it.
+publicRoutes.get('/media/:id', async (c) => serveMedia(c, await getDb()));
 export const LOG_JOB = 'abtests.log';
 
 const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');

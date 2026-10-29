@@ -14,7 +14,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import { newId } from '../lib/events.js';
 import { emailConfigured, sendEmail, sendText, shiftMessage } from '../lib/notify.js';
 import { httpError } from './util.js';
-import { SEED_PETITIONS } from '../lib/petitions.js';
 import { runHooks, hasHook } from '../lib/hooks.js';
 // The tracked newsletter/press send path and A/B subject lines.
 import {
@@ -614,28 +613,6 @@ export const FIELD_ACTIONS = {
       if (n.affectedRows === 0) throw httpError(404, 'petition not found');
       emit('petition', input.id, 'update', { title: input.title, active: input.active, ...(input.question != null ? { question: input.question || null } : {}) });
       return { id: input.id };
-    },
-  },
-
-  // The website's petitions, as it first published them, into a campaign
-  // with none (lib/petitions.js): the site signs people up by these slugs.
-  'petition.seed': {
-    roles: DESK_ROLES,
-    input: z.object({}),
-    handler: async (tx, ctx, input, emit) => {
-      const n = (await tx.query('select count(*)::int as n from petitions where workspace_id = $1', [ctx.workspaceId])).rows[0].n;
-      if (n > 0) throw httpError(409, 'this campaign already has petitions — add the rest by hand');
-      const made = [];
-      for (const pet of SEED_PETITIONS) {
-        const id = newId();
-        await tx.query(
-          'insert into petitions (id, workspace_id, slug, title, body, question) values ($1, $2, $3, $4, $5, $6)',
-          [id, ctx.workspaceId, pet.slug, pet.title, pet.body, pet.question],
-        );
-        emit('petition', id, 'create', { id, ...pet, seeded: true });
-        made.push({ id, slug: pet.slug, title: pet.title });
-      }
-      return { petitions: made };
     },
   },
 

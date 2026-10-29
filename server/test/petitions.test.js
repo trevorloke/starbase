@@ -1,11 +1,9 @@
-// Petitions: the website's two, as it first published them, seeded into a
-// campaign with none (petition.seed) so the site's forms find their slugs;
-// a petition's question, and each signer's answer kept with the signature.
+// Petitions: a petition's question, and each signer's answer kept with the
+// signature — from the sign page and from a website's own form alike.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { freshDb, Client } from './helpers.js';
 import { app } from '../index.js';
-import { SEED_PETITIONS } from '../lib/petitions.js';
 
 let c, slug;
 const pub = async (method, path, body, headers = {}) => {
@@ -23,26 +21,12 @@ before(async () => {
   c = new Client();
   const r = await c.signup({ workspaceName: 'Imagine Surrey', jurisdiction: 'bc-municipal' });
   slug = r.json.workspace.slug;
-});
-
-test('petition.seed: the website’s petitions by their slugs, once', async () => {
-  const seeded = await c.action('petition.seed', {});
-  assert.equal(seeded.status, 200, JSON.stringify(seeded.json));
-  assert.deepEqual(seeded.json.petitions.map((p) => p.slug), ['stop-mccallum-pledge', 'skytrain-south-surrey']);
-  const again = await c.action('petition.seed', {});
-  assert.equal(again.status, 409, 'never on top of what is there');
+  const sky = await c.action('petition.create', { slug: 'skytrain-south-surrey', title: 'SkyTrain to South Surrey petition', body: 'All the way to 64 Avenue.', question: 'Where do you think the line should end?' });
+  assert.equal(sky.status, 200, JSON.stringify(sky.json));
+  assert.equal((await c.action('petition.create', { slug: 'stop-mccallum-pledge', title: 'The pledge' })).status, 200);
   const list = (await c.get('/api/petitions')).json.petitions;
-  assert.deepEqual(list.map((p) => [p.slug, p.active, p.signatures]).sort(), [['skytrain-south-surrey', true, 0], ['stop-mccallum-pledge', true, 0]]);
-  const sky = list.find((p) => p.slug === 'skytrain-south-surrey');
-  assert.equal(sky.question, 'Where do you think the line should end?');
-  assert.match(sky.body, /64 Avenue/);
+  assert.equal(list.find((p) => p.slug === 'skytrain-south-surrey').question, 'Where do you think the line should end?');
   assert.equal(list.find((p) => p.slug === 'stop-mccallum-pledge').question, null);
-  const site = await pub('GET', `/api/public/${slug}/site`);
-  assert.deepEqual(site.json.petitions.map((p) => p.slug), SEED_PETITIONS.map((p) => p.slug), 'the site lists both');
-  const one = await pub('GET', `/api/public/${slug}/site/petitions/skytrain-south-surrey`);
-  assert.equal(one.json.petition.question, 'Where do you think the line should end?');
-  const events = (await c.get('/api/events?since=0&limit=100')).json.events.filter((e) => e.action === 'petition.seed');
-  assert.equal(events.length, 2, 'each petition is an event');
 });
 
 test('a signer’s answer to the petition’s question stays with the signature; the sign page asks it', async () => {

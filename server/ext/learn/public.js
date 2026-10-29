@@ -1,12 +1,11 @@
 // Lessons for supporters: a lesson whose audience is "public" has a page
-// on the campaign's site — /learn/<slug> lists them, /learn/<slug>/<id> is
-// one — with the site's own look. Its file is at /learn-files/<id>. Nothing
-// else of ImagineU is public.
+// of its own — /learn/<slug> lists them, /learn/<slug>/<id> is one — in
+// the look of Starbase's public pages (lib/publicpage.js). Its file is at
+// /learn-files/<id>. Nothing else of ImagineU is public.
 import { Hono } from 'hono';
 import { getDb } from '../../db/client.js';
 import { renderMarkdown, markdownText, escapeHtml as esc } from '@starbase/shared/markdown';
-import { loadChrome, layout } from '../website/layout.js';
-import { onSiteHost, originOf } from '../website/hosts.js';
+import { page as publicPage } from '../../lib/publicpage.js';
 import { kindOfType } from './files.js';
 import { serveAsset } from './api.js';
 
@@ -18,14 +17,7 @@ const wsBySlug = async (db, slug) => {
   if (ws) ws.settings = settingsOf(ws);
   return ws;
 };
-const page = async (c, db, ws, title, inner) => {
-  const base = onSiteHost(c) ? '' : '/site';
-  const origin = originOf(c);
-  const chrome = await loadChrome(db, ws, { base, origin, canon: origin });
-  const main = `<div class="wrap narrow" style="padding-top:clamp(28px,5vw,64px)"><div class="sheet form-card learn">${inner}</div></div>`;
-  return c.html(layout(chrome, { title, path: c.req.path, main, noindex: true, backlink: ws.settings.website })
-    .replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)} · ${esc(ws.name)}</title>`));
-};
+const page = (c, db, ws, title, inner) => c.html(publicPage(ws, title, inner, { wide: true, noindex: true }));
 const KIND_WORD = { note: 'Note', document: 'Document', video: 'Video', audio: 'Audio', picture: 'Picture', contacts: 'Contacts', procedure: 'Procedure' };
 const PUBLIC = `l.workspace_id = $1 and l.deleted_at is null and l.published and l.audience = 'public'`;
 

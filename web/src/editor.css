@@ -1,0 +1,57 @@
+/* The desk's editors: the tab row (Settings), form labels, the Markdown
+   field's toolbar and preview (Outreach, ImagineU). Built on the ops-* rows
+   and forms from shifts.css; only what's new lives here (ws-*). */
+.ws-page { max-width: 820px; margin: 0 auto; }
+
+/* Tabs: one scrollable row, never wraps into a second line on a phone */
+.ws-tabs {
+  display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 calc(-1 * var(--s-1)) var(--s-5); padding: 4px;
+  background: var(--paper-1); border-radius: 12px;
+}
+.ws-tabs::-webkit-scrollbar { display: none; }
+.ws-tab {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 14px; border-radius: 9px;
+  font-size: 14.5px; font-weight: 600; color: var(--text-2); text-decoration: none; white-space: nowrap;
+}
+@media (hover: hover) { .ws-tab:hover { background: var(--paper-0); color: var(--text-1); } }
+.ws-tab.active { background: var(--paper-0); color: var(--text-1); box-shadow: var(--shadow-1); }
+.ws-tab:focus-visible { outline: 2px solid var(--mark); outline-offset: -2px; }
+
+.ws-note { margin: 0 0 var(--s-4); padding: 10px 14px; border-radius: 10px; background: var(--mark-soft); color: var(--text-1); font-size: 14px; }
+.ws-note code { font-size: 13px; background: var(--paper-0); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.ws-hint { margin: calc(-1 * var(--s-2)) 0 var(--s-4); color: var(--text-3); font-size: 14px; }
+
+/* Form labels and small helpers */
+.ws-label { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0; text-transform: none; }
+.ws-switch { align-self: flex-start; }
+.ws-del { color: var(--danger); }
+.ws-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ws-inline-err { margin: 0; align-self: center; }
+
+/* Markdown field */
+.ws-md__bar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
+.ws-md__tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.ws-md__tool {
+  min-height: 38px; min-width: 38px; padding: 0 10px; border-radius: 8px;
+  border: var(--border-2); background: var(--paper-0); color: var(--text-1);
+  font: 600 13.5px/1 var(--font-sans); cursor: pointer;
+}
+.ws-md__tool:hover { background: var(--paper-1); }
+.ws-md__tool:focus-visible { outline: 2px solid var(--mark); outline-offset: 1px; }
+.ws-md__tool--b { font-weight: 800; }
+.ws-md__tool--i { font-style: italic; font-family: Georgia, serif; }
+.ws-md__preview[aria-pressed='true'] { background: var(--mark-soft); border-color: var(--mark); }
+select.ws-md__links { max-width: 11em; font: 600 13.5px/1 var(--font-sans); }
+.ws-md__text { min-height: 220px; font: 15px/1.6 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; resize: vertical; }
+.ws-md__preview-body { min-height: 220px; border: var(--border); border-radius: var(--r-ctrl); background: var(--paper-0); padding: var(--s-4) var(--s-5); }
+.ws-prose { font-size: 16px; line-height: 1.65; }
+.ws-prose h2 { font-size: 22px; margin: 1em 0 .4em; }
+.ws-prose h3 { font-size: 18px; margin: 1em 0 .4em; }
+.ws-prose h4 { font-size: 16px; }
+.ws-prose img { max-width: 100%; height: auto; border-radius: 8px; }
+.ws-prose blockquote { margin: 1em 0; padding-left: 14px; border-left: 3px solid var(--mark); color: var(--text-2); }
+.ws-prose a { color: var(--mark-deep); }
+.ws-prose > :first-child { margin-top: 0; }
+

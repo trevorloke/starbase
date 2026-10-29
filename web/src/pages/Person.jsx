@@ -32,7 +32,6 @@ import {
   canDesk, invalidatePersonData, isDnc, tagWord, RatingTag, noSignal,
 } from './People.jsx';
 import QuickDetails from '../components/QuickDetails.jsx';
-import { MemberChip } from './Members.jsx';
 import './people.css';
 import {
   TextingPersonLink, callsCard, noTexts, textingOn, useTextingPerson, useTextingStatus,
@@ -186,7 +185,6 @@ function Header({ person, donor, me, desk, onLog, contacted, level }) {
         )}
         {isDnc(person) && <span className="chip chip-danger">Do not contact</span>}
         {desk && shownLevel?.label && <EngagementChip level={shownLevel} />}
-        {desk && <MemberChip personId={person.id} desk={desk} />}
         {/* donor is null for volunteers (the server hides money from them) */}
         {tierShown && (
           <span className={TIER_CLASS[donor.tier]} title={`${fmtMoney(donor.yearCents)} this year${Number(donor.monthlyCents) ? ` · ${fmtMoney(donor.monthlyCents)}/mo` : ''}`}>

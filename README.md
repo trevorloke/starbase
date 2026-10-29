@@ -11,7 +11,7 @@ One build, two apps, told apart by the address:
 | | Address | Who | What |
 |---|---|---|---|
 | **Field app** | `/` | everyone — it is what a volunteer sees and uses | Today · Map · Calls · Shifts · ImagineU, the door card, walk lists, your call lists, your people, your texts. A manager who opens it gets exactly a volunteer's screens (and *Admin ↗* in the account menu). |
-| **Admin** | `/admin/` | managers, staff, treasurers — and a volunteer given an area under Permissions | everything: the dashboard, the map with turfs, People and imports, Shifts, Donations, Signs, Outreach, ImagineU's editor and Progress, phone banks, **Settings** (members, teams, permissions), the rating scale, the website's admin. A plain volunteer who opens it is told it isn't theirs. |
+| **Admin** | `/admin/` | managers, staff, treasurers — and a volunteer given an area under Permissions | everything: the dashboard, the map with turfs, People and imports, Shifts, Donations, Signs, Outreach, ImagineU's editor and Progress, phone banks, **Settings** (members, teams, permissions), the rating scale. A plain volunteer who opens it is told it isn't theirs. |
 
 Signing in sends each person to their app: a desk role to the admin, a
 volunteer to the field app. A desk address typed into the field app
@@ -30,12 +30,10 @@ button, no paragraphs, everything else one tap away.
 | **Shifts** | Schedule volunteers, assign by role, notify by email + text with instructions and a link; volunteers tap *Count me in* |
 | **Donations** | Gifts (one-time / monthly), each to one slate — city council or school board — with the entity-keyed cap engine (the annual limit is per contributor per slate); receipts; donor tiers — the only money Starbase tracks |
 | **Signs** | Billboards (4×8), large (4×4), lawn — requested → installed → removed |
-| **Members** | The organization's roll, fed by the website's join form: who's a member, until when, who votes at member meetings, who still owes the fee (a contribution under BC law: a pledge on Donations until it's paid; the membership turns active then) |
 | **Lists** | Saved filters (a tag, a rating band, a role, has an email…) and hand-picked lists of people: an audience for an email or text blast, a CSV, a report; People's *Save as a list* starts one |
-| **Reports** | The campaign in numbers (people by rating, tags, cities, people added by week, contacts by week, donations by month, members, the newsletter list, sends), each downloadable as CSV; any table as a spreadsheet; the full JSON export |
-| **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*); **email blasts** and **texts** to any list, with the same rules as one-to-one texts (quiet hours, STOP, do-not-contact); petitions; and the Imagine Surrey website bridge |
-| **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public is on the website at `/learn/<slug>` |
-| **Website** | The public site and store, edited here: pages, news, events, team, merch, orders, settings (desk) |
+| **Reports** | The campaign in numbers (people by rating, tags, cities, people added by week, contacts by week, donations by month, the newsletter list, sends), each downloadable as CSV; any table as a spreadsheet; the full JSON export |
+| **Outreach** | Newsletter + press-release blasts written in Markdown (headings, bold, lists, links, pictures; files attached; *Send me a test*); **email blasts** and **texts** to any list, with the same rules as one-to-one texts (quiet hours, STOP, do-not-contact); petitions; events with RSVP pages; the public links and the JSON bridge for the campaign's website |
+| **ImagineU** | Training for every role: sections of lessons — notes, documents, videos, audio, pictures, contacts, procedures — each ticked *Done*; the desk edits in place and sees who has done what; a lesson marked public has a page anyone can open at `/learn/<slug>` |
 
 Volunteers get five tabs — **Today · Map · Calls · Shifts · ImagineU** — plus
 *Signs to put up* for sign crews; desk-only addresses send them back to Today.
@@ -59,7 +57,7 @@ Managers reach **Admin** from the account menu (their initials):
   a lead; a whole team goes onto a turf in one go (Map → turf → Add a
   canvasser → Teams). Someone removed from the campaign leaves every team.
 - **Permissions**: the app is nine areas — People, Map & turfs, Shifts,
-  Donations, Signs, Outreach, Website, Data, Admin. Each role has its usual ones
+  Donations, Signs, Outreach, Data, Admin, ImagineU. Each role has its usual ones
   (`server/lib/perms.js`); a manager can take an area from a whole role or
   give one to a single person on top of their role (a volunteer who runs
   Outreach, a staffer kept out of Donations). The server decides on every action
@@ -140,7 +138,7 @@ than a week after they came off is refused. Contacts are door, phone, text or
   a picture, contacts, or a procedure, with words in Markdown and a file
   (12 MB at most) or a link behind it. Everyone ticks *Done*; the desk edits
   in place, chooses who sees each lesson (everyone signed in · the desk ·
-  public — on the website at `/learn/<slug>`) and reads *Progress*: who has
+  public — a page of its own at `/learn/<slug>`) and reads *Progress*: who has
   done which. Files are served to those who may see the lesson and are not
   in the export.
 - **The dashboard** (managers, at the top of Today): contacts today, in the
@@ -177,19 +175,22 @@ than a week after they came off is refused. Contacts are door, phone, text or
 |---|---|---|
 | **Ecanvasser** | map canvass, door cards, household grouping, ratings, no-answer outcomes, signs at the door, place-on-map, call/text lists, turf cutting & assignment, walk lists, survey builder (door and calls), custom person fields, offline field mode, offline desk (each sign-in's last copy of every screen, money and donor lists in the tab only; ratings, notes and tags queued; one outbox across tabs) | — |
 | **Action Builder** | assessments (= the rating scale, its words and Voting-for list edited per campaign), tags, roles, relational notes, relationship graph (My people, Knows with a nudge, Most connected, brought in by), event-logged every touch | — |
-| **Action Network** | newsletter list + signup page + unsubscribe, press list + releases, petitions with public pages, volunteer signup page, event RSVP pages, donation pages (Stripe or pledges), website JSON bridge, ladders of engagement, A/B subject lines with open/click tracking | — |
+| **Action Network** | newsletter list + signup page + unsubscribe, press list + releases, petitions with public pages, volunteer signup page, event RSVP pages, donation pages (Stripe or pledges), JSON bridge for the campaign's own website, ladders of engagement, A/B subject lines with open/click tracking | — |
 
-## Website bridge (Imagine Surrey)
+## Public pages and the JSON bridge
 
-Public pages, no login, linkable from the site (workspace slug from setup: `imagine-surrey`):
+The campaign's website lives elsewhere; Starbase gives it public pages to
+link to and a JSON endpoint to post to. Public pages, no login (workspace
+slug from setup: `imagine-surrey`):
 
 - `/p/:slug/:petition` — petition signature page
 - `/n/:slug` — newsletter signup · `/u/:subscriptionId` — unsubscribe (the link
   asks; one tap on *Unsubscribe* does it, so mail scanners never unsubscribe anyone)
 - `/v/:slug` — volunteer signup with the 15 roles (a hi-rise captain is asked
   which building; translators, which language)
+- `/e/:slug/:event` — event page with RSVP · `/d/:slug` — donate
 
-The site can also keep its own forms and post JSON here (CORS-open):
+The website can also keep its own forms and post JSON here (CORS-open):
 
 ```http
 POST /api/public/:slug/signup
@@ -198,148 +199,21 @@ POST /api/public/:slug/signup
   "petition": "<petition-slug>", "answer": "<to the petition's question>",
   "event": "<event-slug>", "guests": 2, "subscribe": true, "note": "…" }
 
-POST /api/public/:slug/donate
-{ "amount_cents": 2500 | "amount": "25", "monthly": false, "slate": "council" | "school_board",
-  — or, for one payment to several slates (the Superstar Club: the maximum to each),
-  "amounts": { "council": 142970, "school_board": 142970 } —
-  "name" | "first_name" + "last_name", "email", "phone", "address", "city", "postal",
-  "attest": { "individual": true, "resident": true, "own_funds": true }, "subscribe": true,
-  "return": { "success": "https://imaginesurrey.ca/donate/thanks", "cancel": "https://imaginesurrey.ca/donate" } }
-→ { "url": "<Stripe Checkout>" }  or  { "ok": true, "pledged": true }  or  400 { "error", "field" }
 ```
 
-A contribution is to one slate (`council` when unnamed), and the annual
-limit is checked per slate: what the person has given that slate this
-year, plus what their monthly pledges to it will still take (a monthly
-gift counts every month left in the calendar year, and must fit a full
-year on its own). Several slates in one payment make one pledge each, one
-Checkout Session with a line item each, and one gift each when Stripe
-pays — a refund of that charge voids them all. A monthly gift cancelled in
-Stripe (`customer.subscription.deleted`) closes its pledge here. A
-petition may ask each signer one question (Outreach → Petitions); the
-answer stays with the signature, in the list and the CSV. A campaign with
-no petitions can load the website's two as first published (*Load the
-website's petitions*), so the site's forms find their slugs.
+The donate page (`/d/:slug`) takes a contribution to one slate — city
+council or school board (`shared/canvass.js` SLATES) — and the annual limit
+is checked per slate: what the person has given that slate this year, plus
+what their monthly pledges to it will still take (a monthly gift counts
+every month left in the calendar year, and must fit a full year on its
+own). Paid by card, Stripe's webhook books the gift; a monthly gift
+cancelled in Stripe (`customer.subscription.deleted`) closes its pledge
+here, and a charge refunded in full voids its gift. A petition may ask
+each signer one question (Outreach → Petitions); the answer stays with
+the signature, in the list and the CSV.
 
 Every public submission lands in the directory as a Person (deduped by email),
 tagged by source, and is appended to the event log under a system actor.
-
-### The site, headless
-
-A website built elsewhere — the campaign's own Next.js site — can be edited
-from Starbase's website admin and read everything as JSON, no sign-in,
-CORS-open, revalidated by ETag so an edit is live at once. Drafts never
-show; pictures carry their full address; Markdown comes as written (`body`)
-and rendered by the site's own safe renderer (`html`).
-
-| | |
-|---|---|
-| `GET /api/public/:slug/site` | the campaign, the website settings (title, tagline, hero, colours, contact, socials, *Authorized by*), the links (donate, volunteer, newsletter, unsubscribe), published pages, people cards, open petitions, the store's ways, the donate form's numbers (`donate.limit_cents` — this year's limit per contributor per slate — and `donate.slates`) |
-| `GET …/site/pages/:slug` | a published page |
-| `GET …/site/news[/:slug]` | published posts (`?limit`, `?offset`), one post |
-| `GET …/site/events[/:slug]` | upcoming public events with their RSVP link and count (`?past=1`: the last 20), one event |
-| `GET …/site/team` | published people cards |
-| `GET …/site/products[/:slug]` | the store: price, pictures, what is left of each size after other buyers' open checkouts |
-| `GET …/site/petitions[/:slug]` | open petitions with their counts and their question, if one (a closed one answers 410) |
-| `POST …/site/store/quote` | `{ items }` priced here, never in the browser |
-| `POST …/site/store/checkout` | `{ items, fulfilment: "ship" \| "pickup", return: { success, cancel } }` → `{ url, order_id }` |
-
-Two more forms and one more read for the site:
-
-```http
-POST /api/public/:slug/join
-{ "first_name", "last_name", "email", "phone", "address", "city", "postal",
-  "neighbourhood": "Newton" | … | "Outside Surrey", "birthdate": "1990-05-04",
-  "citizenship": "Citizen" | "Permanent resident" | "Other", "gender", "languages": [],
-  "student": true, "campus", "issue", "interest_volunteer": true, "interest_lawn_sign": true,
-  "consent": true, "return": { "success", "cancel" } }
-→ { "url" } (the fee, by card)  ·  { "ok", "status": "active" | "pledged" | "already_member" }  ·  400 { "error", "field" }
-
-GET /api/public/:slug/site/tracker   the promise tracker: promises with their updates, announcements, the scoreboard
-```
-
-The yearly fee is set under Website → Settings → Membership (0 for free
-membership); `GET …/site` carries it with the form's choices. Members
-must be 14 or older; a fee is taken only from citizens and permanent
-residents living in BC, and counts against the annual contribution limit.
-
-Stripe brings a contributor or buyer back to the address the site names
-only when it is on one of the site's own origins: `STARBASE_SITE_ORIGINS`
-(comma-separated, e.g. `https://imaginesurrey.ca`), `https://` + each of
-`STARBASE_SITE_HOSTS`, and `STARBASE_PUBLIC_URL`'s origin. Any other
-address falls back to Starbase's own thank-you page. One Stripe webhook —
-`/api/public/stripe/webhook` on Starbase — books every payment.
-
-## Website (imaginesurrey.ca) and store
-
-Starbase hosts the campaign's public website. It is edited in its own
-small app, the **website admin** at `/website-admin` (the same accounts:
-managers and staff edit, treasurers see Orders; the field app's account
-menu has *Edit the website*): **Pages · News · Events · Team · Store ·
-Orders · Promise tracker · Settings** and *View site*. The **Promise
-tracker** is the governing party's promises scored in public: each has
-its words, area, sources and delivery test (what counts as kept, partly
-kept or broken), and is scored by dated updates with a link to the
-record; announcements log what the party said and when. A new campaign
-loads the tracker as first published (the 26 Safe Surrey Coalition
-promises) with one tap, then edits from there. The campaign's own site
-reads it as JSON (above). The website is apart from the field
-app: `STARBASE_SERVE=site` runs it as its own service (the site at `/` on
-every host, its admin, the public forms and the Stripe webhook, and only
-the slice of the API its admin needs — never the campaign's people, money
-or lists), `STARBASE_SERVE=app` runs the field app without it, and the
-default `all` serves both from one process (`server/lib/serve.js`).
-A saved page or post shows **View on site**, or **Preview draft** while unpublished:
-the site's `?preview` shows a draft (marked, never cached or indexed) only to
-managers and staff signed in on the staff host.
-
-- **Where it answers.** `/site/…` on every host, and `/` on the hosts in
-  `STARBASE_SITE_HOSTS` (e.g. `imaginesurrey.ca,www.imaginesurrey.ca`). On
-  those hosts the site claims `/`, `/news`, `/events`, `/our-team`,
-  `/store`, `/cart`, `/sitemap.xml`, `/robots.txt` and any one-word path that
-  isn't the staff app's (`/about`, `/platform` …); `/api`, `/assets`, `/login`
-  and the other app screens, and the public forms (`/e /d /n /v /p /u`) work
-  unchanged on every host. The site belongs to the oldest workspace (or
-  `STARBASE_SITE_WORKSPACE=<slug>`).
-- **Content.** Pages and news are Markdown with a toolbar and Preview,
-  rendered by one small safe renderer (`shared/markdown.js`: everything is
-  escaped first; links only http(s), mailto or site paths). Drafts never
-  show. Pictures upload from the admin (shrunk to 2000px / ~1.5 MB in the
-  browser; JPG, PNG or WebP checked by their bytes; 2 MB at most), are kept
-  in the database and served at `/media/:id`, cached a year. Events are the
-  campaign's own events (the same list as Outreach), with a picture added.
-  New sites start with draft pages full of placeholder words — the
-  campaign writes the real ones. Settings holds the title, hero, the two
-  brand colours (`--primary`, `--accent`), contact, social links, the menu
-  order and the **Authorized by** line (election ads carry one), and the
-  campaign's **logo** (the reversed version, for the navy header and footer)
-  and **star device** (the browser tab). Until those are uploaded the site
-  shows its name; nothing stands in for the logo.
-- **Look.** Server-rendered HTML with per-page title, description and Open
-  Graph tags, a sitemap and robots.txt; one stylesheet
-  (`server/ext/website/assets/site.css`). The public forms (RSVP, donate,
-  newsletter, volunteer, petition, unsubscribe) wear the same header and footer.
-- **Store.** Products with photos, CAD prices, optional sizes with their own
-  stock. The cart lives in the browser; prices and stock are always worked
-  out on the server. Checkout is Stripe Checkout with inline prices (nothing
-  to set up per product in Stripe), shipping (fee in Settings) or pick-up.
-  The Stripe webhook (`checkout.session.completed`) marks the order paid
-  once — retries change nothing — takes the items out of stock and puts the
-  buyer in People tagged `store`; `checkout.session.expired` cancels an
-  unpaid one; `charge.refunded` marks an order refunded in Starbase when
-  the card is refunded in Stripe (items back on the shelf unless it had
-  shipped; a partial refund is noted on the order). The same event voids a
-  card donation refunded in full (`stripe.refund`: its pledge reopens, its
-  receipt is voided, as a hand void does); a partial donation refund is only
-  noted on the gift for the treasurer. A checkout holds its items while the buyer is on Stripe's
-  page (the session expires after 30 minutes); backing out to the cart
-  closes the session and frees them, so the last shirt can't sell twice.
-  Without `STRIPE_SECRET_KEY` the store shows its items and
-  says *Online store opens soon*. Ask your financial agent how merchandise
-  sales are reported.
-
-Code: `server/ext/website/` (site.js pages and host routing, store.js,
-actions.js, api.js), admin screens `web/src/pages/Website*.jsx`.
 
 ## Placing people on the map (geocoding)
 
@@ -363,11 +237,11 @@ progress; the page shows it and works out the time left. With
 
 ## Sending email and text
 
-A newsletter or press release is written in the same Markdown as the
-website's pages: the message field has the editor's toolbar (bold, italic,
-heading, link, list, picture, and *Link to…* for the donate, volunteer,
-newsletter-signup and website pages) and a *Preview* that is the email's
-layout. Up to five files (PDF, pictures, Word, Excel, PowerPoint, .ics,
+A newsletter or press release is written in Markdown: the message field
+has the editor's toolbar (bold, italic, heading, link, list, picture, and
+*Link to…* for the donate, volunteer and newsletter-signup pages) and a
+*Preview* that is the email's layout. A picture is kept in the database and
+served at `/media/:id`, cached a year. Up to five files (PDF, pictures, Word, Excel, PowerPoint, .ics,
 .txt, .csv; 5 MB each) go with every copy; *Send me a test* emails the
 writer a copy first, untracked and off the record. Each email carries a
 plain-text part alongside the HTML.
@@ -475,20 +349,16 @@ when you're back online.*
 
 ## The brand
 
-Imagine Surrey's brand guidelines (2.1) are applied in two places and nowhere
+Imagine Surrey's brand guidelines (2.1) are applied in one place and nowhere
 else: `web/src/app.css` (the staff app's tokens: Surrey Navy `#003979`,
 Deep Navy `#00224d`, Marigold `#ffc72c`, the text-safe red `#c8151b`, Sky,
-Paper, Rule, Ink and Slate) and `server/ext/website/assets/site.css` (the
-public site; the two colours a manager can change default to navy and the
-text-safe red). Barlow Condensed carries headlines and labels, Inter
-everything people read; both are self-hosted under `web/public/fonts/`
-(Latin and Latin Extended, SIL Open Font License) and served to the app and
-the site alike. The rules the code keeps: marigold is never text on white or
+Paper, Rule, Ink and Slate). Barlow Condensed carries headlines and labels,
+Inter everything people read; both are self-hosted under `web/public/fonts/`
+(Latin and Latin Extended, SIL Open Font License). The rules the code keeps: marigold is never text on white or
 cream; white on Signal Red only at 19px bold and up, so buttons use the
 text-safe red; grounds are flat, and depth is the rise — a Deep Navy block
 with an edge climbing at 24 degrees — never a gradient. The logo is the
-supplied artwork only: the site shows it once uploaded under Website →
-Settings and its name until then; the staff app's own tile (`web/public/icon.svg`)
+supplied artwork only; the staff app's own tile (`web/public/icon.svg`)
 is the rise and the marigold bar, no star.
 
 ## Architecture
@@ -527,8 +397,7 @@ what the sender wrote; public writes are limited to 30 per 10 minutes per
 address and sign-in to 30 tries per address and 10 failures per email per
 15 minutes; a cookie-carrying write must be the app's own (JSON, same
 origin — a form on another host, even under the campaign's domain, can't
-post with it; the session cookie is `SameSite=Strict`); open store
-checkouts are capped at 2 per address; and every answer carries
+post with it; the session cookie is `SameSite=Strict`); and every answer carries
 `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and a
 referrer policy. The event log keeps no sign-in, invite or Stripe secrets
 and no image bytes.
@@ -553,7 +422,7 @@ server/lib/events.js   runAction: the transactional event-log spine
 server/lib/cap.js      entity-keyed contribution-cap engine
 server/lib/notify.js   email/SMS adapters (Resend/Twilio via fetch)
 server/actions/        the Action registry (index.js core, field.js field+outreach)
-server/routes/         auth · api (reads) · public (pages + website bridge)
+server/routes/         auth · api (reads) · public (pages + JSON bridge)
 web/                   Vite + React 19 + react-router + TanStack Query + Leaflet
 ```
 

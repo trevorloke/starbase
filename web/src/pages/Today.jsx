@@ -840,13 +840,12 @@ function DeskToday({ b, me, toast }) {
         )}
         <ul className="today-rows">
           <LinkRow to="/banks" main="Phone banks" />
-          <LinkRow to="/members" main="Members" />
           <LinkRow to="/lists" main="Lists" />
           <LinkRow to="/reports" main="Reports" />
           <LinkRow to="/surveys" main="Surveys" />
           {isManager && <LinkRow to="/settings" main={<>Settings <span className="muted">· members, teams, permissions</span></>} />}
           {b.providers && (!b.providers.email || !b.providers.text) && (
-            <LinkRow to="/outreach/website" main="Connect email & texting" />
+            <LinkRow to="/outreach/links" main="Connect email & texting" />
           )}
         </ul>
         <div className="today-actions today-morebox__tools">

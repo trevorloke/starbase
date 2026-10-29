@@ -28,8 +28,8 @@ before(async () => {
 });
 
 test('each role starts with its usual areas; a manager has them all', async () => {
-  assert.deepEqual(await areasOf(mgr), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'admin', 'learn']);
-  assert.deepEqual(await areasOf(staff), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'website', 'data', 'learn']);
+  assert.deepEqual(await areasOf(mgr), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'admin', 'learn']);
+  assert.deepEqual(await areasOf(staff), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn']);
   assert.deepEqual(await areasOf(treas), ['people', 'map', 'shifts', 'money', 'signs', 'outreach', 'data', 'learn']);
   assert.deepEqual(await areasOf(vol), []);
   assert.equal((await staff.get('/api/admin/permissions')).status, 403, 'admin is the manager’s');
@@ -90,11 +90,11 @@ test('permissions: an area taken from a role, or given to one person, changes wh
   assert.equal((await vol.get('/api/export')).status, 403);
 
   // A person's own deny beats the role's grant; "as their role" clears it.
-  assert.equal((await mgr.action('permission.member.set', { user_id: ids.Sam, deny: ['website'] })).status, 200);
-  assert.ok(!(await areasOf(staff)).includes('website'));
-  assert.equal((await staff.get('/api/site/overview')).status, 403);
+  assert.equal((await mgr.action('permission.member.set', { user_id: ids.Sam, deny: ['signs'] })).status, 200);
+  assert.ok(!(await areasOf(staff)).includes('signs'));
+  assert.equal((await staff.get('/api/signs')).status, 403);
   assert.equal((await mgr.action('permission.member.set', { user_id: ids.Sam, grant: [], deny: [] })).status, 200);
-  assert.ok((await areasOf(staff)).includes('website'));
+  assert.ok((await areasOf(staff)).includes('signs'));
 
   // The manager's own areas can't be touched; a bad area is refused.
   const me = (await mgr.get('/api/auth/me')).json.user;

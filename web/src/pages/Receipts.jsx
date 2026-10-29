@@ -30,8 +30,8 @@ const AGENT_ROLES = ['manager', 'treasurer'];
 const receipts = (n) => `${n} ${n === 1 ? 'receipt' : 'receipts'}`;
 // The saved amount, shown as it is (0 included); unset → empty.
 const centsToField = (c) => (c === null || c === undefined || c === '' ? '' : String(Number(c) / 100));
-// Where "Connect" goes: the Website tab, with its More open on Email & texting.
-const CONNECT_TO = '/outreach/website?connect=1';
+// Where "Connect" goes: the Links tab, with its More open on Email & texting.
+const CONNECT_TO = '/outreach/links?connect=1';
 // "This campaign · Jan 1 – Dec 31, 2026" / "2025"
 const periodWord = (p) => (p.key === 'campaign' ? `This campaign · ${shortDate(p.from)} – ${shortDate(p.to)}` : p.key);
 

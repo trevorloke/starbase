@@ -94,4 +94,20 @@ create table if not exists blast_attachments (
   created_at timestamptz not null default now()
 );
 create index if not exists blast_attachments_blast_idx on blast_attachments (blast_id);
+
+-- Pictures in a message's body (blast.picture): the bytes themselves, served
+-- at /media/:id (media.js).
+create table if not exists media (
+  id uuid primary key,
+  workspace_id uuid not null references workspaces(id) on delete cascade,
+  content_type text not null check (content_type in ('image/jpeg', 'image/png', 'image/webp')),
+  bytes int not null,
+  width int,
+  height int,
+  name text,
+  data bytea not null,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists media_ws_idx on media (workspace_id, created_at);
 `;

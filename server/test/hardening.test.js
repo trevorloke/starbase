@@ -125,47 +125,14 @@ test('a write with the cookie must be the app’s own: JSON, from the same origi
 });
 
 test('odd ids and names are a 400 or 404, never a 500', async () => {
-  assert.equal((await req('/site-assets/constructor')).status, 404);
-  assert.equal((await req('/site-assets/__proto__')).status, 404);
+  assert.equal((await req('/media/constructor')).status, 404);
+  assert.equal((await req('/media/__proto__')).status, 404);
   assert.equal((await req('/api/actions/constructor', { method: 'POST', body: {}, cookie: mgr.cookie })).status, 404);
-  await mgr.get('/api/site/overview');
-  const orders = await req('/api/store/orders?status=constructor', { cookie: mgr.cookie });
-  assert.equal(orders.status, 200, 'an unknown filter is the default one');
-  const product = (await mgr.action('store.product.save', { name: 'Hard Pin', price_cents: 500, track_stock: true, stock: 1 })).json.product;
-  const dashes = await req('/site/store/quote', { method: 'POST', body: { items: [{ product_id: '------------------------------------', qty: 1 }] }, headers: { 'x-forwarded-for': '203.0.113.210' } });
-  assert.equal(dashes.status, 200, 'a non-uuid id is simply skipped');
-  assert.deepEqual((await dashes.json()).lines, []);
-  void product;
-});
-
-test('open checkouts are capped per address, so stock can’t be faked out by never paying', async () => {
-  process.env.STRIPE_SECRET_KEY = 'sk_test_hard';
-  const realFetch = globalThis.fetch;
-  let n = 0;
-  globalThis.fetch = async (url, init) => {
-    if (String(url) === 'https://api.stripe.com/v1/checkout/sessions') {
-      n += 1;
-      return new Response(JSON.stringify({ id: `cs_hard_${n}`, url: `https://checkout.stripe.test/${n}` }), { status: 200 });
-    }
-    return realFetch(url, init);
-  };
-  try {
-    const shirt = (await mgr.action('store.product.save', { name: 'Hard Shirt', price_cents: 2500, track_stock: true, stock: 50 })).json.product;
-    const buy = (ip) => req('/site/store/checkout', { method: 'POST', body: { items: [{ product_id: shirt.id, qty: 1 }], fulfilment: 'pickup' }, headers: { 'x-forwarded-for': ip } });
-    assert.equal((await buy('203.0.113.220')).status, 200);
-    assert.equal((await buy('203.0.113.220')).status, 200);
-    const third = await buy('203.0.113.220');
-    assert.equal(third.status, 429);
-    assert.match((await third.json()).error, /checkout open already/);
-    assert.equal((await buy('203.0.113.221')).status, 200, 'another address is fine');
-  } finally {
-    globalThis.fetch = realFetch;
-    delete process.env.STRIPE_SECRET_KEY;
-  }
+  assert.equal((await req('/u/constructor')).status, 404);
 });
 
 test('every answer says: not framed, no sniffing, referrer trimmed — a route’s own choice stands', async () => {
-  for (const path of ['/login', '/api/health', `/site/`, `/n/${slug}`]) {
+  for (const path of ['/login', '/api/health', `/p/${slug}/nope`, `/n/${slug}`]) {
     const r = await req(path);
     assert.equal(r.headers.get('x-frame-options'), 'DENY', path);
     assert.equal(r.headers.get('x-content-type-options'), 'nosniff', path);

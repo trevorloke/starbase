@@ -598,7 +598,7 @@ function DonateLink({ slug }) {
           </button>
         )}
         {url && <a className="btn btn-quiet ops-tap" href={url} target="_blank" rel="noopener noreferrer">Open</a>}
-        <Link className="btn btn-quiet ops-tap" to="/outreach/website">Set up</Link>
+        <Link className="btn btn-quiet ops-tap" to="/outreach/links">Set up</Link>
       </div>
       {copied === 'show' && (
         <input className="input mono" readOnly value={url} aria-label="Donate page link"

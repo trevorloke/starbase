@@ -1,4 +1,4 @@
-// Public pages + the website bridge. No auth. Each campaign workspace gets:
+// Public pages + the JSON bridge. No auth. Each campaign workspace gets:
 //   GET/POST /p/:ws/:petition   petition signature page
 //   GET/POST /n/:ws             newsletter signup page
 //   GET/POST /v/:ws             volunteer signup page
@@ -6,14 +6,11 @@
 //   GET/POST /e/:ws/:event      event page + RSVP
 //   GET/POST /d/:ws             donate (BC eligibility attestations; Stripe
 //                               Checkout when configured, else a pledge)
-//   POST     /api/public/stripe/webhook   payment confirmations → gifts, and
-//                                        the website store's paid orders
-//   POST     /api/public/:ws/signup   CORS-open JSON for the campaign website's
-//                                     own forms (kind: newsletter | volunteer | petition | rsvp)
-//   POST     /api/public/:ws/donate   CORS-open JSON donate: the same checks and
-//                                     pledge as /d, Stripe's return on the site's own pages
-// Server-rendered HTML keeps these dead simple to link from the website;
-// the JSON endpoint lets the website keep its own design and post here.
+//   POST     /api/public/stripe/webhook   payment confirmations → gifts
+//   POST     /api/public/:ws/signup   CORS-open JSON for the campaign's own
+//                                     forms elsewhere (kind: newsletter | volunteer | petition | rsvp)
+// Server-rendered HTML keeps these dead simple to link to; the JSON
+// endpoint lets a website of the campaign's own keep its design and post here.
 //
 // Every public write goes through runAction as the system (actor null), so
 // the hash-chained event log — "Verify the records" — covers it like any desk
@@ -27,23 +24,19 @@
 //   public.pledge     donate page pledge (/d)         pledge create
 //   stripe.checkout   card checkout opened for a pledge  pledge update
 //   stripe.payment    Stripe webhook                  pledge update, gift create
-//   store.payment / store.expire / store.refund  Stripe webhook for website store orders
+//   stripe.cancel     Stripe webhook (subscription cancelled)  pledge update
+//   stripe.refund     Stripe webhook (charge refunded)  gift update / void
 import { Hono } from 'hono';
 import { clientIp, makeLimiter } from '../lib/guard.js';
 import { getDb } from '../db/client.js';
 import { runAction, newId } from '../lib/events.js';
-import { publicAction, upsertPersonTx, upsertPersonFromPublic, subscribeTx, subscribe } from '../lib/publicwrites.js';
+import { publicAction, upsertPersonFromPublic, subscribeTx, subscribe } from '../lib/publicwrites.js';
 import { VOLUNTEER_ROLES, VOLUNTEER_ROLE_CODES, SLATES, SLATE_CODES, DEFAULT_SLATE, slateLabel } from '@starbase/shared/canvass';
 import { capFor, donorYearTotal, donorYearCommitted } from '../lib/cap.js';
 import { logGift, campaignDay, voidGift } from '../lib/gifts.js';
 import { stripeConfigured, createCheckoutSession, verifyStripeSignature } from '../lib/stripe.js';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { renderMarkdown } from '@starbase/shared/markdown';
-// The website's look and its store's webhook half (ext/website).
-import { loadChrome, layout, assetUrl, img, dateTile } from '../ext/website/layout.js';
-import { siteWorkspace } from '../ext/website/content.js';
-import { onSiteHost, originOf, returnUrl } from '../ext/website/hosts.js';
-import { applyStorePayment, expireStoreOrder, refundStoreOrder } from '../ext/website/store.js';
+import { page, esc, settingsOf } from '../lib/publicpage.js';
 
 const app = new Hono();
 
@@ -51,43 +44,8 @@ const app = new Hono();
 const limited = makeLimiter({ windowMs: 600000, max: 30 });
 const ipOf = clientIp;
 
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const settingsOf = (ws) => (typeof ws.settings === 'string' ? JSON.parse(ws.settings) : (ws.settings || {}));
-
-// Every public form sits inside the campaign's website (ext/website): its
-// header, footer and look, so RSVP, donate and signup feel like one site.
-// The form itself is one column in a white card, thumb-sized inputs and one
-// big button. ws may be null (a link that names no campaign): the page then
-// wears the site's own campaign. Async: c.html() takes the promise.
-// The request's host decides the site links' base (/ on the site's own
-// domain, /site elsewhere): a middleware below keeps it for page().
-const reqInfo = new AsyncLocalStorage();
-const page = async (ws, title, inner, { wide = false } = {}) => {
-  const db = await getDb();
-  const info = reqInfo.getStore() || { base: '/site', origin: '' };
-  const owner = ws?.id ? ws : await siteWorkspace(db);
-  const chrome = owner
-    ? await loadChrome(db, { ...owner, settings: settingsOf(owner) }, { base: info.base, origin: info.origin, canon: info.origin })
-    : null;
-  const main = `<div class="wrap ${wide ? 'narrow' : 'form-wrap'}" style="padding-top:clamp(28px,5vw,64px)"><div class="sheet form-card">
-${inner}
-</div></div>`;
-  if (!chrome) {
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title><link rel="stylesheet" href="${assetUrl('site.css')}"></head><body>${main}
-<footer class="sf"><div class="wrap sf-legal"><p>Powered by Starbase</p></div></footer></body></html>`;
-  }
-  // The tab says the page and the campaign, as it always has.
-  return layout(chrome, { title, path: info.path || '/', main, noindex: /^\/u\//.test(info.path || ''), backlink: settingsOf(owner).website })
-    .replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}${ws ? ` · ${esc(ws.name)}` : ''}</title>`);
-};
-
-// Public form paths remember their request's base and origin for page().
-for (const path of ['/p/*', '/n/*', '/v/*', '/u/*', '/bu/*', '/e/*', '/d/*']) {
-  app.use(path, (c, next) => reqInfo.run({
-    base: onSiteHost(c) ? '' : '/site', origin: originOf(c), path: c.req.path,
-  }, next));
-}
+// The pages' look: lib/publicpage.js (one column, the campaign's name, a
+// link back to its website when it has one).
 
 const loadWs = async (db, slug) => {
   const ws = (await db.query(
@@ -405,15 +363,10 @@ app.get('/e/:ws/:slug', async (c) => {
   const tz = ws.settings.tz || 'America/Vancouver';
   const full = ev.capacity && ev.going >= ev.capacity;
   const past = new Date(ev.starts_at) < new Date();
-  // The picture the website gives this event (Website → Events), if any.
-  const pic = (await db.query('select image from site_event_extras where event_id = $1', [ev.id])).rows[0]?.image;
   return c.html(page(ws, ev.title, `
-${pic ? `<div class="ev-img">${img(pic, '', { eager: true })}</div>` : ''}
-<div class="ev" style="padding:0;margin-bottom:8px">${dateTile(ev.starts_at, tz)}<div>
 <h1>${esc(ev.title)}</h1>
 <p class="when">${esc(fmtWhen(ev.starts_at, tz))}</p>
 ${ev.location ? `<p>${esc(ev.location)}</p>` : ''}
-</div></div>
 ${ev.description ? `<div class="prose">${renderMarkdown(ev.description)}</div>` : ''}
 ${past ? '<div class="done">This event has already happened.</div>'
   : full ? '<div class="done">This event is full.</div>'
@@ -517,30 +470,15 @@ app.post('/d/:ws', async (c) => {
 ${esc(ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.')}</div>`));
 });
 
-// One contribution, from the donate page or the website's JSON: the checks,
-// the person, the pledge, and Stripe Checkout when it is connected. Answers
-// { fail } (a sentence for the contributor), { url } (Stripe's page), or
-// { pledged: true } (no card payment: the campaign follows up).
+// One contribution from the donate page: the checks, the person, the
+// pledge, and Stripe Checkout when it is connected. Answers { fail } (a
+// sentence for the contributor), { url } (Stripe's page), or { pledged:
+// true } (no card payment: the campaign follows up).
 //
-// A contribution is to one slate (v.slate; the first when unnamed), and the
-// annual limit is per slate. v.amounts ({ council: cents, school_board:
-// cents }) is several contributions in one payment — the Superstar Club:
-// the maximum to each slate — one pledge each, one Checkout Session, and
-// the webhook books one gift for each. A monthly gift is checked against
-// the months left this calendar year (and a full year on its own), with
-// what the person's other monthly pledges on that slate will still take.
-const amountsOf = (v) => {
-  const given = v.amounts && typeof v.amounts === 'object' ? v.amounts : { [v.slate || DEFAULT_SLATE]: v.cents };
-  const out = [];
-  for (const [slate, raw] of Object.entries(given)) {
-    if (!SLATE_CODES.includes(slate)) return { fail: 'Choose which slate the contribution is for.', field: 'slate' };
-    const cents = Number(raw);
-    if (!Number.isFinite(cents) || !Number.isInteger(cents) || cents < 100) return { fail: 'Choose an amount of at least $1.', field: 'amount' };
-    out.push({ slate, cents });
-  }
-  if (!out.length) return { fail: 'Choose an amount of at least $1.', field: 'amount' };
-  return { amounts: out };
-};
+// A contribution is to one slate (v.slate; the first when unnamed), and
+// the annual limit is per slate. A monthly gift is checked against the
+// months left this calendar year (and a full year on its own), with what
+// the person's other monthly pledges on that slate will still take.
 const slateWords = (slate) => (SLATES.length > 1 ? ` to the ${slateLabel(slate).toLowerCase()} slate` : '');
 
 const startDonation = async (db, ws, v, attested, { ip, successUrl, cancelUrl, subscribeToo = false }) => {
@@ -548,28 +486,28 @@ const startDonation = async (db, ws, v, attested, { ip, successUrl, cancelUrl, s
   const year = Number(today.slice(0, 4));
   const monthIndex = Number(today.slice(5, 7)) - 1;
   const rule = await capFor(db, ws.jurisdiction, year, ws.settings);
-  const parsed = amountsOf(v);
-  if (parsed.fail) return parsed;
-  const { amounts } = parsed;
+  const cents = v.cents;
+  const slate = v.slate || DEFAULT_SLATE;
+  if (!SLATE_CODES.includes(slate)) return { fail: 'Choose which slate the contribution is for.', field: 'slate' };
+  if (!Number.isFinite(cents) || cents < 100) return { fail: 'Choose an amount of at least $1.', field: 'amount' };
   if (!v.name || !v.address) return { fail: 'Your full name and home address are required by election law.', field: !v.name ? 'name' : 'address' };
   if (!emailOk(v.email)) return { fail: 'A valid email is required so the campaign can confirm your contribution.', field: 'email' };
   if (!attested) return { fail: 'Please confirm each eligibility statement — only eligible individuals may contribute.', field: 'attest' };
 
-  // Cap pre-check, per slate, against this person's gifts so far this year
-  // (by email) and what their monthly pledges will still take.
+  // Cap pre-check against this person's gifts to the slate so far this year
+  // (by email) and what their monthly pledges to it will still take.
   if (rule) {
+    const thisYear = v.monthly ? cents * (12 - monthIndex) : cents;
+    if (cents > rule.capCents || (v.monthly && cents * 12 > rule.capCents)) {
+      return { fail: v.monthly
+        ? `The most one person can give this year${slateWords(slate)} is ${dollars(rule.capCents)}, so a monthly gift can be at most ${dollars(Math.floor(rule.capCents / 12))}.`
+        : `The most one person can give this year${slateWords(slate)} is ${dollars(rule.capCents)}.`, field: 'amount' };
+    }
     const known = (await db.query(
       'select id from persons where workspace_id = $1 and lower(email) = $2 and deleted_at is null limit 1',
       [ws.id, v.email.toLowerCase()],
     )).rows[0];
-    for (const { slate, cents } of amounts) {
-      const thisYear = v.monthly ? cents * (12 - monthIndex) : cents;
-      if (cents > rule.capCents || (v.monthly && cents * 12 > rule.capCents)) {
-        return { fail: v.monthly
-          ? `The most one person can give this year${slateWords(slate)} is ${dollars(rule.capCents)}, so a monthly gift can be at most ${dollars(Math.floor(rule.capCents / 12))}.`
-          : `The most one person can give this year${slateWords(slate)} is ${dollars(rule.capCents)}.`, field: 'amount' };
-      }
-      if (!known) continue;
+    if (known) {
       const so = await donorYearTotal(db, ws.id, known.id, year, slate) + await donorYearCommitted(db, ws.id, known.id, monthIndex, slate);
       if (so + thisYear > rule.capCents) {
         const left = Math.max(rule.capCents - so, 0);
@@ -587,41 +525,39 @@ const startDonation = async (db, ws, v, attested, { ip, successUrl, cancelUrl, s
   // The attestation (what was ticked, when, from where) is part of the record
   // and of its event, so the log shows the contributor declared eligibility.
   const attest = { ...Object.fromEntries(ATTESTATIONS.map(([k]) => [k, true])), at: new Date().toISOString(), ip };
-  const status = stripeConfigured() ? 'pending' : 'pledged';
-  const pledges = await publicAction(db, ws, 'public.pledge', async (tx, emit) => {
-    const made = [];
-    for (const { slate, cents } of amounts) {
-      const id = newId();
-      await tx.query(
-        `insert into pledges (id, workspace_id, person_id, name, email, phone, address, amount_cents, cadence, slate, status, attest)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [id, ws.id, personId, v.name, v.email.toLowerCase(), v.phone || null, v.address, cents,
-         cadence, slate, status, JSON.stringify(attest)],
-      );
-      emit('pledge', id, 'create', {
-        person_id: personId, name: v.name, email: v.email.toLowerCase(), phone: v.phone || null, address: v.address,
-        amount_cents: cents, cadence, slate, status, attest, source: 'donate-page',
-      });
-      made.push({ id, amount_cents: cents, cadence, slate, email: v.email });
-    }
-    return made;
+  const pledgeId = await publicAction(db, ws, 'public.pledge', async (tx, emit) => {
+    const id = newId();
+    const status = stripeConfigured() ? 'pending' : 'pledged';
+    await tx.query(
+      `insert into pledges (id, workspace_id, person_id, name, email, phone, address, amount_cents, cadence, slate, status, attest)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [id, ws.id, personId, v.name, v.email.toLowerCase(), v.phone || null, v.address, cents,
+       cadence, slate, status, JSON.stringify(attest)],
+    );
+    emit('pledge', id, 'create', {
+      person_id: personId, name: v.name, email: v.email.toLowerCase(), phone: v.phone || null, address: v.address,
+      amount_cents: cents, cadence, slate, status, attest, source: 'donate-page',
+    });
+    return id;
   });
-  const ids = pledges.map((p) => p.id);
 
   if (stripeConfigured()) {
     try {
-      const session = await createCheckoutSession({ pledges, workspace: ws, successUrl, cancelUrl });
-      await publicAction(db, ws, 'stripe.checkout', async (tx, emit) => {
-        await tx.query('update pledges set stripe_session_id = $3, updated_at = now() where id = any($1::uuid[]) and workspace_id = $2',
-          [ids, ws.id, session.id]);
-        for (const id of ids) emit('pledge', id, 'update', { stripe_session_id: session.id });
+      const session = await createCheckoutSession({
+        pledge: { id: pledgeId, amount_cents: cents, cadence, email: v.email },
+        workspace: ws, successUrl, cancelUrl,
       });
-      return { url: session.url, pledge_id: ids[0], pledge_ids: ids };
+      await publicAction(db, ws, 'stripe.checkout', async (tx, emit) => {
+        await tx.query('update pledges set stripe_session_id = $3, updated_at = now() where id = $1 and workspace_id = $2',
+          [pledgeId, ws.id, session.id]);
+        emit('pledge', pledgeId, 'update', { stripe_session_id: session.id });
+      });
+      return { url: session.url, pledge_id: pledgeId };
     } catch (e) {
       return { fail: `Card payment isn't available right now (${String(e.message).slice(0, 120)}). Please try again shortly.`, field: null };
     }
   }
-  return { pledged: true, pledge_id: ids[0], pledge_ids: ids };
+  return { pledged: true, pledge_id: pledgeId };
 };
 
 app.get('/d/:ws/thanks', async (c) => {
@@ -634,10 +570,7 @@ app.get('/d/:ws/thanks', async (c) => {
 // Stripe → gifts. One-time: checkout.session.completed (paid). Monthly: every
 // invoice.paid; customer.subscription.deleted (cancelled in Stripe) closes
 // the monthly pledge. Each delivery applies once (stripe_events), and every
-// payment enters the books through logGift, so the cap check always runs. A
-// payment for several pledges at once (the Superstar Club: one to each
-// slate) books one gift for each, of that pledge's amount.
-const pledgeIdsOf = (meta) => String(meta.pledge_ids || meta.pledge_id || '').split(',').map((x) => x.trim()).filter((x) => UUID.test(x));
+// payment enters the books through logGift, so the cap check always runs.
 app.post('/api/public/stripe/webhook', async (c) => {
   const raw = await c.req.text();
   if (!verifyStripeSignature(raw, c.req.header('stripe-signature'), process.env.STRIPE_WEBHOOK_SECRET)) {
@@ -646,7 +579,6 @@ app.post('/api/public/stripe/webhook', async (c) => {
   const evt = JSON.parse(raw);
   const obj = evt.data?.object || {};
   if (evt.type === 'charge.refunded') return refundWebhook(c, evt, obj);
-  if (obj.metadata?.store_order) return storeWebhook(c, evt, obj);
   const meta = obj.metadata?.pledge_id ? obj.metadata
     : obj.subscription_details?.metadata?.pledge_id ? obj.subscription_details.metadata
     : obj.parent?.subscription_details?.metadata?.pledge_id ? obj.parent.subscription_details.metadata
@@ -668,112 +600,65 @@ app.post('/api/public/stripe/webhook', async (c) => {
     const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
       [evt.id, ws.id, evt.type]);
     if (fresh.affectedRows === 0) return { duplicate: true };
-    // In the order the payment named them (the first line item first).
-    const ids = pledgeIdsOf(meta);
-    const pledges = (await tx.query(
-      'select * from pledges where id = any($1::uuid[]) and workspace_id = $2 for update', [ids, ws.id],
-    )).rows.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-    if (!pledges.length) return { ignored: 'unknown pledge' };
+    const pledge = (await tx.query('select * from pledges where id = $1 and workspace_id = $2 for update', [meta.pledge_id, ws.id])).rows[0];
+    if (!pledge) return { ignored: 'unknown pledge' };
     if (subStarted) {
-      for (const pledge of pledges) {
-        await tx.query(`update pledges set status = 'paid', stripe_subscription_id = coalesce($2, stripe_subscription_id), updated_at = now() where id = $1`,
-          [pledge.id, obj.subscription || null]);
-        emit('pledge', pledge.id, 'update', { status: 'paid', subscription: obj.subscription || null });
-      }
-      return { subscription: true, pledge_ids: pledges.map((p) => p.id) };
+      await tx.query(`update pledges set status = 'paid', stripe_subscription_id = coalesce($2, stripe_subscription_id), updated_at = now() where id = $1`,
+        [pledge.id, obj.subscription || null]);
+      emit('pledge', pledge.id, 'update', { status: 'paid', subscription: obj.subscription || null });
+      return { subscription: true };
     }
     if (subEnded) {
       // Cancelled in Stripe (by the campaign, or the card failed for good):
       // the monthly pledge closes; its gifts so far stay.
-      const closed = [];
-      for (const pledge of pledges) {
-        if (!['pledged', 'pending', 'paid'].includes(pledge.status)) continue;
-        await tx.query(`update pledges set status = 'cancelled', updated_at = now() where id = $1`, [pledge.id]);
-        emit('pledge', pledge.id, 'update', { status: 'cancelled', subscription: obj.id || null, source: 'stripe' });
-        closed.push(pledge.id);
-      }
-      return { cancelled: closed };
+      if (!['pledged', 'pending', 'paid'].includes(pledge.status)) return { ignored: 'pledge already closed' };
+      await tx.query(`update pledges set status = 'cancelled', updated_at = now() where id = $1`, [pledge.id]);
+      emit('pledge', pledge.id, 'update', { status: 'cancelled', subscription: obj.id || null, source: 'stripe' });
+      return { cancelled: pledge.id };
     }
-    const total = paidOneTime ? Number(obj.amount_total) : Number(obj.amount_paid);
+    const cents = paidOneTime ? Number(obj.amount_total) : Number(obj.amount_paid);
     const paidAt = new Date(((paidMonthly ? obj.status_transitions?.paid_at : obj.created) || evt.created) * 1000);
     // The campaign's calendar day, not the UTC one: a card gift at 7:30 pm
     // Pacific on Oct 21 is dated Oct 21 (and Dec 31 stays in its own year).
     const date = campaignDay(paidAt, ws.settings.tz);
-    // One pledge: the gift is what Stripe took. Several (one payment to each
-    // slate): each gift is its pledge's amount; should Stripe's total differ,
-    // the difference rides on the first and is noted.
-    const expected = pledges.reduce((n, p) => n + Number(p.amount_cents), 0);
-    const ref = `Stripe ${paidOneTime ? obj.payment_intent || obj.id : obj.id}`;
-    const gifts = [];
-    for (const [i, pledge] of pledges.entries()) {
-      const own = pledges.length === 1 ? total : Number(pledge.amount_cents) + (i === 0 ? total - expected : 0);
-      const odd = pledges.length > 1 && i === 0 && total !== expected ? ` · Stripe took ${dollars(total)} for ${dollars(expected)} pledged` : '';
-      // pledge_id links each card gift to its pledge (as pledge.receive does), so
-      // voiding one keeps the pledge honest (lib/gifts.js).
-      const { gift, compliance } = await logGift(tx, ws, {
-        person_id: pledge.person_id, amount_cents: own, date,
-        method: 'card', cadence: pledge.cadence, note: `${ref}${odd}`,
-        pledge_id: pledge.id, slate: pledge.slate || undefined,
-      }, emit);
-      if (pledge.cadence === 'monthly') {
-        // A monthly pledge records its latest month in, like pledge.receive.
-        const row = (await tx.query(
-          `update pledges set status = 'paid',
-             gift_id = case when last_received_on is null or $3::date >= last_received_on then $2 else gift_id end,
-             last_received_on = greatest(coalesce(last_received_on, $3::date), $3::date), updated_at = now()
-           where id = $1 returning gift_id, last_received_on`,
-          [pledge.id, gift.id, date],
-        )).rows[0];
-        const lastOn = row.last_received_on instanceof Date ? row.last_received_on.toISOString().slice(0, 10) : String(row.last_received_on).slice(0, 10);
-        emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id, last_received_on: lastOn });
-      } else {
-        const row = (await tx.query(
-          `update pledges set status = 'paid', gift_id = coalesce(gift_id, $2), updated_at = now() where id = $1 returning gift_id`,
-          [pledge.id, gift.id],
-        )).rows[0];
-        emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id });
-      }
-      gifts.push({ gift, compliance });
+    // pledge_id links each card gift to its pledge (as pledge.receive does), so
+    // voiding one keeps the pledge honest (lib/gifts.js).
+    const { gift, compliance } = await logGift(tx, ws, {
+      person_id: pledge.person_id, amount_cents: cents, date,
+      method: 'card', cadence: pledge.cadence, note: `Stripe ${paidOneTime ? obj.payment_intent || obj.id : obj.id}`,
+      pledge_id: pledge.id, slate: pledge.slate || undefined,
+    }, emit);
+    if (pledge.cadence === 'monthly') {
+      // A monthly pledge records its latest month in, like pledge.receive.
+      const row = (await tx.query(
+        `update pledges set status = 'paid',
+           gift_id = case when last_received_on is null or $3::date >= last_received_on then $2 else gift_id end,
+           last_received_on = greatest(coalesce(last_received_on, $3::date), $3::date), updated_at = now()
+         where id = $1 returning gift_id, last_received_on`,
+        [pledge.id, gift.id, date],
+      )).rows[0];
+      const lastOn = row.last_received_on instanceof Date ? row.last_received_on.toISOString().slice(0, 10) : String(row.last_received_on).slice(0, 10);
+      emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id, last_received_on: lastOn });
+    } else {
+      const row = (await tx.query(
+        `update pledges set status = 'paid', gift_id = coalesce(gift_id, $2), updated_at = now() where id = $1 returning gift_id`,
+        [pledge.id, gift.id],
+      )).rows[0];
+      emit('pledge', pledge.id, 'update', { status: 'paid', gift_id: row.gift_id });
     }
-    return {
-      gift_id: gifts[0].gift.id, flagged: gifts.some((g) => g.gift.flagged), compliance: gifts[0].compliance,
-      ...(gifts.length > 1 ? { gift_ids: gifts.map((g) => g.gift.id) } : {}),
-    };
+    return { gift_id: gift.id, flagged: gift.flagged, compliance };
   });
   return c.json({ ok: true, ...result });
 });
 
-// The website's store (ext/website/store.js): a finished checkout pays its
-// order — once, however often Stripe retries (stripe_events, then the
-// order's own status) — takes the items out of stock and puts the buyer in
-// People (tag 'store'). An abandoned checkout cancels its unpaid order.
-//   store.payment   checkout.session.completed   store_order update, person create/update
-//   store.expire    checkout.session.expired     store_order update
-const storeWebhook = async (c, evt, obj) => {
-  const paid = evt.type === 'checkout.session.completed' || evt.type === 'checkout.session.async_payment_succeeded';
-  const expired = evt.type === 'checkout.session.expired';
-  if (!paid && !expired) return c.json({ ok: true, ignored: evt.type });
-  const db = await getDb();
-  const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [obj.metadata.workspace_id])).rows[0];
-  if (!ws) return c.json({ ok: true, ignored: 'unknown workspace' });
-  const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: paid ? 'store.payment' : 'store.expire' }, async (tx, emit) => {
-    const fresh = await tx.query('insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing',
-      [evt.id, ws.id, evt.type]);
-    if (fresh.affectedRows === 0) return { duplicate: true };
-    return paid ? applyStorePayment(tx, emit, ws, obj, { upsertPersonTx }) : expireStoreOrder(tx, emit, ws, obj);
-  });
-  return c.json({ ok: true, ...result });
-};
-
-// store.refund    charge.refunded             store_order update
-// stripe.refund   charge.refunded             gift void (+ pledge, receipt)
-// A charge carries no order or pledge id, so what it paid for is found by
-// the reference the paid webhook kept: a store order's payment intent, or a
-// gift's note ("Stripe <payment intent>" for a one-time gift, "Stripe
-// <invoice>" for a monthly one). A gift refunded in full leaves the books
-// as a hand void does (lib/gifts.js: its pledge reopens or its month is
-// forgotten; ext/receipts voids its receipt); a partial refund is noted on
-// the gift and nothing else moves — the treasurer decides.
+// stripe.refund   charge.refunded   gift void (+ pledge, receipt)
+// A charge carries no pledge id, so the gift it paid is found by the
+// reference the paid webhook kept in its note ("Stripe <payment intent>"
+// for a one-time gift, "Stripe <invoice>" for a monthly one). A gift
+// refunded in full leaves the books as a hand void does (lib/gifts.js: its
+// pledge reopens or its month is forgotten; ext/receipts voids its
+// receipt); a partial refund is noted on the gift and nothing else moves —
+// the treasurer decides.
 const claimEvent = async (tx, evt, wsId) => (await tx.query(
   'insert into stripe_events (id, workspace_id, type) values ($1, $2, $3) on conflict do nothing', [evt.id, wsId, evt.type],
 )).affectedRows > 0;
@@ -787,41 +672,22 @@ const refundWebhook = async (c, evt, obj) => {
   if ((await db.query('select 1 from stripe_events where id = $1', [evt.id])).rows.length) return c.json({ ok: true, duplicate: true });
   const refunded = Number(obj.amount_refunded) || 0;
   const full = obj.refunded === true || (Number(obj.amount) > 0 && refunded >= Number(obj.amount));
-
-  const order = pi ? (await db.query('select id, workspace_id from store_orders where payment_intent = $1 limit 1', [pi])).rows[0] : null;
-  if (order) {
-    const ws = (await db.query('select id, name, slug, settings from workspaces where id = $1', [order.workspace_id])).rows[0];
-    const { result } = await runAction(db, { workspaceId: ws.id, actorId: null, action: 'store.refund' }, async (tx, emit) => {
-      if (!(await claimEvent(tx, evt, ws.id))) return { duplicate: true };
-      return refundStoreOrder(tx, emit, ws, order.id, obj);
-    });
-    return c.json({ ok: true, ...result });
-  }
-
   const refs = [pi && `Stripe ${pi}`, invoice && `Stripe ${invoice}`].filter(Boolean);
-  // One charge may have paid several gifts (one to each slate): all of them.
-  const gifts = (await db.query(
+  const gift = (await db.query(
     // The reference is the note's first part: a partial refund adds to it.
-    `select id, workspace_id, note from gifts where split_part(note, ' · ', 1) = any($1::text[]) and deleted_at is null order by created_at, id`, [refs],
-  )).rows;
-  if (!gifts.length) return c.json({ ok: true, ignored: 'nothing of ours for this charge' });
-  const wsId = gifts[0].workspace_id;
-  const { result } = await runAction(db, { workspaceId: wsId, actorId: null, action: 'stripe.refund' }, async (tx, emit) => {
-    if (!(await claimEvent(tx, evt, wsId))) return { duplicate: true };
-    let pledge = null;
-    for (const gift of gifts) {
-      const note = `${gift.note} · ${full ? 'Refunded' : 'Partly refunded'} in Stripe (${dollars(refunded)})`;
-      await tx.query('update gifts set note = $3 where id = $1 and workspace_id = $2', [gift.id, wsId, note]);
-      if (!full) {
-        emit('gift', gift.id, 'update', { note, refunded_cents: refunded, partial: true, stripe: true });
-        continue;
-      }
-      const v = await voidGift(tx, wsId, gift.id, emit);
-      pledge = pledge || v.pledge;
+    `select id, workspace_id, note from gifts where split_part(note, ' · ', 1) = any($1::text[]) and deleted_at is null limit 1`, [refs],
+  )).rows[0];
+  if (!gift) return c.json({ ok: true, ignored: 'nothing of ours for this charge' });
+  const { result } = await runAction(db, { workspaceId: gift.workspace_id, actorId: null, action: 'stripe.refund' }, async (tx, emit) => {
+    if (!(await claimEvent(tx, evt, gift.workspace_id))) return { duplicate: true };
+    const note = `${gift.note} · ${full ? 'Refunded' : 'Partly refunded'} in Stripe (${dollars(refunded)})`;
+    await tx.query('update gifts set note = $3 where id = $1 and workspace_id = $2', [gift.id, gift.workspace_id, note]);
+    if (!full) {
+      emit('gift', gift.id, 'update', { note, refunded_cents: refunded, partial: true, stripe: true });
+      return { gift_id: gift.id, partial: refunded };
     }
-    const ids = gifts.map((g) => g.id);
-    if (!full) return { gift_id: ids[0], partial: refunded, ...(ids.length > 1 ? { gift_ids: ids } : {}) };
-    return { gift_id: ids[0], voided: true, pledge, ...(ids.length > 1 ? { gift_ids: ids } : {}) };
+    const v = await voidGift(tx, gift.workspace_id, gift.id, emit);
+    return { gift_id: gift.id, voided: true, pledge: v.pledge };
   });
   return c.json({ ok: true, ...result });
 };
@@ -926,59 +792,6 @@ app.post('/api/public/:ws/signup', async (c) => {
     return c.json({ ok: true, kind });
   }
   return c.json({ error: "kind must be 'newsletter', 'volunteer', 'petition', or 'rsvp'" }, 400);
-});
-
-// The website's own donate form: the same checks, person, pledge and Stripe
-// Checkout as /d, answered as JSON. Stripe brings the contributor back to
-// the site's own pages when `return` names them (hosts.js returnUrl: only
-// the site's origins), else to Starbase's thank-you page.
-//   { amount_cents | amount ("25" or "25.00"), monthly, slate ('council' |
-//     'school_board'; the first when unnamed) — or amounts: { council: cents,
-//     school_board: cents } for one payment to several slates —
-//     name | first_name + last_name, email, phone, address, city, postal,
-//     attest: { individual, resident, own_funds } (or attest_individual…),
-//     subscribe, return: { success, cancel } }
-//   → { url } (go to Stripe) · { ok, pledged: true } (no card payment yet)
-//   · 400 { error, field }
-const yes = (v) => [true, 1, '1', 'true', 'on', 'yes'].includes(v);
-app.options('/api/public/:ws/donate', (c) => {
-  c.header('Access-Control-Allow-Origin', '*');
-  c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  c.header('Access-Control-Allow-Headers', 'Content-Type');
-  return c.body(null, 204);
-});
-app.post('/api/public/:ws/donate', async (c) => {
-  c.header('Access-Control-Allow-Origin', '*');
-  c.header('Cache-Control', 'no-store');
-  if (limited(ipOf(c))) return c.json({ error: 'too many requests' }, 429);
-  const db = await getDb();
-  const ws = await loadWs(db, c.req.param('ws'));
-  if (!ws) return c.json({ error: 'unknown workspace' }, 404);
-  const b = await c.req.json().catch(() => ({}));
-  const cents = Number.isInteger(b.amount_cents) ? b.amount_cents
-    : Math.round(Number.parseFloat(String(b.amount ?? '').replace(/[$,\s]/g, '')) * 100);
-  const name = str(b.name) || `${str(b.first_name, 80)} ${str(b.last_name, 80)}`.trim();
-  const address = [str(b.address, 400), str(b.city, 80), str(b.postal || b.postal_code, 20)].filter(Boolean).join(', ');
-  const amounts = b.amounts && typeof b.amounts === 'object' && !Array.isArray(b.amounts)
-    ? Object.fromEntries(Object.entries(b.amounts).map(([k, x]) => [String(k), Number.isInteger(x) ? x : Math.round(Number.parseFloat(String(x ?? '').replace(/[$,\s]/g, '')) * 100)]))
-    : null;
-  const v = { cents, amounts, slate: str(b.slate, 40), monthly: yes(b.monthly), name, email: str(b.email, 320), phone: str(b.phone, 40), address };
-  const at = b.attest && typeof b.attest === 'object' ? b.attest : {};
-  const attested = ATTESTATIONS.every(([k]) => yes(at[k]) || yes(b[`attest_${k}`]));
-  const base = publicBase(c);
-  const ret = b.return && typeof b.return === 'object' ? b.return : {};
-  const r = await startDonation(db, ws, v, attested, {
-    ip: ipOf(c),
-    successUrl: returnUrl(ret.success, `${base}/d/${ws.slug}/thanks`),
-    cancelUrl: returnUrl(ret.cancel, `${base}/d/${ws.slug}`),
-    subscribeToo: yes(b.subscribe),
-  });
-  if (r.fail) return c.json({ error: r.fail, ...(r.field ? { field: r.field } : {}) }, 400);
-  if (r.url) return c.json({ url: r.url });
-  return c.json({
-    ok: true, pledged: true,
-    instructions: ws.settings.donateInstructions || 'The campaign will be in touch to complete it by e-transfer or cheque.',
-  });
 });
 
 export default app;

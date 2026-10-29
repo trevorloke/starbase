@@ -1,4 +1,4 @@
-// Public pages + website bridge: every public write is on the hash-chained
+// Public pages + JSON bridge: every public write is on the hash-chained
 // event log under the system actor (so "Verify the records" covers it), and
 // every public page says only what the server did.
 import { test, before, after } from 'node:test';
@@ -424,12 +424,11 @@ test('stripe: checkout link and every payment are logged; the thank-you says Str
   await verified();
 });
 
-// The Superstar Club: the yearly maximum to each slate, two contributions
-// in one payment. One pledge per slate, one Checkout Session with a line
-// item each, one gift each when it is paid; the limit is per slate, so
-// neither is over, and either slate alone is then full. A monthly one
-// books two gifts an invoice and closes when Stripe cancels it.
-test('slates: one payment to each slate is a pledge, a line item and a gift for each; the limit is per slate; Stripe’s cancellation closes a monthly pledge', async () => {
+// The limit is per slate: a gift to the school board slate is one pledge,
+// one line item and one gift on that slate, and neither slate's limit
+// counts the other's. A monthly gift is checked against the months left,
+// and closes when Stripe cancels its subscription.
+test('slates: a gift names its slate; the limit is per slate; Stripe’s cancellation closes a monthly pledge', async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_public';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_public';
   const realFetch = globalThis.fetch;
@@ -445,42 +444,37 @@ test('slates: one payment to each slate is a pledge, a line item and a gift for 
     const b = JSON.stringify({ id, type, created: Math.floor(Date.now() / 1000), data: { object } });
     return pub('POST', '/api/public/stripe/webhook', b, { 'stripe-signature': stripeSign(b, 'whsec_public') });
   };
-  const who = { name: 'Sasha Superstar', email: mail('sasha'), address: '9 Main St', attest: { individual: true, resident: true, own_funds: true } };
-  const donate = (body) => pub('POST', `/api/public/${slug}/donate`, JSON.stringify(body), { 'content-type': 'application/json' });
+  const who = { name: 'Sasha Superstar', email: mail('sasha'), address: '9 Main St', ...eligible };
+  const donate = (fields) => pub('POST', `/d/${slug}`, new URLSearchParams({ ...who, ...fields }));
   try {
-    const bad = await donate({ ...who, amounts: { council: 142970, senate: 100 } });
+    const bad = await donate({ amount: '10', slate: 'senate' });
     assert.equal(bad.status, 400);
-    assert.equal(bad.json.field, 'slate');
-    const tooMuch = await donate({ ...who, amounts: { council: 142970, school_board: 142971 } });
+    assert.match(bad.text, /Choose which slate/);
+    const tooMuch = await donate({ other: '1429.71', slate: 'school_board' });
     assert.equal(tooMuch.status, 400);
-    assert.match(tooMuch.json.error, /The most one person can give this year to the school board slate is \$1,429\.70\./);
-    const tooMuchMonthly = await donate({ ...who, monthly: true, amount_cents: 12000 });
-    assert.match(tooMuchMonthly.json.error, /a monthly gift can be at most \$119/);
+    assert.match(tooMuch.text, /The most one person can give this year to the school board slate is \$1,429\.70\./);
+    const tooMuchMonthly = await donate({ other: '120', monthly: '1' });
+    assert.match(tooMuchMonthly.text, /a monthly gift can be at most \$119/);
 
-    const go = await donate({ ...who, amounts: { council: 142970, school_board: '1429.70' } });
-    assert.equal(go.status, 200, JSON.stringify(go.json));
-    assert.equal(go.json.url, 'https://checkout.stripe.test/sl/1');
+    // The maximum to each slate: two gifts, neither over.
+    const go = await donate({ other: '1429.70' });
+    assert.equal(go.status, 303, go.text);
+    const goB = await donate({ other: '1429.70', slate: 'school_board' });
+    assert.equal(goB.status, 303, goB.text);
     let ev = await fresh();
     const made = of(ev, 'public.pledge');
     assert.deepEqual(made.map((e) => [e.payload.slate, e.payload.amount_cents, e.payload.status]), [['council', 142970, 'pending'], ['school_board', 142970, 'pending']]);
     const ids = made.map((e) => e.entity_id);
-    const s1 = sessions[0];
-    assert.equal(s1.mode, 'payment');
-    assert.equal(s1['metadata[pledge_ids]'], ids.join(','));
-    assert.equal(s1['metadata[pledge_id]'], ids[0]);
-    assert.equal(s1['payment_intent_data[metadata][pledge_ids]'], ids.join(','));
-    assert.deepEqual([s1['line_items[0][price_data][unit_amount]'], s1['line_items[1][price_data][unit_amount]']], ['142970', '142970']);
-    assert.match(s1['line_items[0][price_data][product_data][name]'], /\(city council slate\)$/);
-    assert.match(s1['line_items[1][price_data][product_data][name]'], /\(school board slate\)$/);
-    assert.deepEqual(of(ev, 'stripe.checkout').map((e) => e.entity_id).sort(), [...ids].sort(), 'both pledges carry the session');
-
-    const paid = await hook(`evt_sl_${tag}_1`, 'checkout.session.completed', {
-      id: `cs_sl_${tag}_1`, mode: 'payment', payment_status: 'paid', amount_total: 285940, payment_intent: 'pi_sl',
-      metadata: { pledge_id: ids[0], pledge_ids: ids.join(','), workspace_id: wsId },
-    });
-    assert.equal(paid.status, 200, JSON.stringify(paid.json));
-    assert.equal(paid.json.gift_ids.length, 2);
-    assert.equal(paid.json.flagged, false, 'the maximum to each slate is within each slate’s limit');
+    assert.equal(sessions.length, 2);
+    assert.equal(sessions[1]['metadata[pledge_id]'], ids[1]);
+    for (const [i, id] of ids.entries()) {
+      const paid = await hook(`evt_sl_${tag}_p${i}`, 'checkout.session.completed', {
+        id: `cs_sl_${tag}_${i + 1}`, mode: 'payment', payment_status: 'paid', amount_total: 142970, payment_intent: `pi_sl_${i}`,
+        metadata: { pledge_id: id, workspace_id: wsId },
+      });
+      assert.equal(paid.status, 200, JSON.stringify(paid.json));
+      assert.equal(paid.json.flagged, false, 'the maximum to each slate is within each slate’s limit');
+    }
     ev = await fresh();
     const gifts = of(ev, 'stripe.payment').filter((e) => e.entity_type === 'gift');
     assert.deepEqual(gifts.map((e) => [e.payload.slate, e.payload.amount_cents, e.payload.pledge_id, e.payload.flagged]),
@@ -489,57 +483,55 @@ test('slates: one payment to each slate is a pledge, a line item and a gift for 
     assert.deepEqual(rows.map((r) => [r.slate, r.status]).sort(), [['council', 'paid'], ['school_board', 'paid']]);
 
     // Either slate alone is full now; the words name the slate.
-    const full = await donate({ ...who, amount_cents: 100 });
-    assert.match(full.json.error, /reached this year's \$1,429\.70 limit to the city council slate/);
-    const fullToo = await donate({ ...who, amount_cents: 100, slate: 'school_board' });
-    assert.match(fullToo.json.error, /to the school board slate/);
+    const full = await donate({ amount: '25' });
+    assert.match(full.text, /reached this year&#39;s \$1,429\.70 limit to the city council slate/);
+    const fullToo = await donate({ amount: '25', slate: 'school_board' });
+    assert.match(fullToo.text, /to the school board slate/);
 
-    // One refund of the one charge voids both gifts.
-    const whole = await hook(`evt_sl_${tag}_r`, 'charge.refunded', { object: 'charge', payment_intent: 'pi_sl', amount: 285940, amount_refunded: 285940, refunded: true });
+    // Refunded in full: the council gift leaves the books; the other stays.
+    const whole = await hook(`evt_sl_${tag}_r`, 'charge.refunded', { object: 'charge', payment_intent: 'pi_sl_0', amount: 142970, amount_refunded: 142970, refunded: true });
     assert.equal(whole.json.voided, true);
-    assert.deepEqual(whole.json.gift_ids.sort(), paid.json.gift_ids.sort());
     const voided = of(await fresh(), 'stripe.refund').filter((e) => e.entity_type === 'gift' && e.op === 'void');
-    assert.equal(voided.length, 2);
+    assert.equal(voided.length, 1);
 
-    // Monthly to each slate: a subscription with two line items; each
-    // invoice books a gift for each; cancelled in Stripe, both pledges close.
-    const goM = await donate({ ...who, monthly: true, amounts: { council: 11900, school_board: 11900 } });
-    assert.equal(goM.status, 200, JSON.stringify(goM.json));
-    const mIds = of(await fresh(), 'public.pledge').map((e) => e.entity_id);
-    assert.equal(mIds.length, 2);
-    assert.equal(sessions[1].mode, 'subscription');
-    assert.equal(sessions[1]['subscription_data[metadata][pledge_ids]'], mIds.join(','));
-    const meta = { pledge_id: mIds[0], pledge_ids: mIds.join(','), workspace_id: wsId };
-    const started = await hook(`evt_sl_${tag}_2`, 'checkout.session.completed', { id: `cs_sl_${tag}_2`, mode: 'subscription', subscription: 'sub_sl', metadata: meta });
+    // Monthly to the council slate: each invoice books a gift; cancelled in
+    // Stripe, the pledge closes.
+    const goM = await donate({ other: '119', monthly: '1' });
+    assert.equal(goM.status, 303, goM.text);
+    const mId = of(await fresh(), 'public.pledge')[0].entity_id;
+    assert.equal(sessions[2].mode, 'subscription');
+    const meta = { pledge_id: mId, workspace_id: wsId };
+    const started = await hook(`evt_sl_${tag}_2`, 'checkout.session.completed', { id: `cs_sl_${tag}_3`, mode: 'subscription', subscription: 'sub_sl', metadata: meta });
     assert.equal(started.json.subscription, true);
     const inv = await hook(`evt_sl_${tag}_3`, 'invoice.paid', {
-      id: 'in_sl', amount_paid: 23800, status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
+      id: 'in_sl', amount_paid: 11900, status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
       parent: { subscription_details: { metadata: meta } },
     });
-    assert.equal(inv.json.gift_ids.length, 2, JSON.stringify(inv.json));
+    assert.ok(inv.json.gift_id, JSON.stringify(inv.json));
     const mg = of(await fresh(), 'stripe.payment').filter((e) => e.entity_type === 'gift');
-    assert.deepEqual(mg.map((e) => [e.payload.slate, e.payload.amount_cents, e.payload.cadence]), [['council', 11900, 'monthly'], ['school_board', 11900, 'monthly']]);
-    let mrows = (await mgr.get('/api/pledges')).json.pledges.filter((x) => mIds.includes(x.id));
-    assert.ok(mrows.every((r) => r.status === 'paid' && r.stripe_subscription_id === 'sub_sl'), JSON.stringify(mrows));
+    assert.deepEqual(mg.map((e) => [e.payload.slate, e.payload.amount_cents, e.payload.cadence]), [['council', 11900, 'monthly']]);
+    let mrow = (await mgr.get('/api/pledges')).json.pledges.find((x) => x.id === mId);
+    assert.equal(mrow.status, 'paid');
+    assert.equal(mrow.stripe_subscription_id, 'sub_sl');
 
     // What the months left will take is spoken for: this month's gift is in,
     // the live subscription pays each month after it, and a one-time gift
     // over what is left is refused — the words say how much is left.
     const monthIndex = Number(campaignDay(new Date()).slice(5, 7)) - 1;
     const left = 142970 - 11900 - 11900 * (11 - monthIndex);
-    const okStill = await donate({ ...who, amount_cents: left });
-    assert.equal(okStill.status, 200, JSON.stringify(okStill.json));
-    const spoken = await donate({ ...who, amount_cents: left + 100 });
-    assert.equal(spoken.status, 400, JSON.stringify(spoken.json));
+    const okStill = await donate({ other: String(left / 100) });
+    assert.equal(okStill.status, 303, okStill.text);
+    const spoken = await donate({ other: String((left + 100) / 100) });
+    assert.equal(spoken.status, 400, spoken.text);
     const words = `$${(left / 100).toLocaleString('en-CA', { minimumFractionDigits: left % 100 ? 2 : 0 })}`;
-    assert.equal(spoken.json.error, `Thank you — you can contribute up to ${words} more this year to the city council slate under the annual limit.`);
+    assert.ok(spoken.text.includes(`you can contribute up to ${words} more this year to the city council slate under the annual limit`), spoken.text.slice(-600));
 
     const ended = await hook(`evt_sl_${tag}_4`, 'customer.subscription.deleted', { id: 'sub_sl', object: 'subscription', metadata: meta });
-    assert.deepEqual(ended.json.cancelled.sort(), [...mIds].sort());
-    mrows = (await mgr.get('/api/pledges')).json.pledges.filter((x) => mIds.includes(x.id));
-    assert.ok(mrows.every((r) => r.status === 'cancelled'));
+    assert.equal(ended.json.cancelled, mId);
+    mrow = (await mgr.get('/api/pledges')).json.pledges.find((x) => x.id === mId);
+    assert.equal(mrow.status, 'cancelled');
     const cancelEv = of(await fresh(), 'stripe.cancel');
-    assert.deepEqual(cancelEv.map((e) => [e.entity_type, e.op, e.payload.status, e.payload.source]), [['pledge', 'update', 'cancelled', 'stripe'], ['pledge', 'update', 'cancelled', 'stripe']]);
+    assert.deepEqual(cancelEv.map((e) => [e.entity_type, e.op, e.payload.status, e.payload.source]), [['pledge', 'update', 'cancelled', 'stripe']]);
     assert.equal((await hook(`evt_sl_${tag}_4`, 'customer.subscription.deleted', { id: 'sub_sl', object: 'subscription', metadata: meta })).json.duplicate, true);
   } finally {
     globalThis.fetch = realFetch;

@@ -6,7 +6,7 @@
 //   press       Write press release · media count · last sent · More: past sends
 //   petitions   New petition · rows with Copy · tap a row: signatures, close
 //   events      New event · rows with Copy · tap a row: RSVPs, edit, delete
-//   website     every public link with Copy · More: site link, email &
+//   links       every public link with Copy · More: site link, email &
 //               texting, donations · For your web developer: embed code
 // Tabs live in the URL (/outreach/:tab); an open compose/new form is ?new=1.
 // Everything is react-query driven; every write invalidates and confirms.
@@ -21,8 +21,7 @@ import {
 } from '../components/AbTests.jsx';
 import LaddersLink from '../components/LaddersLink.jsx';
 import { NeedsSignal, useOnline } from '../components/NoSignal.jsx';
-import { MarkdownField, toDataUrl, uploadImage } from '../components/WebsiteBits.jsx';
-import './website.css'; // the Markdown field's toolbar and preview
+import { MarkdownField, toDataUrl, uploadImage } from '../components/MarkdownField.jsx';
 import './outreach.css';
 
 const TABS = [
@@ -32,7 +31,7 @@ const TABS = [
   { key: 'press',      label: 'Press' },
   { key: 'petitions',  label: 'Petitions' },
   { key: 'events',     label: 'Events' },
-  { key: 'website',    label: 'Website' },
+  { key: 'links',      label: 'Links' },
 ];
 // The one yellow button in the header, per tab.
 const PRIMARY = {
@@ -46,7 +45,7 @@ const PRIMARY = {
 const DESK_ROLES = ['manager', 'treasurer', 'staff'];
 // Volunteers get 403 on /api/subscriptions, /api/blasts and signature lists,
 // so they only see the tabs whose reads they're allowed.
-const VOLUNTEER_TABS = new Set(['petitions', 'events', 'website']);
+const VOLUNTEER_TABS = new Set(['petitions', 'events', 'links']);
 
 // Tab icons (24×24, stroke = currentColor), same hand as the phone tab bar.
 const TAB_ICONS = {
@@ -56,7 +55,7 @@ const TAB_ICONS = {
   press: <><path d="M4 5.5h12v13H6a2 2 0 0 1-2-2z" /><path d="M16 9h3.5v7.5a2 2 0 0 1-2 2H16" /><path d="M7 9h6M7 12h6M7 15h4" /></>,
   petitions: <><rect x="5" y="4.5" width="14" height="16" rx="1.5" /><path d="M9 3.5h6v3H9z" /><path d="m9 13.5 2 2 4-4.5" /></>,
   events: <><rect x="3.5" y="5" width="17" height="15.5" rx="1.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
-  website: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.6 3.6 5.4 3.6 8.5s-1.2 5.9-3.6 8.5c-2.4-2.6-3.6-5.4-3.6-8.5S9.6 6.1 12 3.5z" /></>,
+  links: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.6 3.6 5.4 3.6 8.5s-1.2 5.9-3.6 8.5c-2.4-2.6-3.6-5.4-3.6-8.5S9.6 6.1 12 3.5z" /></>,
 };
 const TabIcon = ({ name }) => (
   <svg className="ot-tab-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
@@ -114,7 +113,7 @@ const ATTACH_MAX = 5 * 1024 * 1024;
 const ATTACH_COUNT = 5;
 const ATTACH_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.docx,.pptx,.xlsx,.txt,.csv,.ics';
 const fmtBytes = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-// A picture in a message: stored like the website's (blast.picture), so
+// A picture in a message (blast.picture), so
 // every mail app can fetch it from /media/<id>.
 const uploadMessagePicture = (file) => uploadImage(file, 'blast.picture');
 // "Link to…" in the message: the campaign's own pages.
@@ -124,7 +123,6 @@ const campaignLinks = (slug) => {
     { label: 'Donate', url: `${base}/d/${slug}` },
     { label: 'Volunteer', url: `${base}/v/${slug}` },
     { label: 'Newsletter signup', url: `${base}/n/${slug}` },
-    { label: 'Website', url: `${base}/` },
   ];
 };
 
@@ -349,8 +347,8 @@ const plainReason = (note) => {
 const KIND_NOUN = { newsletter: ['subscriber', 'subscribers'], press: ['media contact', 'media contacts'], eblast: ['person', 'people'], text: ['number', 'numbers'] };
 const nounFor = (kind, n) => plural(n, ...(KIND_NOUN[kind] || ['recipient', 'recipients']));
 const audienceWords = (kind, n) => `${n} ${nounFor(kind, n)}`;
-// Where "Connect" goes: the Website tab, with its More open on Email & texting.
-const CONNECT_TO = '/outreach/website?connect=1';
+// Where "Connect" goes: the Links tab, with its More open on Email & texting.
+const CONNECT_TO = '/outreach/links?connect=1';
 const ConnectLink = () => <Link className="ot-connect" to={CONNECT_TO}>Connect</Link>;
 // A send's result as an object the screen can show: the blast plus its
 // counts (and `resent` after a Send now / Try again: { sent, failed, skipped }).
@@ -463,7 +461,7 @@ function BlastResult({ blast: answered, emailConfigured, canWrite, onDismiss, on
 }
 
 // Compose shared by newsletter + press: subject, message, Send. The
-// message is Markdown with the website editor's toolbar (bold, italic,
+// message is Markdown with the editor's toolbar (bold, italic,
 // heading, link, list, picture, "Link to…" the campaign's pages) and a
 // Preview that is the email's layout; files can go with it (5 at most,
 // 5 MB each); "Send me a test" emails the writer a copy first. Sending asks
@@ -1291,19 +1289,11 @@ function NewPetitionForm({ wsSlug, onCreated, onCancel }) {
 }
 
 function PetitionsTab({ me, canWrite, creating, onClose, toast }) {
-  const queryClient = useQueryClient();
   const pets = useQuery({ queryKey: ['petitions'], queryFn: () => apiGet('/petitions') });
   const slug = pets.data?.slug || me.workspace.slug;
   const rows = pets.data?.petitions ?? [];
   const totalSigs = rows.reduce((n, p) => n + (p.signatures || 0), 0);
   const openCount = rows.filter((p) => p.active).length;
-  // A campaign with no petitions yet can load the website's two, as it first
-  // published them, by their slugs (the site's forms post to those).
-  const seed = useAction(() => queryClient.invalidateQueries({ queryKey: ['petitions'] }));
-  const loadSeed = async () => {
-    const res = await seed.run('petition.seed', {});
-    if (res) toast(`${res.petitions.length} petitions loaded — edit their words here`);
-  };
 
   return (
     <>
@@ -1316,20 +1306,7 @@ function PetitionsTab({ me, canWrite, creating, onClose, toast }) {
           {rows.map((p) => <PetitionRow key={p.id} p={p} slug={slug} canWrite={canWrite} toast={toast} />)}
         </ul>
       )}
-      {rows.length === 0 && !pets.isPending && (
-        <div className="ot-empty-block">
-          <p className="ot-empty">No petitions yet.</p>
-          {canWrite && (
-            <>
-              <button type="button" className="btn ot-btn-tap" disabled={seed.busy} onClick={loadSeed}>
-                {seed.busy ? 'Loading…' : 'Load the website’s petitions'}
-              </button>
-              <p className="ot-note">The pledge and the SkyTrain petition, as the website first published them — by the links its forms use.</p>
-              {seed.error && <p className="error">{seed.error}</p>}
-            </>
-          )}
-        </div>
-      )}
+      {rows.length === 0 && !pets.isPending && <p className="ot-empty">No petitions yet.</p>}
 
       {canWrite && rows.length > 0 && (
         <More>
@@ -2060,7 +2037,7 @@ function DeveloperKit({ base, slug, openEvents, copied }) {
   );
 }
 
-function WebsiteTab({ me, canWrite, toast }) {
+function LinksTab({ me, canWrite, toast }) {
   const isManager = me.role === 'manager';
   const [params] = useSearchParams();
   const connect = params.get('connect') === '1';
@@ -2156,7 +2133,7 @@ export default function Outreach() {
       {tab === 'texts' && <ListBlastTab kind="texts" {...tabProps} />}
       {tab === 'petitions' && <PetitionsTab {...tabProps} />}
       {tab === 'events' && <EventsTab {...tabProps} />}
-      {tab === 'website' && <WebsiteTab {...tabProps} />}
+      {tab === 'links' && <LinksTab {...tabProps} />}
       {canWrite && !creating && <LaddersLink />}
 
       {toast.msg && (

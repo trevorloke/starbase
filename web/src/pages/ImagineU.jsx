@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { renderMarkdown } from '@starbase/shared/markdown';
 import { ApiError, action, apiGet } from '../api.js';
 import './imagineu.css';
+import '../editor.css';
 
 const DESK = ['manager', 'staff', 'treasurer'];
 const KINDS = [
@@ -27,7 +28,7 @@ const KIND_LABEL = Object.fromEntries(KINDS.map((k) => [k.key, k.label]));
 const AUDIENCES = [
   { key: 'everyone', label: 'Everyone signed in' },
   { key: 'desk', label: 'The desk only' },
-  { key: 'public', label: 'Public — on the website too' },
+  { key: 'public', label: 'Public — a page anyone can open' },
 ];
 const FILE_MAX = 12 * 1024 * 1024;
 const plural = (n, w, many = `${w}s`) => (n === 1 ? w : many);
@@ -139,7 +140,7 @@ function Home({ desk }) {
           )}
           {adding && adding.section_id === null && !d.unfiled.length && <LessonForm sectionId={null} sections={d.sections} onDone={() => setAdding(null)} />}
           {d.public_url && d.sections.concat([{ lessons: d.unfiled }]).some((s) => s.lessons.some((l) => l.audience === 'public')) && (
-            <p className="muted lu-note">Public lessons are on the website at <a href={d.public_url} target="_blank" rel="noopener noreferrer">{d.public_url}</a>.</p>
+            <p className="muted lu-note">Public lessons are at <a href={d.public_url} target="_blank" rel="noopener noreferrer">{d.public_url}</a>.</p>
           )}
         </div>
       )}

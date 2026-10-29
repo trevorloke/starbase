@@ -52,8 +52,7 @@ Postgres database (backups included).
 | `STARBASE_PUBLIC_URL` | your address, e.g. `https://starbase.imaginesurrey.ca` — used in invite, unsubscribe, and payment links | **yes** |
 | `RESEND_API_KEY`, `MAIL_FROM` | real email (invites, newsletters, press, shift alerts) | optional — without it, sends are saved as *queued* and invite links are shown to copy |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | SMS shift alerts; texting and calling from the app through the campaign's number | optional — without it, Calls opens the phone's own Messages and dialer |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | card donations and the store | optional — without it the donate page takes **pledges** and the store says *opens soon* |
-| `STARBASE_SITE_HOSTS` | the public website's own domain(s), e.g. `imaginesurrey.ca,www.imaginesurrey.ca` — those hosts get the site at `/` | optional — without it the site is at `/site/` |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | card donations | optional — without it the donate page takes **pledges** |
 | `GOOGLE_MAPS_SERVER_KEY` | Google geocoding (`GEOCODER=google` or `GEOCODER_FALLBACK=google`) and Google Maps tiles (`GOOGLE_MAPS_TILES=1`) | optional — the free BC geocoder and OpenStreetMap tiles work without it |
 
 The whole order of things, from deploy to the public link, is in
@@ -61,11 +60,10 @@ The whole order of things, from deploy to the public link, is in
 
 For Stripe, add a webhook in the Stripe dashboard pointing at
 `https://<your address>/api/public/stripe/webhook` with events
-`checkout.session.completed`, `invoice.paid` (donations),
-`checkout.session.expired` (the store: abandoned checkouts) and
-`charge.refunded` (a refund made in Stripe shows here: a store order is
-marked refunded; a donation refunded in full is voided). The store uses
-the same key and webhook as donations. Use **test mode** keys
+`checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`
+(a monthly gift cancelled in Stripe closes its pledge) and
+`charge.refunded` (a refund made in Stripe shows here: a donation refunded
+in full is voided). Use **test mode** keys
 (`sk_test_…`) and card `4242 4242 4242 4242` while testing.
 
 For Twilio, set the number's incoming messages webhook to
@@ -75,36 +73,6 @@ and turns calling off.
 
 Any Docker host works too: `docker build -t starbase .` then run with
 either `DATABASE_URL=postgres://…` or a volume at `/data`.
-
-### The public website (imaginesurrey.ca)
-
-Starbase serves the campaign's whole public site from the same service.
-
-1. Render → `starbase` service → **Settings → Custom Domains** → add
-   `imaginesurrey.ca` and `www.imaginesurrey.ca` (keep
-   `starbase.imaginesurrey.ca` for the staff app). At the domain registrar,
-   add the DNS records Render shows (an `A`/`ALIAS` record for the bare
-   domain, a `CNAME` for `www`). Render issues the certificates.
-2. Set `STARBASE_SITE_HOSTS=imaginesurrey.ca,www.imaginesurrey.ca`. Those
-   hosts now show the site at `/`; the staff app stays on its own host.
-   `/api`, `/e`, `/d`, `/n`, `/v`, `/p`, `/u` and the app's own screens
-   keep working on every host. Before DNS is ready, the site is at
-   `https://starbase.imaginesurrey.ca/site/`.
-3. Edit everything in the **website admin** at `/website-admin` (the
-   account menu's *Edit the website*; managers and staff edit, treasurers
-   see Orders): Pages · News · Events · Team · Store · Orders · Settings.
-   Fill **Settings → Authorized by** before the site goes public.
-   `STARBASE_SERVE=site` runs the website as its own service, apart from
-   the field app, on the same database; see GOING-LIVE.md.
-
-What to try: publish a page (drafts never show), post news with a cover
-picture, add an event with a picture (it's the same event list as
-Outreach → Events), add a team member, add a product with sizes and stock,
-then open the site on a phone. Without Stripe keys the store shows its
-items and the cart says *Online store opens soon*; with test keys, check
-out with card `4242 4242 4242 4242` and watch the order arrive under
-Website → Orders as *Paid*, its stock go down, and the buyer appear in
-People tagged `store`.
 
 ---
 
@@ -141,18 +109,6 @@ one tap away under **More**.
   *Support* for the breakdown by candidate. **Needs you** lists what's waiting:
   gifts over the limit, open pledges, shifts short of people,
   signs to put up.
-- **Members** (Today → More → Members) — the roll from the website's join
-  form: *Current* lists members and anyone whose fee is owing; *Expired*,
-  *Cancelled* and *All* the rest; the counts say how many vote at member
-  meetings. A row opens the person (the profile wears *Member · until …*
-  or *Fee owing*); **Cancel** asks first; **Mark active** puts someone
-  back for a year. A fee owing is a pledge on Donations: *Mark received*
-  there (or the card payment) turns the membership active. The fee is set
-  under Website → Settings → Membership.
-- **Website → Promise tracker** — empty at first: *Load the 26 promises*
-  brings in the tracker as published. Open a promise, add a dated update
-  with a score and a link: the status, the scoreboard and the public JSON
-  change together. Announcements sit under the list.
 - **Lists** (Today → More → Lists, or People → *Save as a list* once a
   filter is on) — a saved filter counts who matches as you pick (and how
   many can be emailed or texted); a hand-picked list takes people by name.
@@ -168,7 +124,7 @@ one tap away under **More**.
   every table, and the exports: any table as a spreadsheet.
 - **Outreach → Newsletter** — the message takes Markdown: tap **B**,
   **H**, **• List**, **Link**, **Picture** (a photo goes in from your phone)
-  and **Link to…** (Donate, Volunteer, Newsletter signup, Website), then
+  and **Link to…** (Donate, Volunteer, Newsletter signup), then
   **Preview** to see the email as it will look. **Attach a file** takes a
   PDF or a picture (5 MB each, five at most) and lists it by name with ✕;
   **Send me a test** emails you a copy with everything in it and nothing
@@ -195,14 +151,15 @@ one tap away under **More**.
   *+ First name* / *+ Campaign* fill in. The email's unsubscribe link asks
   first; once someone unsubscribes, **Newsletter → More → Subscribers** can't
   add them back — only they can, from the signup page.
-- **Outreach → Website** — set the Imagine Surrey website address; copy the
+- **Outreach → Links** — set the Imagine Surrey website address; copy the
   public volunteer page (`/v/imagine-surrey`), newsletter page
   (`/n/imagine-surrey`), petition, event, and donate (`/d/imagine-surrey`)
-  links; *For your web developer* has the embed code for the site.
+  links; *For your web developer* has the embed code for the website's
+  own forms.
 - **ImagineU** (the tab) → *Edit* → add a section (*Start here*) and a few
   lessons: a note (words), a video (paste a YouTube link), a document
   (upload a PDF; set *Who sees it* to *Public* and open the link ImagineU
-  shows — the lesson is on the website), *Who to call*. *Done editing*;
+  shows — a page anyone can open), *Who to call*. *Done editing*;
   open a lesson, *Mark as done*; *Progress* shows each member's count and,
   tapped, which lessons. A volunteer sees the lessons, not *Edit*.
 - **Phone banks** (People → More → Phone banks, or Today → More — in the admin) → *New

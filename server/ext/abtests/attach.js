@@ -7,15 +7,15 @@
 //                    an upload of the person's own, not yet on any send
 //   blast.unattach   { id } — takes one of those back
 //   blast.picture    { data, name?, width?, height? } → { media: { id, url } }
-//                    a picture for the message's body (the site's /media/:id
-//                    serves it to every mail app), for anyone who may send
+//                    a picture for the message's body (/media/:id serves it
+//                    to every mail app), for anyone who may send
 //   bindAttachments  on Send: the uploads named become the send's
 //   loadAttachments  the send's files, as the email service takes them
 //   attachmentsOf    { blastId: [{ id, filename, bytes }] } for GET /blasts
 import { z } from 'zod';
 import { httpError } from '../../actions/util.js';
 import { newId } from '../../lib/events.js';
-import { readUpload } from '../website/media.js';
+import { readUpload } from './media.js';
 
 export const ATTACH_MAX = 5 * 1024 * 1024;
 export const ATTACH_TOTAL = 10 * 1024 * 1024;
@@ -98,12 +98,12 @@ export const actions = {
       if (up.error) throw httpError(400, up.error);
       const id = newId();
       await tx.query(
-        `insert into site_media (id, workspace_id, content_type, bytes, width, height, name, data, created_by)
+        `insert into media (id, workspace_id, content_type, bytes, width, height, name, data, created_by)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [id, ctx.workspaceId, up.type, up.buf.length, input.width ?? null, input.height ?? null, input.name || null, up.buf, ctx.user?.id || null],
       );
       const media = { id, content_type: up.type, bytes: up.buf.length, width: input.width ?? null, height: input.height ?? null, name: input.name || null };
-      emit('site_media', id, 'create', media);
+      emit('media', id, 'create', media);
       return { media: { ...media, url: `/media/${id}` } };
     },
   },

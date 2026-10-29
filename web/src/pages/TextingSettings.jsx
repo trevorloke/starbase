@@ -2,7 +2,7 @@
 // and the hours texts and campaign calls may go out (campaign time) — one
 // window Monday to Friday, another on weekends (default 10 am–6 pm, the
 // CRTC's telemarketing hours; the campaign should confirm both with counsel).
-// What's connected is said in the words Shifts and the Website tab use ("Not
+// What's connected is said in the words Shifts and the Links tab use ("Not
 // connected · Connect"); provider names and addresses sit under "For your
 // Twilio setup", and callers' own phones (managers) under their own row.
 // The first text shows its fill-ins as words — "[first name]", "[your

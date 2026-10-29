@@ -43,7 +43,7 @@ test('the reports: totals and tables; CSV of any report and any dataset; volunte
   assert.match(text, /^﻿?name,email,phone/);
   assert.match(text, /Bob Voter,,604-555-0102/);
   assert.match(text, /member; yard-sign/);
-  for (const d of ['gifts', 'pledges', 'subscribers', 'signatures', 'rsvps', 'members', 'orders', 'contacts', 'lists']) {
+  for (const d of ['gifts', 'pledges', 'subscribers', 'signatures', 'rsvps', 'contacts', 'lists']) {
     const res = await app.request(`/api/export/${d}.csv`, { headers: { cookie: mgr.cookie } });
     assert.equal(res.status, 200, d);
   }

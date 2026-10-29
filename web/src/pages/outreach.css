@@ -310,7 +310,6 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .ot-sig { display: flex; flex-direction: column; gap: 2px; padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
 .ot-sig:last-child { border-bottom: 0; }
 .ot-sig__answer { color: var(--ink-2, inherit); font-style: italic; overflow-wrap: anywhere; }
-.ot-empty-block { display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-start; }
 .ot-sig__name { font-weight: 600; display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
 
 /* ── Events: going / capacity ── */
@@ -339,7 +338,7 @@ a.ot-row:hover, button.ot-row:hover { background: var(--paper-1); }
 .ot-rsvp[data-status='attended'] .name::after { content: ' ✓'; color: var(--ok); }
 .input.ot-rsvp-status { flex: 0 0 auto; width: auto; min-width: 128px; min-height: 48px; font-family: var(--font-mono); font-size: 12px; }
 
-/* ── Website: embed code for the developer ── */
+/* ── Links: embed code for the developer ── */
 .ot-dev-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
 .ot-dev-links li { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .ot-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: var(--border-2); border-radius: var(--r-ctrl); overflow: hidden; }

@@ -1,8 +1,8 @@
-// Images for the website: jpg, png or webp, at most MEDIA_MAX bytes (the
-// editor shrinks a photo to 2000px and about 1.5 MB before it uploads). The
-// type is read from the file's own first bytes, never from what the browser
-// says. Served at /media/:id with a year-long cache: an id's bytes never
-// change (a new picture is a new id).
+// Pictures in a message's body (blast.picture): jpg, png or webp, at most
+// MEDIA_MAX bytes (the editor shrinks a photo before it uploads). The type
+// is read from the file's own first bytes, never from what the browser
+// says. Kept in the database (a backup holds them too) and served at
+// /media/:id with a year-long cache: an id's bytes never change.
 export const MEDIA_MAX = 2 * 1024 * 1024;
 export const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -28,12 +28,11 @@ export const readUpload = (data) => {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// GET /media/:id (any host). Only the site's own uploads exist here, and
-// they are meant to be public (a draft's picture is unlisted, not secret).
+// GET /media/:id (no sign-in: a mail app fetches it for every reader).
 export const serveMedia = async (c, db) => {
   const id = String(c.req.param('id') || '').replace(/\.(jpe?g|png|webp)$/i, '');
   if (!UUID.test(id)) return c.text('not found', 404);
-  const row = (await db.query('select content_type, data from site_media where id = $1', [id])).rows[0];
+  const row = (await db.query('select content_type, data from media where id = $1', [id])).rows[0];
   if (!row) return c.text('not found', 404);
   const body = Buffer.from(row.data);
   return c.body(body, 200, {

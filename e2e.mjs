@@ -1,7 +1,7 @@
 // Starbase release E2E — one fresh Imagine Surrey workspace, end to end across
 // every screen: signup → seed Surrey doors → map (rate, outcome, sign, deep
 // link, filters) → people (tags) → Calls → profile → shifts (assign +
-// notify) → outreach (newsletter, press, petition, website bridge) → public
+// notify) → outreach (newsletter, press, petition, JSON bridge) → public
 // pages → Today → team invite → volunteer on a phone (map, shifts, signs,
 // what they can't reach) → audit chain.
 //
@@ -197,16 +197,16 @@ t = await text();
 check('shift notify shows per-channel results', /email not sent/i.test(t) && /text not sent/i.test(t) && /connect email and text, then Notify again/.test(t) && !/✓ Sent/.test(t) && !/waiting to send/i.test(t), (t.match(/Sam Ortiz.{0,80}/) || [''])[0]);
 await shot('5-shift');
 
-// ── 7. Outreach: newsletter, press, petition, website bridge ──
+// ── 7. Outreach: newsletter, press, petition, JSON bridge ──
 await act('workspace.update', { website: 'https://imaginesurrey.ca' });
 await act('petition.create', { slug: 'skytrain-to-newton', title: 'Bring SkyTrain to Newton', body: 'Surrey deserves rapid transit south of 72nd.' });
-await go('/outreach/website');
+await go('/outreach/links');
 // The public links are rows with Copy; their addresses + the form endpoint sit under "For your web developer".
 await page.click('button.ot-more:has-text("For your web developer")');
 await sleep(300);
 t = await text();
-check('website tab: bridge snippet + public links', /\/api\/public\/imagine-surrey\/signup/.test(t) && /\/v\/imagine-surrey/.test(t) && /\/n\/imagine-surrey/.test(t));
-await shot('6-website-bridge');
+check('links tab: bridge snippet + public links', /\/api\/public\/imagine-surrey\/signup/.test(t) && /\/v\/imagine-surrey/.test(t) && /\/n\/imagine-surrey/.test(t));
+await shot('6-links-bridge');
 
 // Public pages, as a visitor (no cookie)
 const visitor = await browser.newContext();

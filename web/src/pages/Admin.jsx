@@ -12,7 +12,7 @@ import { apiGet, action } from '../api.js';
 import { NoSignal, noSignal, useOnline, NeedsSignalLine } from '../components/NoSignal.jsx';
 import Team from './Team.jsx';
 import './outreach.css';
-import './website.css';
+import '../editor.css';
 import './admin.css';
 
 const TABS = [['members', 'Members'], ['teams', 'Teams'], ['permissions', 'Permissions']];

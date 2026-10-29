@@ -1002,7 +1002,7 @@ function ShiftDetail({ id, canDesk, me }) {
       )}
       {!online && active.length > 0 && <NeedsSignal />}
       {confirming && providerNote && (
-        <span className="ops-meta">{providerNote} <Link to="/outreach/website?connect=1">Connect</Link></span>
+        <span className="ops-meta">{providerNote} <Link to="/outreach/links?connect=1">Connect</Link></span>
       )}
       {notifyError && <p className="error">{notifyError}</p>}
       {results && (results.length === 0 ? (

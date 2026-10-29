@@ -92,8 +92,8 @@ export const logLine = (e) => {
   return what;
 };
 
-// Where the screens send "Connect" (Outreach's Website tab, Email & texting open).
-export const CONNECT_TO = '/outreach/website?connect=1';
+// Where the screens send "Connect" (Outreach's Links tab, Email & texting open).
+export const CONNECT_TO = '/outreach/links?connect=1';
 
 // "← Ladders", or back to the screen that opened this one when it said who
 // it is (router state, as Results does): Today's "2 follow-ups" → "← Today".

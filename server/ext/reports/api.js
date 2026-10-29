@@ -1,10 +1,10 @@
 // Reports and exports, for the desk (the data area).
 //   GET /reports                 the campaign in numbers: people by rating, tags, cities,
 //                                people added by week, contacts by week and channel,
-//                                donations by month, members, the newsletter list, sends
+//                                donations by month, the newsletter list, sends
 //   GET /reports/:name.csv       one of them as a spreadsheet
 //   GET /export/:dataset.csv     a whole table as a spreadsheet: people, gifts, pledges,
-//                                subscribers, signatures, rsvps, members, orders, contacts, lists
+//                                subscribers, signatures, rsvps, contacts, lists
 // Volunteers are refused all of it. The full JSON export stays at GET /export.
 import { Hono } from 'hono';
 import { csvResponse } from '../../lib/csv.js';
@@ -64,13 +64,6 @@ const REPORTS = {
        from gifts where workspace_id = $1 and deleted_at is null and date >= date_trunc('year', current_date) - interval '1 year' group by 1 order by 1`, [ws],
     )).rows.map((r) => [r.month, r.gifts, r.donors, Number(r.total)]),
   }),
-  members: async (db, ws) => ({
-    head: ['Status', 'Members'],
-    rows: (await db.query(
-      `select case when status = 'active' and expires_at < now() then 'expired' else status end as status, count(*)::int as n
-       from members where workspace_id = $1 group by 1 order by 1`, [ws],
-    )).rows.map((r) => [r.status === 'pending_payment' ? 'fee owing' : r.status, r.n]),
-  }),
   subscribers: async (db, ws) => ({
     head: ['Month', 'Joined', 'Left'],
     rows: (await db.query(
@@ -99,10 +92,9 @@ const totals = async (db, ws) => {
   const g = await one(`select count(*)::int as gifts, coalesce(sum(amount_cents), 0)::bigint as cents, count(distinct person_id)::int as donors
     from gifts where workspace_id = $1 and deleted_at is null and date >= date_trunc('year', current_date)`);
   const s = await one(`select (count(*) filter (where status = 'subscribed'))::int as subscribed, (count(*) filter (where status = 'unsubscribed'))::int as unsubscribed from subscriptions where workspace_id = $1`);
-  const m = await one(`select (count(*) filter (where status = 'active' and (expires_at is null or expires_at >= now())))::int as active from members where workspace_id = $1`);
   return {
     people: p, contacts: c, donations: { gifts: g.gifts, cents: Number(g.cents), donors: g.donors },
-    newsletter: s, members: { active: m.active },
+    newsletter: s,
   };
 };
 
@@ -137,10 +129,6 @@ const DATASETS = {
     from petition_signatures s join petitions t on t.id = s.petition_id where s.workspace_id = $1 order by s.created_at desc` },
   rsvps: { sql: `select e.title as event, e.starts_at, r.name, r.email, r.phone, r.guests, r.status, r.created_at
     from event_rsvps r join campaign_events e on e.id = r.event_id where r.workspace_id = $1 order by e.starts_at desc, r.created_at` },
-  members: { sql: `select p.name, p.email, p.phone, p.city, p.postal, m.status, m.fee_cents / 100.0 as fee, m.voting_eligible, m.starts_at, m.expires_at, m.details, m.created_at
-    from members m join persons p on p.id = m.person_id where m.workspace_id = $1 order by m.created_at desc` },
-  orders: { sql: `select created_at, status, fulfilment, buyer_name, email, phone, subtotal_cents / 100.0 as subtotal, shipping_cents / 100.0 as shipping, total_cents / 100.0 as total, items, paid_at
-    from store_orders where workspace_id = $1 and status <> 'pending' order by created_at desc` },
   contacts: { sql: `select p.name, c.channel, c.outcome, c.rating, c.note, u.name as by_name, c.created_at
     from contacts c join persons p on p.id = c.person_id left join users u on u.id = c.created_by where c.workspace_id = $1 order by c.created_at desc` },
   lists: { sql: `select l.name as list, l.kind, p.name, p.email, p.phone from list_members m join lists l on l.id = m.list_id join persons p on p.id = m.person_id
